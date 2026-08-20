@@ -98,6 +98,7 @@ npm run dev
 | [docs/EXTRACTION.md](docs/EXTRACTION.md) | What comes across from WaahTickets, file by file |
 | [docs/DEVOPS.md](docs/DEVOPS.md) | Environments, pipelines, releases, on-call |
 | [docs/WAYS_OF_WORKING.md](docs/WAYS_OF_WORKING.md) | Epic/Feature/Task model, definition of done |
+| [docs/BACKLOG.md](docs/BACKLOG.md) | The full backlog, critical path and deferred decisions |
 
 ## Planning
 
@@ -105,4 +106,5 @@ Work is tracked as **Epics** (why), **Features** (what ships) and **Tasks**
 (checklist items inside a feature). Every feature carries acceptance criteria and a
 test plan before it is picked up.
 
-Milestones run M0 through M5. See [docs/WAYS_OF_WORKING.md](docs/WAYS_OF_WORKING.md).
+Milestones run M0 through M5. The full backlog — 8 epics, 43 features and 1 spike —
+is indexed in [docs/BACKLOG.md](docs/BACKLOG.md).
