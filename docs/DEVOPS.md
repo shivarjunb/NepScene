@@ -1,5 +1,31 @@
 # DevOps
 
+## Known blocker: Actions runs fail at startup
+
+**Status as of 2026-08-20: unresolved. This blocks every pipeline below.**
+
+Every workflow run on this repository — including GitHub's own generated Dependabot
+workflow — completes immediately with `startup_failure` and produces no logs.
+
+This was isolated rather than assumed. A five-line hello-world workflow on a throwaway
+branch failed identically, which rules out the workflow definitions in this repo. All
+YAML validates, and every workflow registers as `active`.
+
+The likely cause is GitHub Actions billing on a **private** repository under a **free**
+account: private repos draw on a 2,000 minute monthly allowance, and once it is spent —
+or if no spending limit is configured — runs fail at startup with exactly this signature.
+
+Two ways to confirm and fix, in order of preference:
+
+1. **Check the Actions allowance** at
+   [github.com/settings/billing](https://github.com/settings/billing). If minutes are
+   exhausted, either raise the spending limit or wait for the monthly reset.
+2. **Make the repository public.** Public repositories get unlimited Actions minutes.
+   This is a disclosure decision, not just a billing one — make it deliberately.
+
+Until this is resolved, the pipelines below are configured but never execute, so
+nothing is actually being verified on merge.
+
 ## Environments
 
 | Environment | Trigger | Data | Purpose |
