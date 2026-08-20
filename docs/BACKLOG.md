@@ -1,6 +1,6 @@
 # Backlog
 
-52 issues: 8 epics, 43 features, 1 spike — across six milestones.
+53 issues: 8 epics, 43 features, 1 spike and 1 blocking bug — across six milestones.
 
 Every feature carries a plain-language explanation, a scope checklist, acceptance
 criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the model.
@@ -11,6 +11,7 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 **[#1] Foundation, environments and the delivery pipeline**
 | # | Feature |
 |---|---|
+| [#53](../../issues/53) | **BLOCKER** — GitHub Actions runs fail at startup · *p0* |
 | [#9](../../issues/9) | Application scaffold and workspace structure |
 | [#10](../../issues/10) | CI pipeline: typecheck, lint, test, build |
 | [#11](../../issues/11) | Cloudflare environments: preview, staging and production |
@@ -100,6 +101,14 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 | [#52](../../issues/52) | Launch readiness |
 
 ---
+
+## Start here
+
+**[#53](../../issues/53) comes before everything.** Every Actions run on this repo —
+including GitHub's own Dependabot workflow — fails at startup with no logs. The
+pipelines described in [DEVOPS.md](DEVOPS.md) are configured but never execute, so
+nothing is verified on merge until it is fixed. Most likely Actions billing on a
+private repo under a free account.
 
 ## Critical path
 
