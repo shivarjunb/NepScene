@@ -1,0 +1,43 @@
+name: Epic
+description: A body of work with a coherent outcome, spanning several features.
+title: "[EPIC] "
+labels: ["type:epic"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An epic explains **why** a body of work exists and holds its features
+        together. Epics are never worked on directly — features are.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What is true when this epic is done? Write it as a state of the world, not a list of tasks.
+      placeholder: "An organizer can describe an event and put it on the map without engineering help."
+    validations: { required: true }
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this matters
+      description: The reasoning. What breaks or stays impossible without it?
+    validations: { required: true }
+  - type: textarea
+    id: features
+    attributes:
+      label: Features
+      description: Checklist of child feature issues. Add them as they are created.
+      value: |
+        - [ ] #
+    validations: { required: false }
+  - type: textarea
+    id: success
+    attributes:
+      label: How we will know it worked
+      description: The signal — a metric, a demo, a task someone can now complete.
+    validations: { required: true }
+  - type: textarea
+    id: outofscope
+    attributes:
+      label: Explicitly out of scope
+      description: What people will reasonably assume is included, but is not.
+    validations: { required: false }

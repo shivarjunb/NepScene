@@ -1,0 +1,36 @@
+name: Bug
+description: Something behaves differently from how it should.
+title: "[BUG] "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+    validations: { required: true }
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens instead
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. 
+        2. 
+        3. 
+    validations: { required: true }
+  - type: dropdown
+    id: env
+    attributes:
+      label: Where
+      options: [Local, Preview, Staging, Production]
+    validations: { required: true }
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, request and response bodies.
+    validations: { required: false }

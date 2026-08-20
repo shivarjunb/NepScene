@@ -1,0 +1,28 @@
+name: Task
+description: A standalone piece of work that needs its own assignment.
+title: "[TASK] "
+labels: ["type:task"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Most tasks belong as checklist items inside a feature. Create a task issue
+        only when it needs separate assignment or tracking.
+  - type: input
+    id: parent
+    attributes:
+      label: Parent feature
+      placeholder: "#34"
+    validations: { required: false }
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing
+    validations: { required: true }
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      value: |
+        - [ ] 
+    validations: { required: true }

@@ -1,0 +1,79 @@
+name: Deploy to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit SHA to promote (must already be green on staging)
+        required: true
+      reason:
+        description: Why are we deploying?
+        required: true
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  promote:
+    name: Promote to production
+    runs-on: ubuntu-latest
+    environment:
+      name: production          # Requires a reviewer approval, configured in repo settings
+      url: https://nepscene.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Confirm this SHA succeeded on staging
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: 'deploy-staging.yml', head_sha: context.payload.inputs.sha
+            })
+            const ok = runs.data.workflow_runs.some(r => r.conclusion === 'success')
+            if (!ok) {
+              core.setFailed(`No successful staging deploy for ${context.payload.inputs.sha}. Promote a verified commit.`)
+            }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+
+      - name: Apply migrations to production
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply nepscene-production --remote
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env production
+
+      - name: Smoke test
+        run: |
+          set -e
+          BASE=https://nepscene.com
+          curl -fsS "$BASE/health" > /dev/null
+          curl -fsS "$BASE/api/catalog/listings?limit=5" > /dev/null
+          curl -fsS "$BASE/" | grep -q 'id="root"'
+          echo "Production smoke tests passed."
+
+      - name: Record the release
+        run: |
+          echo "Promoted ${{ inputs.sha }} to production"
+          echo "Reason: ${{ inputs.reason }}"

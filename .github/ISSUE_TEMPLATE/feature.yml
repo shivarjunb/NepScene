@@ -1,0 +1,70 @@
+name: Feature
+description: The unit of work — something a person could notice shipping.
+title: "[FEAT] "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A feature carries the acceptance criteria and the test plan. If it cannot
+        ship in about a week, split it.
+  - type: input
+    id: epic
+    attributes:
+      label: Parent epic
+      placeholder: "#12"
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: >
+        Plain language. Someone outside the team should understand what changes and
+        why it matters. Do not restate the title.
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Task checklist. Include what is explicitly not covered.
+      value: |
+        **In:**
+        - [ ] 
+
+        **Not in this feature:**
+        - 
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: >
+        Observable and checkable. "Search returns results ranked by date proximity"
+        is testable; "search works well" is not.
+      value: |
+        - [ ] 
+    validations: { required: true }
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test plan
+      description: The specific tests to write, by level. Written before work starts.
+      value: |
+        **Unit**
+        - 
+
+        **Integration**
+        - 
+
+        **End-to-end**
+        - 
+
+        **Manual**
+        - 
+    validations: { required: true }
+  - type: textarea
+    id: deps
+    attributes:
+      label: Dependencies
+      description: What must land first.
+    validations: { required: false }

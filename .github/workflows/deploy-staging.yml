@@ -1,0 +1,72 @@
+name: Deploy to staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: Deploy and smoke test
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.nepscene.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard on scaffold
+        id: guard
+        run: |
+          if [ -f package.json ] && [ -f wrangler.jsonc ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Scaffold not present yet — staging deploy skipped."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.ready == 'true'
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+        if: steps.guard.outputs.ready == 'true'
+      - run: npm run build
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+
+      - name: Apply migrations to staging
+        if: steps.guard.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply nepscene-staging --remote
+
+      - name: Deploy
+        if: steps.guard.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env staging
+
+      - name: Smoke test
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set -e
+          BASE=https://staging.nepscene.com
+          echo "Checking health..."
+          curl -fsS "$BASE/health" > /dev/null
+          echo "Checking catalog responds and is bounded..."
+          curl -fsS "$BASE/api/catalog/listings?limit=5" | head -c 400
+          echo ""
+          echo "Checking the SPA shell renders..."
+          curl -fsS "$BASE/" | grep -q 'id="root"'
+          echo "Smoke tests passed."

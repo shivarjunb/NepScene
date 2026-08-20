@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  scaffold-check:
+    name: Detect scaffold
+    runs-on: ubuntu-latest
+    outputs:
+      has_app: ${{ steps.check.outputs.has_app }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        # Until the application scaffold lands in M0, the build jobs below have
+        # nothing to run. They skip cleanly rather than reporting a false failure.
+        run: |
+          if [ -f package.json ]; then
+            echo "has_app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_app=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No package.json yet — build jobs skipped until the M0 scaffold lands."
+          fi
+
+  verify:
+    name: ${{ matrix.task }}
+    needs: scaffold-check
+    if: needs.scaffold-check.outputs.has_app == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [typecheck, lint, test, build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run ${{ matrix.task }}
+        run: npm run ${{ matrix.task }} --if-present
+
+  migrations:
+    name: Migration hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject duplicate migration numbers
+        # WaahTickets accumulated four duplicate prefixes (0009, 0010, 0016, 0019).
+        # Catching it here is cheaper than untangling it later.
+        run: |
+          if [ ! -d migrations ]; then
+            echo "::notice::No migrations directory yet — nothing to check."
+            exit 0
+          fi
+          dupes=$(ls migrations 2>/dev/null | grep -oE '^[0-9]{4}' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::Duplicate migration prefixes: $dupes"
+            exit 1
+          fi
+          echo "Migration numbering is unique."
+
+  scope-guard:
+    name: Scope guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Warn on commerce vocabulary
+        # NepScene renders offers; it never computes them. This is a warning, not a
+        # gate — legitimate uses exist (rendering a price_from). It exists to make
+        # boundary erosion visible in review. See docs/SCOPE.md.
+        run: |
+          if [ ! -d src ] && [ ! -d app ] && [ ! -d api ]; then
+            echo "::notice::No source directories yet — scope guard idle."
+            exit 0
+          fi
+          hits=$(grep -rniE '\b(checkout|cart_hold|order_items|payment_provider|coupon_redemption|commission_ledger|payout_batch)\b' \
+                 src app api 2>/dev/null | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::warning::Commerce vocabulary found — confirm this belongs in NepScene (docs/SCOPE.md)"
+            echo "$hits" | head -20
+          else
+            echo "No commerce concerns detected."
+          fi

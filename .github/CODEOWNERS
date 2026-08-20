@@ -1,0 +1,8 @@
+# Default owner for everything
+*                       @shivarjunb
+
+# Guardrails — these define the product boundary and the release path
+/docs/SCOPE.md          @shivarjunb
+/docs/ARCHITECTURE.md   @shivarjunb
+/.github/workflows/     @shivarjunb
+/migrations/            @shivarjunb

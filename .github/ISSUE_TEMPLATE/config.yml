@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Scope question
+    url: https://github.com/shivarjunb/NepScene/blob/main/docs/SCOPE.md
+    about: Not sure whether something belongs in NepScene or WaahTickets? Start here.
+  - name: Ways of working
+    url: https://github.com/shivarjunb/NepScene/blob/main/docs/WAYS_OF_WORKING.md
+    about: Epic/Feature/Task model, definition of ready and done.
