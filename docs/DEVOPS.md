@@ -70,6 +70,11 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets set vi
 | `CLOUDFLARE_API_TOKEN` | Deploy workflows |
 | `CLOUDFLARE_ACCOUNT_ID` | Deploy workflows |
 | `VITE_GOOGLE_MAPS_API_KEY` | Build — restrict by HTTP referrer per environment |
+| `GOOGLE_CLIENT_SECRET` | Worker — `wrangler secret put`, per environment |
+
+`GOOGLE_CLIENT_ID` is a plain var in `wrangler.jsonc` (it is public by design).
+Leaving both empty disables Google sign-in rather than breaking it, so a preview
+environment without credentials still runs.
 
 The Google Maps key is referrer-restricted per environment. A single unrestricted key
 shared across environments is a billing incident waiting to happen.

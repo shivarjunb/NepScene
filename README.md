@@ -102,8 +102,12 @@ go over real HTTP against a real local D1.
 
 ### What exists today
 
-The catalogue and its read API (**M1**). The design system, the map and the
-public site are still ahead — see [docs/BACKLOG.md](docs/BACKLOG.md).
+**M1 — catalogue core:** the listing/venue/organizer/artist/category schema, the
+Catalog API, slugs and redirects, the media pipeline on R2, accounts with email
+and Google sign-in, and four roles behind a permission matrix.
+
+The design system, the authoring wizard, the map and the public site are still
+ahead — see [docs/BACKLOG.md](docs/BACKLOG.md).
 
 ---
 

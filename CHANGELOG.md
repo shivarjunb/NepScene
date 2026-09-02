@@ -23,6 +23,14 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reports measured latency, rather than reporting that an env var is set
 - Demo catalogue seed covering every listing type and source, with dates
   relative to `now` so it never becomes a catalogue of finished events (#26)
+- Accounts: email and password sign-in (PBKDF2-SHA256 via WebCrypto), Google
+  sign-in over the authorization code flow with PKCE, opaque session cookies
+  stored only as their SHA-256, email verification, and per-IP rate limiting on
+  credential endpoints (#27)
+- Roles and permissions: visitor, organizer, editor and admin resolved through a
+  permission matrix rather than role checks in handlers (#28)
+- Media upload and delete on R2, scoped by listing ownership or organization
+  membership, with alt text required at the point of upload (#25)
 - Repository scaffold: product scope, architecture, extraction plan and ways of working
 - DevOps pipeline: CI, per-PR previews, staging on merge, gated production promotion
 - CodeQL analysis and dependency review

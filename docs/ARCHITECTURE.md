@@ -46,8 +46,25 @@ Event and venue creation, editing, media upload, publish workflow, moderation
 queue. Authenticated, role-gated, low traffic. Correctness over speed.
 
 ### `identity` — accounts
-Sessions, sign-in, roles. Shared with WaahTickets so one account works in both
-products.
+Sessions, sign-in, roles.
+
+**Decision (2026-09-02): NepScene owns its accounts.** "One account works in
+both products" becomes a token contract with WaahTickets when there is something
+worth handing over; reading another product's user table would couple the two
+schemas permanently, and only works while both live in one D1 — the same trap
+the datastore decision avoids.
+
+- Email and password (PBKDF2-SHA256 via WebCrypto — Workers has no bcrypt) and
+  Google sign-in over the authorization code flow with PKCE.
+- A session cookie is opaque and HttpOnly; the database stores only its
+  SHA-256, so a database leak yields no usable cookie.
+- Four roles — visitor, organizer, editor, admin — resolved through a
+  permission matrix. Handlers ask what a user *may do*, never what they *are*.
+- Credential endpoints are rate limited per IP in KV. It is approximate by
+  construction, and nothing exact depends on it.
+- Session lookup is mounted on `/api/auth/*` and `/api/author/*` only. The
+  catalogue is anonymous so it stays edge-cacheable and pays no D1 round trip
+  for a signed-in reader.
 
 ## Data model
 
@@ -87,6 +104,23 @@ GET  /api/catalog/organizers/:slug
 GET  /api/catalog/categories
 GET  /api/catalog/search            q, city, category, date range, distance
 GET  /api/catalog/bootstrap         everything the homepage needs, in one call
+```
+
+### Identity and authoring (authenticated)
+
+```
+POST /api/auth/register             email + password, signs in
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/verify-email
+GET  /api/auth/me                   the account and its permissions
+PATCH /api/auth/me                  name, avatar
+POST /api/auth/sessions/revoke-all  sign out everywhere
+GET  /api/auth/google/start         authorization code flow with PKCE
+GET  /api/auth/google/callback
+
+POST   /api/author/listings/:id/media   upload to R2; alt text required
+DELETE /api/author/media/:mediaId
 ```
 
 Shared feed parameters: `category`, `city`, `venue`, `organizer`, `type`,

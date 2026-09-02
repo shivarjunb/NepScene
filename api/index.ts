@@ -1,11 +1,16 @@
 import { Hono } from 'hono'
 import type { Env } from './env'
+import { authorMediaRoutes } from './author/media'
 import { catalogRoutes } from './catalog/routes'
+import { googleRoutes } from './identity/google'
+import { identityRoutes } from './identity/routes'
+import { withUser } from './identity/middleware'
+import type { AuthVariables } from './identity/middleware'
 import { healthRoutes } from './health/routes'
 import { mediaRoutes } from './media/routes'
 import { ApiError, errorResponse, requestId } from './lib/http'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
 
 /**
  * The only wildcard middleware on the API, and it does no I/O. A middleware's
@@ -27,9 +32,17 @@ app.use('/api/catalog/*', async (c, next) => {
   c.res.headers.set('access-control-allow-origin', '*')
 })
 
+// Session lookup runs only where a session is meaningful. The catalog is
+// anonymous so that it stays cacheable and free of a per-request D1 lookup.
+app.use('/api/auth/*', withUser)
+app.use('/api/author/*', withUser)
+
 app.route('/api', healthRoutes)
 app.route('/api/catalog', catalogRoutes)
 app.route('/api/media', mediaRoutes)
+app.route('/api/auth/google', googleRoutes)
+app.route('/api/auth', identityRoutes)
+app.route('/api/author', authorMediaRoutes)
 
 app.notFound((c) =>
   errorResponse(new ApiError(404, 'not_found', 'No such endpoint'), requestId(c)),

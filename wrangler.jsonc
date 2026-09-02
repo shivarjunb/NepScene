@@ -38,13 +38,15 @@
     "ENVIRONMENT": "local",
     // Set per environment. Empty means offers are not resolved and listings
     // render without them — discovery never depends on commerce being up.
-    "OFFER_API_URL": ""
+    "OFFER_API_URL": "",
+    // GOOGLE_CLIENT_SECRET is a secret: `wrangler secret put GOOGLE_CLIENT_SECRET`.
+    "GOOGLE_CLIENT_ID": ""
   },
 
   "env": {
     "preview": {
       "name": "nepscene-preview",
-      "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "" },
+      "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-preview", "database_id": "TODO-preview-d1-id" }
       ],
@@ -53,7 +55,7 @@
     },
     "staging": {
       "name": "nepscene-staging",
-      "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "" },
+      "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-staging", "database_id": "TODO-staging-d1-id" }
       ],
@@ -62,7 +64,7 @@
     },
     "production": {
       "name": "nepscene",
-      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "" },
+      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-production", "database_id": "TODO-production-d1-id" }
       ],

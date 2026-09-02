@@ -3,7 +3,7 @@ import type { Context } from 'hono'
 /** Errors thrown with this are rendered as a JSON body; anything else is a 500. */
 export class ApiError extends Error {
   constructor(
-    readonly status: 400 | 404 | 410 | 429 | 500,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 410 | 429 | 500,
     readonly code: string,
     message: string,
   ) {
