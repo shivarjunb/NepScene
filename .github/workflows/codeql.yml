@@ -16,6 +16,9 @@ jobs:
   analyze:
     name: Analyze
     runs-on: self-hosted
+    # Dependency bumps do not change the source CodeQL reads; the weekly schedule
+    # and the push to main cover them. Skipping keeps the runner queue short.
+    if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
       - name: Check for analyzable source
