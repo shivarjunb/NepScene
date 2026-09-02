@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
 import type { Env } from './env'
+import { authorListingRoutes } from './author/listings'
 import { authorMediaRoutes } from './author/media'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
+import { accountRoutes } from './identity/account'
 import { identityRoutes } from './identity/routes'
 import { withUser } from './identity/middleware'
 import type { AuthVariables } from './identity/middleware'
@@ -41,7 +43,9 @@ app.route('/api', healthRoutes)
 app.route('/api/catalog', catalogRoutes)
 app.route('/api/media', mediaRoutes)
 app.route('/api/auth/google', googleRoutes)
+app.route('/api/auth', accountRoutes)
 app.route('/api/auth', identityRoutes)
+app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
 
 app.notFound((c) =>

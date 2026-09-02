@@ -30,7 +30,23 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Roles and permissions: visitor, organizer, editor and admin resolved through a
   permission matrix rather than role checks in handlers (#28)
 - Media upload and delete on R2, scoped by listing ownership or organization
-  membership, with alt text required at the point of upload (#25)
+  membership, with alt text required at the point of upload, and intrinsic
+  dimensions read from the file header so the client can reserve space (#25)
+- Publication workflow: submit, publish, reject, archive and unpublish, with
+  the legal transitions enforced in the UPDATE itself and every move recorded
+  in an audit trail (#20, #23, #28)
+- Devanagari transliteration for slugs — इन्द्र जात्रा becomes `indra-jatra`,
+  including word-final schwa deletion and schwa retention after conjuncts (#24)
+- Password reset and password change, both revoking every other session (#27)
+- Role administration with an audit record of who changed what (#28)
+- ESLint enforcing the catalog / author / identity module boundary (#9)
+- OpenAPI 3.1 contract served at `/api/openapi.json`, with the integration
+  tests validating real responses against it (#23)
+- `scripts/seed-volume.mjs` — 10,000 listings in about three seconds, and
+  `scripts/verify-catalogue.mjs` — referential integrity and anomaly reporting (#26)
+- `scripts/import-waahtickets.mjs` — imports all 50 WaahTickets events and 47
+  locations with no data loss, repairing one overnight end-time on the way in
+  (#20, #21)
 - Repository scaffold: product scope, architecture, extraction plan and ways of working
 - DevOps pipeline: CI, per-PR previews, staging on merge, gated production promotion
 - CodeQL analysis and dependency review

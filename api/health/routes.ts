@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import pkg from '../../package.json'
+import { openApiDocument } from '../openapi'
 
 /**
  * "The env var is set" is not a health check (docs/ARCHITECTURE.md, rule 2).
@@ -38,7 +40,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 // No I/O at all — this is the baseline the other numbers are read against.
 healthRoutes.get('/health', (c) =>
-  c.json({ status: 'ok', environment: c.env.ENVIRONMENT, time: new Date().toISOString() }),
+  c.json({
+    status: 'ok',
+    version: pkg.version,
+    environment: c.env.ENVIRONMENT,
+    time: new Date().toISOString(),
+  }),
+)
+
+// The contract, served from the same place it is enforced (#23).
+healthRoutes.get('/openapi.json', (c) =>
+  c.json(openApiDocument, 200, { 'cache-control': 'public, max-age=300' }),
 )
 
 healthRoutes.get('/cache/status', async (c) => {

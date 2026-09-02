@@ -17,5 +17,12 @@ export default defineConfig({
   ],
   test: {
     setupFiles: ['./tests/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['api/**/*.ts'],
+      // Route composition and wire types have no behaviour to cover.
+      exclude: ['api/catalog/routes.ts', 'api/catalog/types.ts', 'api/env.ts'],
+    },
   },
 })

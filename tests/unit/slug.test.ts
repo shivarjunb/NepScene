@@ -24,8 +24,12 @@ describe('slugify', () => {
     expect(long.length).toBeLessThanOrEqual(80)
   })
 
-  it('returns empty for a title with no ASCII, leaving the fallback to the caller', () => {
-    expect(slugify('इन्द्रजात्रा')).toBe('')
+  it('transliterates rather than giving up on a non-Latin title', () => {
+    expect(slugify('इन्द्रजात्रा')).toBe('indrajatra')
+  })
+
+  it('still returns empty when there is genuinely nothing to slug', () => {
+    expect(slugify('!!! ??? ---')).toBe('')
   })
 })
 
@@ -40,6 +44,6 @@ describe('uniqueSlug', () => {
   })
 
   it('falls back when the title produces no slug at all', async () => {
-    expect(await uniqueSlug('इन्द्रजात्रा', async () => false, 'listing')).toBe('listing')
+    expect(await uniqueSlug('!!! ???', async () => false, 'listing')).toBe('listing')
   })
 })

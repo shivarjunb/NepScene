@@ -1,12 +1,16 @@
+import { hasDevanagari, transliterateDevanagari } from './devanagari'
+
 /**
  * Slugs (#24). A published URL is a promise, so slugs are ASCII, lowercase and
- * stable. Devanagari titles do not transliterate here — they fall back to the
- * caller's prefix plus a suffix, which is why `uniqueSlug` takes a fallback.
+ * stable. Devanagari titles are transliterated (इन्द्रजात्रा → indrajatra)
+ * rather than dropped — a catalogue of Nepali events whose URLs are all
+ * `listing-2`, `listing-3` would be unusable and unfindable.
  */
 const MAX_SLUG_LENGTH = 80
 
 export function slugify(input: string): string {
-  return input
+  const latin = hasDevanagari(input) ? transliterateDevanagari(input) : input
+  return latin
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '') // strip the combining accents NFKD just split off
     .toLowerCase()

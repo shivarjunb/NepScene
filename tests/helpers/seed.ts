@@ -24,6 +24,7 @@ export async function seedCatalogue(): Promise<void> {
   const now = new Date().toISOString()
 
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM slug_redirects'),
     env.DB.prepare('DELETE FROM listing_artists'),
     env.DB.prepare('DELETE FROM listing_categories'),

@@ -16,7 +16,7 @@ export async function rateLimit(
   const window = Math.floor(Date.now() / (windowSeconds * 1000))
   const kvKey = `rl:${key}:${window}`
 
-  let count = 0
+  let count: number
   try {
     count = Number(await env.SETTINGS.get(kvKey)) || 0
   } catch {

@@ -31,6 +31,8 @@ beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM user_tokens'),
     env.DB.prepare('DELETE FROM user_sessions'),
+    // audit_log references users(id); it goes first or the delete is refused.
+    env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM users'),
   ])
 })

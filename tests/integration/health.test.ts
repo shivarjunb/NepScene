@@ -5,7 +5,10 @@ describe('GET /api/health', () => {
   it('answers without touching any dependency', async () => {
     const response = await SELF.fetch('https://nepscene.test/api/health')
     expect(response.status).toBe(200)
-    expect((await response.json() as any).status).toBe('ok')
+    const body = await response.json() as any
+    expect(body.status).toBe('ok')
+    // A deploy that cannot say which version it is cannot be smoke-tested.
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+$/)
   })
 })
 

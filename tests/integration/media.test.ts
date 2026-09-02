@@ -2,7 +2,17 @@ import { env, SELF } from 'cloudflare:test'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { seedCatalogue } from '../helpers/seed'
 
-const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 1, 2, 3])
+/** A valid 1200x630 PNG header — enough for the size parser to read it. */
+const PNG_BYTES = (() => {
+  const b = new Uint8Array(33)
+  b.set([137, 80, 78, 71, 13, 10, 26, 10], 0)
+  b.set([0, 0, 0, 13], 8)
+  b.set([...'IHDR'].map((c) => c.charCodeAt(0)), 12)
+  const view = new DataView(b.buffer)
+  view.setUint32(16, 1200)
+  view.setUint32(20, 630)
+  return b
+})()
 
 let ipCounter = 0
 const nextIp = () => `203.0.113.${(ipCounter++ % 250) + 1}`
@@ -34,6 +44,8 @@ beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM organization_users'),
     env.DB.prepare('DELETE FROM user_sessions'),
+    // audit_log references users(id); it goes first or the delete is refused.
+    env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM users'),
   ])
 })
@@ -69,11 +81,18 @@ describe('media upload', () => {
     expect(new Uint8Array(await fetched.arrayBuffer())).toEqual(PNG_BYTES)
     expect(fetched.headers.get('cache-control')).toContain('immutable')
 
+    // Dimensions are read from the header at upload, so the client can reserve
+    // the box before the bytes arrive — no layout shift.
+    expect(body.width).toBe(1200)
+    expect(body.height).toBe(630)
+
     // And it appears on the listing without a second endpoint.
     const detail = await (await SELF.fetch(
       'https://nepscene.test/api/catalog/listings/rock-night?fresh=media')).json() as any
     expect(detail.media).toHaveLength(1)
     expect(detail.media[0].alt_text).toBe('Poster for the show')
+    expect(detail.media[0].width).toBe(1200)
+    expect(detail.media[0].height).toBe(630)
   })
 
   it('lets an editor upload to any listing', async () => {

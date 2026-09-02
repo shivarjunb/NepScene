@@ -7,8 +7,10 @@
 -- Covers, on purpose: all four listing types, all four sources, a draft and a
 -- pending-review listing that must never appear in public reads, two listings
 -- at one venue (map grouping), a listing with coordinates that differ from its
--- venue, a listing with no venue, a finished event, and a renamed slug.
+-- venue, a listing with no venue, a finished event, a renamed slug, and two
+-- Devanagari titles with the slugs api/lib/devanagari.ts transliterates them to.
 
+DELETE FROM audit_log;
 DELETE FROM slug_redirects;
 DELETE FROM listing_artists;
 DELETE FROM listing_categories;
@@ -29,6 +31,7 @@ INSERT INTO venues (id, slug, name, description, address, area, city, district, 
   ('ven_dashrath', 'dashrath-stadium', 'Dashrath Rangasala', 'The national stadium at Tripureshwor.', 'Tripureshwor', 'Tripureshwor', 'Kathmandu', 'Kathmandu', 'Bagmati', 27.6926, 85.3122, 15000, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   ('ven_lakeside', 'lakeside-pokhara',     'Lakeside, Phewa Tal', 'The strip along Phewa lake.', 'Lakeside Rd', 'Baidam', 'Pokhara', 'Kaski', 'Gandaki', 28.2096, 83.9556, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   ('ven_bhaktapur','bhaktapur-durbar-square', 'Bhaktapur Durbar Square', 'The old royal palace complex.', 'Durbar Sq', 'Bhaktapur', 'Bhaktapur', 'Bhaktapur', 'Bagmati', 27.6722, 85.4283, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('ven_basantapur','basantapur-darabar-kshetra', 'बसन्तपुर दरबार क्षेत्र', 'The old royal square at the heart of Kathmandu.', 'Basantapur', 'Basantapur', 'Kathmandu', 'Kathmandu', 'Bagmati', 27.7044, 85.3070, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
   ('ven_sauraha',  'sauraha-chitwan',      'Sauraha', 'Gateway to Chitwan National Park.', 'Sauraha', 'Sauraha', 'Bharatpur', 'Chitwan', 'Bagmati', 27.5786, 84.4980, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
 
 INSERT INTO artists (id, slug, name, bio, created_at, updated_at) VALUES
@@ -135,6 +138,22 @@ VALUES
    NULL, NULL, NULL, NULL, 0,
    NULL, NULL, 'Arts & Theatre', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-10 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
+  -- Devanagari titles: slugs are the transliteration api/lib/devanagari.ts
+  -- produces, so the seed exercises #24 rather than assuming it.
+  ('lst_indrajatra_ne', 'indra-jatra', 'इन्द्र जात्रा',
+   'काठमाडौंको बसन्तपुरमा आठ दिनसम्म चल्ने लाखे नाच र रथयात्रा।', NULL,
+   'free', 'editorial', 'published', 'org_nepscene', 'ven_basantapur',
+   strftime('%Y-%m-%dT00:00:00Z', 'now', '+21 days'), strftime('%Y-%m-%dT23:59:00Z', 'now', '+28 days'), 1, NULL,
+   NULL, NULL, NULL, NULL, 0,
+   NULL, NULL, 'Festival', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+
+  ('lst_yamari', 'yamari-punhi', 'यमरी पुन्ही',
+   'नेवार समुदायको चाड — यमरी बनाउने र बाँड्ने दिन।', NULL,
+   'free', 'submission', 'published', NULL, 'ven_bhaktapur',
+   strftime('%Y-%m-%dT04:00:00Z', 'now', '+35 days'), NULL, 0, NULL,
+   NULL, NULL, NULL, NULL, 0,
+   NULL, NULL, 'Food & Drink', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+
   -- Neither of these is published, and neither may ever appear in a public read.
   ('lst_draft', 'unfinished-draft-listing', 'Draft — do not publish',
    NULL, NULL, 'free', 'organizer', 'draft', 'org_himalayan', 'ven_purple',
@@ -162,12 +181,25 @@ INSERT INTO listing_categories (listing_id, category_id, is_primary) VALUES
   ('lst_birding',    'cat_community', 1),
   ('lst_running',    'cat_arts',      1),
   ('lst_past',       'cat_concert',   1),
-  ('lst_draft',      'cat_concert',   1);
+  ('lst_draft',      'cat_concert',   1),
+  ('lst_indrajatra_ne', 'cat_festival',  1),
+  ('lst_indrajatra_ne', 'cat_religious', 0),
+  ('lst_yamari',     'cat_food',      1),
+  ('lst_yamari',     'cat_community', 0),
+  ('lst_reopen',     'cat_arts',      1);
 
 INSERT INTO listing_artists (listing_id, artist_id, billing_order) VALUES
   ('lst_rocknight', 'art_1974ad',  0),
   ('lst_rocknight', 'art_kutumba', 1),
   ('lst_bipul',     'art_bipul',   0);
+
+-- Every published listing has a publication in its history. Without this the
+-- audit check in verify-catalogue.mjs has a permanent baseline of warnings and
+-- therefore detects nothing. A catalogue with no history is not realistic data.
+INSERT INTO audit_log (id, entity_type, entity_id, action, actor_id, actor_role, details, created_at)
+SELECT lower(hex(randomblob(16))), 'listing', id, 'published', NULL, 'editorial',
+       json_object('from', 'pending_review', 'to', 'published'), published_at
+  FROM listings WHERE status = 'published';
 
 -- An old URL that must keep working (#24).
 INSERT INTO slug_redirects (entity_type, old_slug, entity_id, created_at) VALUES
