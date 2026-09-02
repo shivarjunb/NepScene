@@ -86,7 +86,15 @@ GET  /api/catalog/venues/:slug
 GET  /api/catalog/organizers/:slug
 GET  /api/catalog/categories
 GET  /api/catalog/search            q, city, category, date range, distance
+GET  /api/catalog/bootstrap         everything the homepage needs, in one call
 ```
+
+Shared feed parameters: `category`, `city`, `venue`, `organizer`, `type`,
+`featured`, `from`, `to`, `include_past`, `cursor`, `limit` (max 50). Responses
+are `{ data, page: { limit, has_more, next_cursor } }`; the cursor is an opaque
+keyset over `(starts_at, id)`. Every response reports `x-cache` and
+`x-d1-round-trips`, which is how the budget below stays honest rather than
+aspirational.
 
 Two rules learned directly from the WaahTickets audit, where the equivalent endpoint
 returned the entire catalogue with 28 of 50 events already finished:

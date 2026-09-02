@@ -1,0 +1,15 @@
+{
+  // Build tooling only. Kept apart from the Worker's config so that Node's
+  // globals stay unavailable to api/ — they do not exist in the runtime.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["vitest.config.ts", "vite.config.ts"]
+}

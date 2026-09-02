@@ -1,0 +1,73 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nepscene",
+  "main": "api/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The SPA is served straight from the edge; only /api/* wakes the Worker.
+  // Everything else that does not match a file falls back to index.html.
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "observability": { "enabled": true },
+
+  // D1 read replication is enabled per-database in the Cloudflare dashboard;
+  // the Worker opts into replica reads with withSession() (see api/lib/d1.ts).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nepscene-local",
+      "database_id": "00000000-0000-0000-0000-000000000000" // replaced per environment below
+    }
+  ],
+
+  "kv_namespaces": [
+    { "binding": "SETTINGS", "id": "0000000000000000000000000000local" }
+  ],
+
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "nepscene-media-local" }
+  ],
+
+  "vars": {
+    "ENVIRONMENT": "local",
+    // Set per environment. Empty means offers are not resolved and listings
+    // render without them — discovery never depends on commerce being up.
+    "OFFER_API_URL": ""
+  },
+
+  "env": {
+    "preview": {
+      "name": "nepscene-preview",
+      "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-preview", "database_id": "TODO-preview-d1-id" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-preview-kv-id" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-preview" }]
+    },
+    "staging": {
+      "name": "nepscene-staging",
+      "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-staging", "database_id": "TODO-staging-d1-id" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-staging-kv-id" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-staging" }]
+    },
+    "production": {
+      "name": "nepscene",
+      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-production", "database_id": "TODO-production-d1-id" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-production-kv-id" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-production" }]
+    }
+  }
+}
