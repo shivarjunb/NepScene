@@ -65,8 +65,15 @@ jobs:
         env:
           WRANGLER_OUTPUT: ${{ steps.deploy.outputs.command-output }}
         run: |
-          URL=$(printf '%s' "$WRANGLER_OUTPUT" \
-            | grep -oE 'https://[a-z0-9-]+\.workers\.dev' | head -1)
+          # wrangler prints "Version Preview URL: https://<version>-<worker>.<subdomain>.workers.dev".
+          # Read the labelled line first; fall back to any workers.dev URL in the
+          # output. The subdomain contains dots, so the pattern must allow them.
+          URL=$(printf '%s\n' "$WRANGLER_OUTPUT" \
+            | sed -n 's|^.*Version Preview URL: *\(https://[^ ]*\).*$|\1|p' | head -1)
+          if [ -z "$URL" ]; then
+            URL=$(printf '%s\n' "$WRANGLER_OUTPUT" \
+              | grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' | head -1)
+          fi
           if [ -z "$URL" ]; then
             echo "::error::Deploy succeeded but no preview URL appeared in wrangler's output."
             exit 1
