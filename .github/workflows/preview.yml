@@ -82,7 +82,7 @@ jobs:
           echo "Preview: $URL"
       - name: Comment the preview URL
         if: steps.guard.outputs.ready == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const url = '${{ steps.url.outputs.preview_url }}'

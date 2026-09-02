@@ -31,7 +31,7 @@ jobs:
           ref: ${{ inputs.sha }}
 
       - name: Confirm this SHA succeeded on staging
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const runs = await github.rest.actions.listWorkflowRuns({
