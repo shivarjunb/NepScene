@@ -47,7 +47,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 migrations apply nepscene-staging --remote
+          # --env staging, or wrangler resolves the database from the top-level
+          # config — where it is nepscene-local — and aborts with "Couldn't find
+          # a D1 DB with the name or binding 'nepscene-staging'".
+          command: d1 migrations apply nepscene-staging --env staging --remote
 
       - name: Deploy
         if: steps.guard.outputs.ready == 'true'

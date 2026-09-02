@@ -6,6 +6,12 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-09-02
+
+First release. Everything below reached `main` in one merge (#54): the scaffold,
+the design system, the catalogue core and Catalog API v1, identity and roles, the
+three Cloudflare environments, and a delivery pipeline that runs.
+
 ### Added
 - Application scaffold: Worker (Hono) + React SPA, per-environment Cloudflare
   bindings, migration pipeline and a Vitest harness that runs integration tests
@@ -71,3 +77,29 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Scope guard flagging commerce vocabulary in review
 - Issue templates for epics, features, tasks and bugs
 - Backlog: 8 epics and 36 features across milestones M0–M5
+
+### Fixed
+- Preview deploys never worked: `versions upload` ran without `--env preview`, so
+  it uploaded the top-level configuration — whose bindings are local placeholders
+  — and failed on an invalid KV namespace after provisioning a stray R2 bucket
+  (#11)
+- Staging and production migrations ran without `--env`, so wrangler resolved the
+  database from the top-level configuration and could not find it (#12)
+- Coverage reported 0% of 997 statements: the `v8` provider cannot instrument code
+  running inside workerd. Under `istanbul` the real figure is 91% of statements,
+  now enforced as a threshold that fails the build on a drop (#10)
+- Smoke tests could not fail: they requested `/health`, which the SPA fallback
+  answers with a 200 for any unmatched path, against a domain that does not
+  resolve. They now assert `/api/health` reports the expected environment (#11)
+- The scope guard missed `createCheckout` and `orderItems` — the casings commerce
+  would actually arrive in (#10)
+
+### Changed
+- CI is one `verify` job rather than a four-way matrix: on a single self-hosted
+  runner the matrix ran serially and reinstalled dependencies four times, costing
+  thirteen minutes. Same checks, 2m10s (#10, #53)
+- Actions run on a self-hosted runner; hosted runners remain blocked at the
+  account level (#53)
+- Actions approval required for all outside contributors — the repository is
+  public and the runner is a personal machine (#53)
+- `main` is protected: no direct pushes, `verify` required, linear history (#14)

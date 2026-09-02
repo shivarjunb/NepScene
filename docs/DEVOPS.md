@@ -66,6 +66,19 @@ from push to all-green is roughly the sum, not the longest. CI itself is what th
 five-minute target in #10 measures; if the wait to *start* becomes the thing that
 hurts, register a second runner rather than trimming the checks.
 
+Dependabot is what makes this bite. Its first run after the scaffold landed opened
+**four** action-bump PRs, each firing four workflows — fifteen queued jobs behind
+which everything else waited about forty minutes. Three changes keep that from
+recurring:
+
+- `dependabot.yml` groups **all** github-actions bumps into one PR
+- `preview.yml` skips Dependabot PRs — a dependency bump has nothing to preview
+- `codeql.yml` skips them too; the weekly schedule and the push to `main` cover
+  the source, which a bump does not change
+
+Dependabot PRs still run `verify` and dependency review, which is the point of
+testing a bump. Two jobs instead of sixteen.
+
 ## Environments
 
 | Environment | Trigger | Data | Purpose |

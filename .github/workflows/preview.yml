@@ -16,7 +16,10 @@ permissions:
 jobs:
   deploy:
     name: Deploy preview
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    # Fork PRs never deploy. Dependabot PRs do not either: a dependency bump has
+    # nothing to look at, and on one runner each preview deploy is ~4 minutes
+    # other work waits behind.
+    if: ${{ !github.event.pull_request.head.repo.fork && github.actor != 'dependabot[bot]' }}
     runs-on: self-hosted
     environment:
       name: preview

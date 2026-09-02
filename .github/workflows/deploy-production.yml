@@ -55,7 +55,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 migrations apply nepscene-production --remote
+          command: d1 migrations apply nepscene-production --env production --remote
 
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
