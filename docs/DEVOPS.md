@@ -36,6 +36,36 @@ What follows from that, and is not optional to remember:
 If hosted runners are ever restored, changing `runs-on: self-hosted` back to
 `ubuntu-latest` is the whole migration — and the matrix can come back with it.
 
+### When runs sit in `queued` and nothing starts
+
+Seen in practice: the runner's long-poll connection to GitHub drops, and the
+listener retries with backoff without ever recovering. The API still reports the
+runner `online` and `busy: false`, and the Actions tab still says `queued`, so
+nothing about the symptom points at the runner.
+
+Confirm from the tail of the newest `_diag/Runner_*.log`:
+
+```
+[... ERR  BrokerServer] System.Net.Sockets.SocketException (89): Operation canceled
+[... WARN BrokerServer] Back off 10.994 seconds before next retry. 4 attempt left.
+```
+
+Then bounce it:
+
+```bash
+cd ~/actions-runner-nepscene && ./svc.sh stop && ./svc.sh start
+```
+
+Queued jobs are picked up within seconds. Nothing is lost — they were never started.
+
+### Contention
+
+One runner takes one job at a time, and a PR fires four workflows: CI, preview
+deploy, CodeQL and dependency review. They queue behind each other, so wall-clock
+from push to all-green is roughly the sum, not the longest. CI itself is what the
+five-minute target in #10 measures; if the wait to *start* becomes the thing that
+hurts, register a second runner rather than trimming the checks.
+
 ## Environments
 
 | Environment | Trigger | Data | Purpose |
