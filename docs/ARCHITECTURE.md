@@ -111,14 +111,23 @@ Cloudflare's Kathmandu colo):
 | `/r/:code` — one D1 query, no cache | **~290ms** |
 | Any endpoint using the Upstash cache wrapper | **~2,000ms, every time** |
 
-The Upstash database behind the configured URL had been deleted (the hostname no
-longer resolves), and every request paid for up to seven slow-failing cache calls
-before reaching D1 — the events endpoint alone does five version checks, a read
-and a write per request. The status endpoint reported the cache as "configured"
-because it only checked that env vars existed. The cache added ~1.7s to every
-request while never once hitting.
+Two separate defects were found, and the second was the one that mattered.
+First, the Upstash database behind the configured URL had been deleted (the
+hostname no longer resolved) — a dead external dependency reported as healthy,
+because the status endpoint only checked that env vars existed. Second, and far
+worse: a wildcard middleware on the ads router ran `ensureAdsTables` — **eight
+sequential idempotent DDL statements** — before *every* `/api/*` request routed
+after its mount point. Each D1 operation from the Kathmandu colo to the APAC
+primary costs a flat ~200ms regardless of complexity (`SELECT 1` and
+`CREATE TABLE IF NOT EXISTS` measure identically), so 8 × 200ms ≈ the whole
+observed 2s. Memoizing the DDL per isolate took every endpoint from ~2.0s to
+~0.3s in one deploy.
 
-Three rules follow:
+The governing arithmetic: **response time ≈ sequential D1 round trips × 200ms.**
+Query complexity was irrelevant — the entire 1.4MB database scans in microseconds.
+Only round-trip count mattered.
+
+Four rules follow:
 
 1. **No external network hop on the public read path.** An external cache (Upstash,
    any hosted Redis) costs a full internet round trip from the serving colo even
@@ -140,6 +149,13 @@ Three rules follow:
    — or add latency.** Failure must be fast (a short timeout on any optional
    dependency), counted, and alerted on. WaahTickets' cache failed slowly and
    silently for an unknown period; nothing measured it.
+
+4. **No schema work in request paths, and no I/O fan-out in middleware.** Schema
+   belongs to migrations; a request handler may assume tables exist. Any wildcard
+   middleware runs at most one I/O operation, because middleware cost multiplies
+   across every route behind it. Budget each endpoint's sequential D1 round trips
+   explicitly — one for a cached read, two or three for anything — and treat a
+   fourth as a design smell.
 
 The homepage additionally gets its data in **one request** (server-rendered with
 data inlined, or a single bootstrap endpoint) rather than the five separate
