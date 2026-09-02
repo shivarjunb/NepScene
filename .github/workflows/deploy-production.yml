@@ -26,12 +26,12 @@ jobs:
       name: production          # Requires a reviewer approval, configured in repo settings
       url: https://nepscene.bhattarai-shiva.workers.dev
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.sha }}
 
       - name: Confirm this SHA succeeded on staging
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const runs = await github.rest.actions.listWorkflowRuns({
@@ -43,7 +43,7 @@ jobs:
               core.setFailed(`No successful staging deploy for ${context.payload.inputs.sha}. Promote a verified commit.`)
             }
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run build
@@ -51,14 +51,14 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Apply migrations to production
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply nepscene-production --env production --remote
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
