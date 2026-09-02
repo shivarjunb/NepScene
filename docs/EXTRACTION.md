@@ -19,7 +19,6 @@ These are good and should be moved with minimal change.
 | `apps/web/src/features/admin/MapPinAppearance.tsx` | `app/author/MapPinAppearance.tsx` | Leaflet residue to clean |
 | `apps/web/src/features/admin/MapPopupCustomizer.tsx` | `app/author/MapPopupCustomizer.tsx` | |
 | `apps/web/src/shared/utils.tsx` | `app/shared/utils.ts` | Drop money helpers |
-| `src/cache/upstash.ts` | `api/cache/upstash.ts` | Provision it this time |
 | `src/utils/errors.ts` | `api/utils/errors.ts` | |
 
 ## Port with significant surgery
@@ -43,6 +42,12 @@ Everything commerce, and the reasons are in the audit:
 - `src/notifications/service.ts` (2,321 lines) — it conflates email with ticket
   issuance. NepScene needs notifications, but built fresh and not coupled to
   anything transactional.
+- `src/cache/upstash.ts` — measured in production on 2026-09-02: the Upstash
+  database had been deleted and the wrapper added ~1.7s of slow-failing calls to
+  every request while never hitting. The design flaw is architectural, not
+  operational — an external cache is a full internet round trip from the serving
+  colo even when healthy. NepScene uses the Cache API and KV instead
+  (see ARCHITECTURE.md, "The read path").
 
 ## Known issues to fix during extraction, not carry over
 
@@ -52,7 +57,7 @@ Findings from the 2026-08-20 audit that touch code we are porting:
 |---|---|
 | **F4** — public events endpoint unbounded and serving finished events | Catalog API is paginated and upcoming-by-default from day one (`CORE-009` equivalent, folded into the Catalog API feature) |
 | **F7** — `tests/ads.test.ts` ad rotation returns `undefined` | Fix before porting the ad platform, or leave ads out of MVP |
-| Unconfigured Upstash cache | Provision in M0 rather than shipping dormant code |
+| Upstash cache wrapper (dead backend added ~1.7s/request in prod) | Not ported — replaced by Cache API + KV, see ARCHITECTURE.md |
 | Partial Google Maps migration | Finish it — remove Leaflet class names and dead CSS during the port |
 | `date-utils.ts` is an empty file | Delete rather than port |
 

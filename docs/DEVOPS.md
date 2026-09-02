@@ -70,7 +70,6 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets set vi
 | `CLOUDFLARE_API_TOKEN` | Deploy workflows |
 | `CLOUDFLARE_ACCOUNT_ID` | Deploy workflows |
 | `VITE_GOOGLE_MAPS_API_KEY` | Build — restrict by HTTP referrer per environment |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Runtime cache |
 
 The Google Maps key is referrer-restricted per environment. A single unrestricted key
 shared across environments is a billing incident waiting to happen.

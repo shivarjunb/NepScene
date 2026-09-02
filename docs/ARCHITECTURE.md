@@ -99,9 +99,49 @@ returned the entire catalogue with 28 of 50 events already finished:
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
 
-## Caching
+## The read path: edge-first, no external hops
 
-Catalog reads are cached and versioned per resource, invalidated on publish.
-A cache outage degrades to direct D1 reads and must never surface as an error.
-(WaahTickets ships an unconfigured Upstash wrapper — NepScene provisions it in M0
-rather than shipping the same dormant code.)
+This section is written from a production measurement, not a preference. On
+2026-09-02 the deployed WaahTickets worker was profiled from Nepal (served from
+Cloudflare's Kathmandu colo):
+
+| Request | Time |
+|---|---|
+| `/health` — worker only, no I/O | **~30ms** |
+| `/r/:code` — one D1 query, no cache | **~290ms** |
+| Any endpoint using the Upstash cache wrapper | **~2,000ms, every time** |
+
+The Upstash database behind the configured URL had been deleted (the hostname no
+longer resolves), and every request paid for up to seven slow-failing cache calls
+before reaching D1 — the events endpoint alone does five version checks, a read
+and a write per request. The status endpoint reported the cache as "configured"
+because it only checked that env vars existed. The cache added ~1.7s to every
+request while never once hitting.
+
+Three rules follow:
+
+1. **No external network hop on the public read path.** An external cache (Upstash,
+   any hosted Redis) costs a full internet round trip from the serving colo even
+   when healthy, and fails slowly when not. The public catalog is served entirely
+   from Cloudflare-local storage:
+   - **Cache API (`caches.default`)** for catalog GET responses — per-colo, free,
+     ~0ms on hit. Short TTL plus purge-on-publish.
+   - **Workers KV** for settings and configuration blobs — edge-cached after first
+     read, free tier covers 100k reads/day.
+   - **D1 with read replication (Sessions API)** as the source of truth — replicas
+     serve reads from a nearby region instead of the distant primary, cutting the
+     ~290ms single-query cost substantially for a Nepal-based audience.
+
+2. **A cache health check performs a live round trip.** "The env var is set" is not
+   a health check. `/api/cache/status` must read and write a probe key and report
+   measured latency.
+
+3. **A cache outage degrades to direct D1 reads and must never surface as an error
+   — or add latency.** Failure must be fast (a short timeout on any optional
+   dependency), counted, and alerted on. WaahTickets' cache failed slowly and
+   silently for an unknown period; nothing measured it.
+
+The homepage additionally gets its data in **one request** (server-rendered with
+data inlined, or a single bootstrap endpoint) rather than the five separate
+settings/catalog calls the WaahTickets SPA makes — on a 3G connection, request
+count dominates.
