@@ -21,7 +21,7 @@ permissions:
 jobs:
   promote:
     name: Promote to production
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: production          # Requires a reviewer approval, configured in repo settings
       url: https://nepscene.com

@@ -16,7 +16,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy and smoke test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: staging
       url: https://staging.nepscene.com

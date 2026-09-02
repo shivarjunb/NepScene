@@ -16,7 +16,7 @@ permissions:
 jobs:
   scaffold-check:
     name: Detect scaffold
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       has_app: ${{ steps.check.outputs.has_app }}
     steps:
@@ -36,7 +36,7 @@ jobs:
     name: ${{ matrix.task }}
     needs: scaffold-check
     if: needs.scaffold-check.outputs.has_app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +53,7 @@ jobs:
 
   migrations:
     name: Migration hygiene
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Reject duplicate migration numbers
@@ -73,7 +73,7 @@ jobs:
 
   scope-guard:
     name: Scope guard
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Warn on commerce vocabulary
