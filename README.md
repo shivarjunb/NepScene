@@ -100,6 +100,16 @@ curl 'http://localhost:8787/api/cache/status'
 the demo seed. `npm test` runs the unit tests and the integration tests, which
 go over real HTTP against a real local D1.
 
+### Deployed
+
+| | |
+|---|---|
+| Staging | https://nepscene-staging.bhattarai-shiva.workers.dev |
+| Production | https://nepscene.bhattarai-shiva.workers.dev |
+
+Staging carries the demo catalogue. Production is deliberately empty of listings
+until real ones exist — see [docs/DEVOPS.md](docs/DEVOPS.md).
+
 ### What exists today
 
 **M1 — catalogue core:** the listing/venue/organizer/artist/category schema, the

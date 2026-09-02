@@ -39,6 +39,38 @@ Each environment gets its own D1 database, R2 bucket and secrets. WaahTickets ru
 local and production against effectively one configuration; NepScene does not repeat
 that.
 
+### Provisioned resources
+
+Cloudflare account `7450b428a50935bc2d97b4f5e7fd5835` (bhattarai.shiva@gmail.com).
+The account also holds the WaahTickets worker; there is a **second** Cloudflare
+account on this login, so `wrangler whoami` before anything that writes.
+
+| Environment | Worker | D1 | KV | R2 |
+|---|---|---|---|---|
+| preview | `nepscene-preview` | `nepscene-preview` | `settings-preview` | `nepscene-media-preview` |
+| staging | `nepscene-staging` | `nepscene-staging` | `settings-staging` | `nepscene-media-staging` |
+| production | `nepscene` | `nepscene-production` | `settings-production` | `nepscene-media-production` |
+
+- Staging: https://nepscene-staging.bhattarai-shiva.workers.dev
+- Production: https://nepscene.bhattarai-shiva.workers.dev
+
+All three databases have **read replication set to `auto`**, which is what makes
+`withSession('first-unconstrained')` in `api/lib/d1.ts` serve reads from a nearby
+replica. It is set through the API, not `wrangler.jsonc` — if a database is ever
+recreated, set it again or reads silently go back to the primary.
+
+Preview and staging carry the demo catalogue. **Production carries the schema and
+the twelve reference categories only.** The demo listings are invented events;
+seeding them into a live discovery site would publish fiction.
+
+Commands, per environment:
+
+```bash
+npx wrangler d1 migrations apply DB --env staging --remote
+npx wrangler d1 execute DB --env staging --remote --file=./scripts/seed-demo-catalogue.sql
+npx wrangler deploy --env staging
+```
+
 ## Pipelines
 
 ### `ci.yml` — every push and PR

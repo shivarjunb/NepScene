@@ -48,27 +48,27 @@
       "name": "nepscene-preview",
       "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
-        { "binding": "DB", "database_name": "nepscene-preview", "database_id": "TODO-preview-d1-id" }
+        { "binding": "DB", "database_name": "nepscene-preview", "database_id": "7fdabb69-3ba6-4cf8-b491-c52dca02c881" }
       ],
-      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-preview-kv-id" }],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "d80811fb98494352a5fb7970c651f8bd" }],
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-preview" }]
     },
     "staging": {
       "name": "nepscene-staging",
       "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
-        { "binding": "DB", "database_name": "nepscene-staging", "database_id": "TODO-staging-d1-id" }
+        { "binding": "DB", "database_name": "nepscene-staging", "database_id": "464a0115-82e2-4c84-9acb-23cbe9fc041c" }
       ],
-      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-staging-kv-id" }],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "4b8f67127a8d4c9fb0e1f55792dd3ea4" }],
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-staging" }]
     },
     "production": {
       "name": "nepscene",
       "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
-        { "binding": "DB", "database_name": "nepscene-production", "database_id": "TODO-production-d1-id" }
+        { "binding": "DB", "database_name": "nepscene-production", "database_id": "63c61f55-3138-44d8-8226-05330926231e" }
       ],
-      "kv_namespaces": [{ "binding": "SETTINGS", "id": "TODO-production-kv-id" }],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "4cac4a48472a43109a1079fbd6724652" }],
       "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-production" }]
     }
   }
