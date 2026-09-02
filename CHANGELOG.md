@@ -47,6 +47,23 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `scripts/import-waahtickets.mjs` — imports all 50 WaahTickets events and 47
   locations with no data loss, repairing one overnight end-time on the way in
   (#20, #21)
+- Design token layer extracted from WaahTickets: purpose-named colour, spacing,
+  type, radius, elevation, motion and a named z-index scale, with light and dark
+  defined only at the semantic layer (#15)
+- Core UI primitives — button, field, input, textarea, select, checkbox, card,
+  badge, chip, alert, modal, tabs, spinner, skeleton — each keyboard operable,
+  focus-visible and rendered in a gallery in every state (#16)
+- Light and dark theming with an inline pre-paint script, an OS-follows-by-
+  default preference, and reduced-motion support (#17)
+- Application shell: sticky header, primary nav, mobile menu with a focus trap,
+  skip link, correct landmarks and a footer, holding from 320px to 2560px (#18)
+- NepScene brand identity: crimson accent, one mark used as favicon, app icon
+  and wordmark lockup, and a rasterised social card (#19)
+- Playwright browser suite covering keyboard operability, focus trapping,
+  theme-on-first-paint and responsive behaviour at six widths
+- WCAG 2.1 AA contrast enforced by a test that computes ratios from the token
+  file, plus stylesheet checks that no component CSS carries a literal colour
+  or a raw z-index
 - Repository scaffold: product scope, architecture, extraction plan and ways of working
 - DevOps pipeline: CI, per-PR previews, staging on merge, gated production promotion
 - CodeQL analysis and dependency review

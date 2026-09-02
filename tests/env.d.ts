@@ -10,6 +10,10 @@ declare global {
   namespace Cloudflare {
     interface Env extends AppEnv {
       TEST_MIGRATIONS: D1Migration[]
+      TOKENS_CSS: string
+      COMPONENTS_CSS: string
+      BASE_CSS: string
+      SHELL_CSS: string
     }
   }
 }

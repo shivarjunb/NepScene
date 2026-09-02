@@ -1,26 +1,48 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { AppShell } from './shell/AppShell'
+import { ComponentGallery } from './gallery/ComponentGallery'
+import { TokenReference } from './gallery/TokenReference'
+import { Tabs } from './components/Tabs'
+import { ThemeProvider } from './theme'
+import './styles/tokens.css'
+import './styles/base.css'
+import './styles/components.css'
+import './styles/shell.css'
 
 /**
- * Placeholder shell. The real app shell, design tokens and theming are M0
- * (#15–#18) and the discovery surface is M3/M4 — this exists so the Worker has
- * assets to serve and `npm run build` means something in CI.
+ * Until the discovery surface lands (#41), the app renders the design system's
+ * own reference: every token and every component in every state, in whichever
+ * theme is active. It is the thing #15 and #16 are checked against.
  */
 function App() {
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '3rem 1.5rem', maxWidth: 640 }}>
-      <h1 style={{ margin: 0 }}>NepScene</h1>
-      <p>What&rsquo;s happening around Nepal.</p>
-      <p>
-        The catalogue is live at <code>/api/catalog/listings</code>. The site itself lands with
-        the design system (#15&ndash;#18) and the map (#36).
-      </p>
-    </main>
+    <AppShell>
+      <div className="layout stack">
+        <header>
+          <h1>NepScene design system</h1>
+          <p className="muted">
+            Every colour, size and space in the product resolves to a token below.
+            Switch the theme in the header — nothing here has a second stylesheet.
+          </p>
+        </header>
+
+        <Tabs
+          label="Design system"
+          tabs={[
+            { id: 'components', label: 'Components', content: <ComponentGallery /> },
+            { id: 'tokens', label: 'Tokens', content: <TokenReference /> },
+          ]}
+        />
+      </div>
+    </AppShell>
   )
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </StrictMode>,
 )

@@ -19,5 +19,7 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["api", "tests"]
+  "include": ["api", "tests"],
+  // Browser specs have their own config; they need DOM types this one forbids.
+  "exclude": ["tests/e2e"]
 }

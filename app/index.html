@@ -3,7 +3,49 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <title>NepScene — what's happening around Nepal</title>
+    <meta name="description" content="Concerts, festivals, sports, comedy, food and community events across Nepal. Find what's on, near you, soon." />
+    <meta name="theme-color" content="#c1121f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
+
+    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/brand/icon-180.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="NepScene" />
+    <meta property="og:title" content="NepScene — what's happening around Nepal" />
+    <meta property="og:description" content="Concerts, festivals, sports, comedy, food and community events across Nepal." />
+    <meta property="og:image" content="/brand/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="NepScene — what's happening around Nepal" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <script>
+      /*
+       * Theme, before first paint (#17).
+       *
+       * This is inline and synchronous on purpose: any deferred script, React
+       * included, runs after the browser has already painted, which is exactly
+       * the flash of the wrong theme this prevents. It duplicates a few lines
+       * of app/theme.tsx, and that duplication is the price of no flash.
+       */
+      (function () {
+        try {
+          var stored = localStorage.getItem('nepscene-theme')
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored)
+            document.documentElement.style.colorScheme = stored
+            return
+          }
+        } catch (e) {
+          /* storage unavailable — fall through to the OS preference */
+        }
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
