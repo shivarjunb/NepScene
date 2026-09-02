@@ -1,0 +1,15 @@
+{
+  // Playwright specs run in Node but their page.evaluate() callbacks run in the
+  // browser, so they need DOM types — which the Worker config must not have.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["tests/e2e", "playwright.config.ts"]
+}

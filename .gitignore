@@ -13,3 +13,5 @@ test-results/
 .vscode/
 .idea/
 PROJECT_CONTEXT.md
+eslint-report.json
+tsc.log

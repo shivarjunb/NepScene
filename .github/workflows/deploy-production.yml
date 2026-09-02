@@ -21,10 +21,10 @@ permissions:
 jobs:
   promote:
     name: Promote to production
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: production          # Requires a reviewer approval, configured in repo settings
-      url: https://nepscene.com
+      url: https://nepscene.bhattarai-shiva.workers.dev
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,13 +65,7 @@ jobs:
           command: deploy --env production
 
       - name: Smoke test
-        run: |
-          set -e
-          BASE=https://nepscene.com
-          curl -fsS "$BASE/health" > /dev/null
-          curl -fsS "$BASE/api/catalog/listings?limit=5" > /dev/null
-          curl -fsS "$BASE/" | grep -q 'id="root"'
-          echo "Production smoke tests passed."
+        run: node scripts/smoke.mjs https://nepscene.bhattarai-shiva.workers.dev production
 
       - name: Record the release
         run: |

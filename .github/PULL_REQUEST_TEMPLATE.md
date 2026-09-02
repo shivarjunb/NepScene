@@ -22,6 +22,15 @@ Closes #
 - [ ] Migrations are additive and uniquely numbered
 - [ ] No commerce concern introduced (see docs/SCOPE.md)
 
+## Rollback
+
+<!--
+Required when this PR adds a migration (#12). What does the previous release do
+against the new schema, and what has to happen if this deploy is reverted?
+Additive-first is what makes the answer usually "nothing — the previous build
+ignores the new column". Delete this section if there is no migration.
+-->
+
 ## Screenshots
 
 <!-- For anything visual, light and dark. -->

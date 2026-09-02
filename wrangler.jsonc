@@ -1,0 +1,75 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nepscene",
+  "main": "api/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The SPA is served straight from the edge; only /api/* wakes the Worker.
+  // Everything else that does not match a file falls back to index.html.
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "observability": { "enabled": true },
+
+  // D1 read replication is enabled per-database in the Cloudflare dashboard;
+  // the Worker opts into replica reads with withSession() (see api/lib/d1.ts).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nepscene-local",
+      "database_id": "00000000-0000-0000-0000-000000000000" // replaced per environment below
+    }
+  ],
+
+  "kv_namespaces": [
+    { "binding": "SETTINGS", "id": "0000000000000000000000000000local" }
+  ],
+
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "nepscene-media-local" }
+  ],
+
+  "vars": {
+    "ENVIRONMENT": "local",
+    // Set per environment. Empty means offers are not resolved and listings
+    // render without them — discovery never depends on commerce being up.
+    "OFFER_API_URL": "",
+    // GOOGLE_CLIENT_SECRET is a secret: `wrangler secret put GOOGLE_CLIENT_SECRET`.
+    "GOOGLE_CLIENT_ID": ""
+  },
+
+  "env": {
+    "preview": {
+      "name": "nepscene-preview",
+      "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-preview", "database_id": "7fdabb69-3ba6-4cf8-b491-c52dca02c881" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "d80811fb98494352a5fb7970c651f8bd" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-preview" }]
+    },
+    "staging": {
+      "name": "nepscene-staging",
+      "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-staging", "database_id": "464a0115-82e2-4c84-9acb-23cbe9fc041c" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "4b8f67127a8d4c9fb0e1f55792dd3ea4" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-staging" }]
+    },
+    "production": {
+      "name": "nepscene",
+      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
+      "d1_databases": [
+        { "binding": "DB", "database_name": "nepscene-production", "database_id": "63c61f55-3138-44d8-8226-05330926231e" }
+      ],
+      "kv_namespaces": [{ "binding": "SETTINGS", "id": "4cac4a48472a43109a1079fbd6724652" }],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "nepscene-media-production" }]
+    }
+  }
+}

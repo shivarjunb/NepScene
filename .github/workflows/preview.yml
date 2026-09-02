@@ -17,7 +17,7 @@ jobs:
   deploy:
     name: Deploy preview
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment:
       name: preview
     steps:
@@ -40,19 +40,52 @@ jobs:
         if: steps.guard.outputs.ready == 'true'
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+      # --env preview is not optional. Without it wrangler uploads the top-level
+      # config, whose bindings are local placeholders — the deploy fails on
+      # `KV namespace '0000000000000000000000000000local' is not valid` after
+      # provisioning a junk R2 bucket in the real account.
       - name: Deploy to Workers preview
+        id: deploy
         if: steps.guard.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: versions upload --tag pr-${{ github.event.pull_request.number }}
+          command: >-
+            versions upload --env preview
+            --tag pr-${{ github.event.pull_request.number }}
+            --message "PR #${{ github.event.pull_request.number }} @ ${{ github.event.pull_request.head.sha }}"
+
+      # The URL is whatever wrangler minted for this version — it is not
+      # derivable from the PR number, and guessing it produced a comment
+      # pointing at a 404.
+      - name: Resolve the preview URL
+        id: url
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          WRANGLER_OUTPUT: ${{ steps.deploy.outputs.command-output }}
+        run: |
+          # wrangler prints "Version Preview URL: https://<version>-<worker>.<subdomain>.workers.dev".
+          # Read the labelled line first; fall back to any workers.dev URL in the
+          # output. The subdomain contains dots, so the pattern must allow them.
+          URL=$(printf '%s\n' "$WRANGLER_OUTPUT" \
+            | sed -n 's|^.*Version Preview URL: *\(https://[^ ]*\).*$|\1|p' | head -1)
+          if [ -z "$URL" ]; then
+            URL=$(printf '%s\n' "$WRANGLER_OUTPUT" \
+              | grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' | head -1)
+          fi
+          if [ -z "$URL" ]; then
+            echo "::error::Deploy succeeded but no preview URL appeared in wrangler's output."
+            exit 1
+          fi
+          echo "preview_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Preview: $URL"
       - name: Comment the preview URL
         if: steps.guard.outputs.ready == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const url = `https://pr-${context.payload.pull_request.number}-nepscene.workers.dev`
+            const url = '${{ steps.url.outputs.preview_url }}'
             const marker = '<!-- nepscene-preview -->'
             const body = `${marker}\n**Preview deployed** → ${url}\n\nBuilt from \`${context.sha.slice(0,7)}\`.`
             const { data: comments } = await github.rest.issues.listComments({

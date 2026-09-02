@@ -1,0 +1,147 @@
+/*
+ * Shell layout (#18). Holds from 320px to 2560px: nothing has a fixed width,
+ * the header collapses to a menu below 48rem, and no rule may introduce a
+ * horizontal scrollbar — asserted in the Playwright suite at 320, 372
+ * (Z Fold cover screen), 768, 1280 and 2560.
+ */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--header-height);
+}
+
+.site-header__brand { text-decoration: none; color: inherit; margin-inline-end: auto; }
+
+.logo { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+.logo__word {
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.logo__word-accent { color: var(--accent); }
+
+.site-nav__list {
+  display: flex;
+  gap: var(--space-1);
+  list-style: none;
+  padding: 0;
+}
+
+.site-nav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+}
+
+.site-nav__link:hover { background: var(--surface-raised); color: var(--text-primary); }
+
+.site-header__actions { display: flex; align-items: center; gap: var(--space-2); }
+
+.theme-toggle {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+.theme-toggle__option {
+  min-width: 2rem;
+  min-height: 2rem;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.theme-toggle__option[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.site-header__menu-button { display: none; }
+
+.mobile-menu {
+  position: fixed;
+  inset: var(--header-height) 0 0;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.mobile-menu__list { list-style: none; padding: 0; display: grid; gap: var(--space-1); }
+
+.mobile-menu__link {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+}
+
+.mobile-menu__link:hover { background: var(--surface-raised); }
+
+.site-main { min-height: 60dvh; padding-block: var(--space-6); }
+.site-main:focus-visible { outline: none; }
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--surface-raised);
+  padding-block: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  justify-content: space-between;
+}
+
+.site-footer__tagline { color: var(--text-secondary); font-size: var(--text-sm); margin-top: var(--space-2); }
+.site-footer__list { list-style: none; padding: 0; display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+
+/* Below 48rem the inline nav becomes the menu button. */
+@media (max-width: 47.99rem) {
+  .site-nav { display: none; }
+  .site-header__menu-button { display: inline-flex; }
+}
+
+/* The Z Fold cover screen is 372px and is the narrowest real device we target;
+   at that width the brand word would otherwise crowd the controls out. */
+@media (max-width: 23.5rem) {
+  .logo__word { font-size: var(--text-base); }
+  .site-header__bar { gap: var(--space-2); }
+}

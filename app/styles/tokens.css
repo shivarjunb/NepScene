@@ -1,0 +1,232 @@
+/*
+ * The token layer (#15).
+ *
+ * Extracted from WaahTickets rather than invented: its palette is the slate
+ * neutral ramp plus a violet accent, but it exists there as raw hex repeated
+ * through 13,569 lines — #ffffff 172 times, #0f172a 111 times, #7c3aed 80
+ * times — with only 20 custom properties and more than twenty ad-hoc z-index
+ * values. The values carry over; the repetition does not.
+ *
+ * Two rules this file exists to enforce:
+ *
+ *   1. Names describe purpose, not appearance. `--surface-raised`, never
+ *      `--grey-100`. A card that is grey today and cream tomorrow should not
+ *      need every component touched.
+ *   2. Nothing below :root uses a literal colour. Component CSS reads tokens
+ *      only, which is what makes a second theme possible at all.
+ *
+ * Contrast pairs are asserted in tests/unit/contrast.test.ts against WCAG 2.1
+ * AA. Change a colour here and the test tells you what it broke.
+ */
+
+:root {
+  /* ── Palette ───────────────────────────────────────────────────────────
+     The only place raw colour values are allowed. Everything else refers to
+     the semantic tokens below. */
+  --palette-white: #ffffff;
+  --palette-slate-50: #f8fafc;
+  --palette-slate-100: #f1f5f9;
+  --palette-slate-200: #e2e8f0;
+  --palette-slate-300: #cbd5e1;
+  --palette-slate-400: #94a3b8;
+  --palette-slate-500: #64748b;
+  --palette-slate-600: #475569;
+  --palette-slate-700: #334155;
+  --palette-slate-800: #1e293b;
+  --palette-slate-900: #0f172a;
+  --palette-slate-950: #020617;
+
+  /* NepScene's accent is Nepal's flag crimson — deliberately not WaahTickets'
+     violet (#7c3aed). Related products, distinct identities (#19). */
+  --palette-crimson-500: #c1121f;
+  --palette-crimson-600: #a30e19;
+  --palette-crimson-300: #f0808a;
+  --palette-crimson-200: #f8b4ba;
+
+  --palette-green-600: #15803d;
+  --palette-green-300: #86efac;
+  --palette-amber-600: #b45309;
+  --palette-amber-300: #fcd34d;
+  --palette-red-600: #b91c1c;
+  --palette-red-300: #fca5a5;
+
+  /* ── Surfaces and text — light theme ─────────────────────────────────── */
+  --surface: var(--palette-white);
+  --surface-raised: var(--palette-slate-50);
+  --surface-sunken: var(--palette-slate-100);
+  --surface-overlay: var(--palette-white);
+  --surface-inverse: var(--palette-slate-900);
+  --scrim: rgb(15 23 42 / 55%);
+
+  --text-primary: var(--palette-slate-900);
+  --text-secondary: var(--palette-slate-600);
+  --text-muted: var(--palette-slate-500);
+  --text-inverse: var(--palette-white);
+  --text-on-accent: var(--palette-white);
+
+  /* --border is decorative: dividers and card outlines, which WCAG does not
+     hold to a contrast ratio. --border-strong is the boundary of an
+     interactive control, which 1.4.11 requires to reach 3:1, so it is darker
+     than it would be if it were only a line. */
+  --border: var(--palette-slate-200);
+  --border-strong: var(--palette-slate-500);
+
+  --accent: var(--palette-crimson-500);
+  --accent-hover: var(--palette-crimson-600);
+  --accent-surface: #fdf2f3;
+  --accent-border: var(--palette-crimson-200);
+
+  --success: var(--palette-green-600);
+  --success-surface: #f0fdf4;
+  --warning: var(--palette-amber-600);
+  --warning-surface: #fffbeb;
+  --danger: var(--palette-red-600);
+  --danger-surface: #fef2f2;
+
+  --focus-ring: var(--accent);
+
+  /* ── Spacing — a 4px base, so half-steps never appear ────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Noto Sans Devanagari', sans-serif;
+  --font-display: 'Space Grotesk', var(--font-sans);
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.55;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Radii and elevation ─────────────────────────────────────────────── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 8%);
+  --shadow-md: 0 4px 12px rgb(15 23 42 / 10%);
+  --shadow-lg: 0 16px 40px rgb(15 23 42 / 14%);
+
+  /* ── z-index ──────────────────────────────────────────────────────────
+     A named scale, because WaahTickets accumulated 0, 1, 2, 3, 8, 20, 25, 45,
+     55, 70, 79, 80, 100, 200, 210, 220, 300, 400, 430 and 1200 with nothing
+     saying which should win. Component CSS uses these names and never a
+     number. */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-header: 200;
+  --z-dropdown: 300;
+  --z-scrim: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+
+  /* ── Motion ───────────────────────────────────────────────────────────
+     Durations are tokens so that reduced-motion can zero them in one place. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --layout-max: 76rem;
+  --header-height: 3.5rem;
+}
+
+/*
+ * Dark theme. Only the semantic layer is redefined — the palette and every
+ * dimension stay put, which is why toggling cannot shift layout (#17).
+ */
+:root[data-theme='dark'] {
+  --surface: var(--palette-slate-900);
+  --surface-raised: var(--palette-slate-800);
+  --surface-sunken: var(--palette-slate-950);
+  --surface-overlay: var(--palette-slate-800);
+  --surface-inverse: var(--palette-white);
+  --scrim: rgb(2 6 23 / 70%);
+
+  --text-primary: var(--palette-slate-50);
+  --text-secondary: var(--palette-slate-300);
+  --text-muted: var(--palette-slate-400);
+  --text-inverse: var(--palette-slate-900);
+  --text-on-accent: var(--palette-slate-900);
+
+  --border: var(--palette-slate-700);
+  --border-strong: var(--palette-slate-400);
+
+  /* The light accent is too dark to read on a slate ground, so dark theme
+     takes a tint of the same hue. Both are asserted against AA. */
+  --accent: var(--palette-crimson-300);
+  --accent-hover: var(--palette-crimson-200);
+  --accent-surface: #3b1013;
+  --accent-border: #7e1f27;
+
+  --success: var(--palette-green-300);
+  --success-surface: #052e16;
+  --warning: var(--palette-amber-300);
+  --warning-surface: #3a2606;
+  --danger: var(--palette-red-300);
+  --danger-surface: #3f1414;
+
+  --shadow-sm: 0 1px 2px rgb(2 6 23 / 40%);
+  --shadow-md: 0 4px 12px rgb(2 6 23 / 50%);
+  --shadow-lg: 0 16px 40px rgb(2 6 23 / 60%);
+}
+
+/* Honour the OS when the visitor has expressed no preference. The inline
+   script in index.html sets data-theme before first paint; this covers the
+   window before hydration and any client where the script does not run. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --surface: var(--palette-slate-900);
+    --surface-raised: var(--palette-slate-800);
+    --surface-sunken: var(--palette-slate-950);
+    --surface-overlay: var(--palette-slate-800);
+    --surface-inverse: var(--palette-white);
+    --scrim: rgb(2 6 23 / 70%);
+
+    --text-primary: var(--palette-slate-50);
+    --text-secondary: var(--palette-slate-300);
+    --text-muted: var(--palette-slate-400);
+    --text-inverse: var(--palette-slate-900);
+    --text-on-accent: var(--palette-slate-900);
+
+    --border: var(--palette-slate-700);
+    --border-strong: var(--palette-slate-400);
+
+    --accent: var(--palette-crimson-300);
+    --accent-hover: var(--palette-crimson-200);
+    --accent-surface: #3b1013;
+    --accent-border: #7e1f27;
+
+    --success: var(--palette-green-300);
+    --success-surface: #052e16;
+    --warning: var(--palette-amber-300);
+    --warning-surface: #3a2606;
+    --danger: var(--palette-red-300);
+    --danger-surface: #3f1414;
+
+    --shadow-sm: 0 1px 2px rgb(2 6 23 / 40%);
+    --shadow-md: 0 4px 12px rgb(2 6 23 / 50%);
+    --shadow-lg: 0 16px 40px rgb(2 6 23 / 60%);
+  }
+}

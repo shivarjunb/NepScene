@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!--
+    The NepScene mark: a Himalayan skyline under a sun, in a crimson badge.
+    Drawn from three straight peaks and one disc because at 16px the silhouette
+    is all that survives — anything finer turns to mud. Crimson is Nepal's flag
+    colour, deliberately not WaahTickets' violet: related products, distinct
+    identities.
+  -->
+  <rect width="32" height="32" rx="7" fill="#c1121f"/>
+  <path d="M6.4 22.6 12.4 12l3.9 6 3-4.2 6.3 8.8H6.4Z" fill="#ffffff"/>
+  <circle cx="10.6" cy="8.9" r="2.1" fill="#ffffff"/>
+</svg>

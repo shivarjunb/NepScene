@@ -77,15 +77,47 @@ Deliberately the same as WaahTickets, so extraction is a port rather than a rewr
 
 ## Getting started
 
-> The application scaffold lands in **M0 — Foundation**. Until then this repo holds
-> the plan, the DevOps pipeline and the backlog.
-
 ```bash
 git clone https://github.com/shivarjunb/NepScene.git
 cd NepScene
 npm install
-npm run dev
+
+npm run db:migrate     # apply migrations to the local D1
+npm run db:seed        # load the demo catalogue
+npm run build          # build the SPA the Worker serves
+npm run dev            # http://localhost:8787
 ```
+
+Then:
+
+```bash
+curl 'http://localhost:8787/api/catalog/listings?limit=5'
+curl 'http://localhost:8787/api/catalog/search?q=thamel'
+curl 'http://localhost:8787/api/cache/status'
+```
+
+`npm run db:reset` drops the local database and rebuilds it from migrations plus
+the demo seed. `npm test` runs the unit tests and the integration tests, which
+go over real HTTP against a real local D1.
+
+### Deployed
+
+| | |
+|---|---|
+| Staging | https://nepscene-staging.bhattarai-shiva.workers.dev |
+| Production | https://nepscene.bhattarai-shiva.workers.dev |
+
+Staging carries the demo catalogue. Production is deliberately empty of listings
+until real ones exist — see [docs/DEVOPS.md](docs/DEVOPS.md).
+
+### What exists today
+
+**M1 — catalogue core:** the listing/venue/organizer/artist/category schema, the
+Catalog API, slugs and redirects, the media pipeline on R2, accounts with email
+and Google sign-in, and four roles behind a permission matrix.
+
+The design system, the authoring wizard, the map and the public site are still
+ahead — see [docs/BACKLOG.md](docs/BACKLOG.md).
 
 ---
 
