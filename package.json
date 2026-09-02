@@ -21,7 +21,9 @@
     "db:volume": "node scripts/seed-volume.mjs --count 10000",
     "db:import": "node scripts/import-waahtickets.mjs",
     "test:e2e": "playwright test",
-    "brand": "node scripts/generate-brand-assets.mjs"
+    "brand": "node scripts/generate-brand-assets.mjs",
+    "ci:guards": "node scripts/check-migrations.mjs && node scripts/check-scope.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "hono": "^4.13.5",
@@ -37,6 +39,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-istanbul": "^4.1.11",
     "@vitest/coverage-v8": "^4.1.11",
     "ajv": "^8.20.0",
     "eslint": "^10.9.1",

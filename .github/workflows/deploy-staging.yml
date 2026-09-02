@@ -19,7 +19,7 @@ jobs:
     runs-on: self-hosted
     environment:
       name: staging
-      url: https://staging.nepscene.com
+      url: https://nepscene-staging.bhattarai-shiva.workers.dev
     steps:
       - uses: actions/checkout@v4
       - name: Guard on scaffold
@@ -59,14 +59,4 @@ jobs:
 
       - name: Smoke test
         if: steps.guard.outputs.ready == 'true'
-        run: |
-          set -e
-          BASE=https://staging.nepscene.com
-          echo "Checking health..."
-          curl -fsS "$BASE/health" > /dev/null
-          echo "Checking catalog responds and is bounded..."
-          curl -fsS "$BASE/api/catalog/listings?limit=5" | head -c 400
-          echo ""
-          echo "Checking the SPA shell renders..."
-          curl -fsS "$BASE/" | grep -q 'id="root"'
-          echo "Smoke tests passed."
+        run: node scripts/smoke.mjs https://nepscene-staging.bhattarai-shiva.workers.dev staging

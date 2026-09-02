@@ -40,11 +40,24 @@ export default defineConfig({
     // *.test.ts runs here in workerd; *.spec.ts is Playwright's, in a browser.
     include: ['tests/**/*.test.ts'],
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
+      // Istanbul, not v8: the v8 provider cannot instrument code executing
+      // inside workerd, and silently reports 0% for every file the integration
+      // tests actually exercise. Instrumentation happens at transform time here,
+      // which survives the trip into the workers pool.
+      provider: 'istanbul',
+      reporter: ['text', 'html', 'lcov', 'json-summary'],
+      reportOnFailure: true,
       include: ['api/**/*.ts'],
       // Route composition and wire types have no behaviour to cover.
       exclude: ['api/catalog/routes.ts', 'api/catalog/types.ts', 'api/env.ts'],
+      // Ratcheted to the measured floor. A drop fails the build; when coverage
+      // rises, raise these with it (docs/DEVOPS.md).
+      thresholds: {
+        statements: 91,
+        branches: 74,
+        functions: 97,
+        lines: 94,
+      },
     },
   },
 })

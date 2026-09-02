@@ -1,0 +1,29 @@
+# Local development variables — copy to `.dev.vars` and fill in.
+#
+#   cp .dev.vars.example .dev.vars
+#
+# `.dev.vars` is gitignored and read by `wrangler dev`. Nothing here is a
+# production credential: every value below is either optional or yours alone.
+# Real secrets live in Cloudflare (`wrangler secret put --env <env>`) and in
+# GitHub Environment secrets. See docs/DEVOPS.md > Secrets.
+
+# --- Google sign-in (#27) -----------------------------------------------------
+# Optional. Leave both empty and the Google routes disable themselves rather
+# than failing, so a fresh clone runs with no credentials at all.
+# Create at https://console.cloud.google.com/apis/credentials
+#   Authorised origin:     http://localhost:8787
+#   Authorised redirect:   http://localhost:8787/api/auth/google/callback
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# --- Google Maps (#36, M3) ----------------------------------------------------
+# Not yet read by the application — the map port is M3. When it lands, this is a
+# build-time public value baked into the bundle, so it MUST be HTTP-referrer
+# restricted, and a separate key per environment (docs/DEVOPS.md > Secrets).
+#   Local key referrers: http://localhost:5173/*, http://localhost:8787/*
+# VITE_GOOGLE_MAPS_API_KEY=
+
+# --- Not set here -------------------------------------------------------------
+# DB, SETTINGS, MEDIA, ENVIRONMENT and OFFER_API_URL are bindings and vars from
+# wrangler.jsonc, not secrets. `npm run db:reset` builds the local D1 and seeds
+# it; you do not need any Cloudflare access to develop against local resources.
