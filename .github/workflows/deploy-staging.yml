@@ -21,7 +21,7 @@ jobs:
       name: staging
       url: https://nepscene-staging.bhattarai-shiva.workers.dev
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Guard on scaffold
         id: guard
         run: |
@@ -31,7 +31,7 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Scaffold not present yet — staging deploy skipped."
           fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.guard.outputs.ready == 'true'
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -43,7 +43,7 @@ jobs:
 
       - name: Apply migrations to staging
         if: steps.guard.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -54,7 +54,7 @@ jobs:
 
       - name: Deploy
         if: steps.guard.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
