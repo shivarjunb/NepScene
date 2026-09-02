@@ -1,0 +1,14 @@
+name: Self-hosted probe
+on:
+  push:
+    branches: [ci/self-hosted-probe]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: self-hosted
+    steps:
+      - run: |
+          echo "runner allocated"
+          uname -a
+          node --version || true
