@@ -44,7 +44,15 @@ jobs:
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           # Baked into og:image and og:url — see vite.config.ts. Update with #60.
-          VITE_PUBLIC_ORIGIN: https://nepscene-preview.bhattarai-shiva.workers.dev
+          #
+          # Staging, not preview, and not a guess. A preview's own URL is the
+          # per-version one wrangler mints *after* this build runs, so it cannot
+          # be baked in. The preview environment's stable URL is worse than
+          # useless: `versions upload` never changes the deployed version, so
+          # https://nepscene-preview…workers.dev serves an old build whose
+          # /brand/og-card.png 404s into the SPA fallback and returns HTML with a
+          # 200. Staging is the nearest origin that is always current.
+          VITE_PUBLIC_ORIGIN: https://nepscene-staging.bhattarai-shiva.workers.dev
       # --env preview is not optional. Without it wrangler uploads the top-level
       # config, whose bindings are local placeholders — the deploy fails on
       # `KV namespace '0000000000000000000000000000local' is not valid` after
