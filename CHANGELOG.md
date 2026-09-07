@@ -6,6 +6,14 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- The social card is absolute. `og:image` was a relative `/brand/og-card.png`, and
+  Facebook, X and WhatsApp fetch that URL with no base — the result is not a broken
+  image but no preview card at all, which nothing in the application ever notices.
+  The origin is injected at build time per environment (`VITE_PUBLIC_ORIGIN`), and
+  `scripts/smoke.mjs` now fails a deploy whose card is relative or does not resolve
+  (#19)
+
 ## [0.1.0] — 2026-09-02
 
 First release. Everything below reached `main` in one merge (#54): the scaffold,

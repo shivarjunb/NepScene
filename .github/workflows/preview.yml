@@ -43,6 +43,8 @@ jobs:
         if: steps.guard.outputs.ready == 'true'
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          # Baked into og:image and og:url — see vite.config.ts. Update with #60.
+          VITE_PUBLIC_ORIGIN: https://nepscene-preview.bhattarai-shiva.workers.dev
       # --env preview is not optional. Without it wrangler uploads the top-level
       # config, whose bindings are local placeholders — the deploy fails on
       # `KV namespace '0000000000000000000000000000local' is not valid` after
