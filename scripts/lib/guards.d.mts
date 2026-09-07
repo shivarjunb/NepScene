@@ -13,3 +13,11 @@ export interface CommerceHit {
   text: string
 }
 export declare function commerceHits(text: string, file: string): CommerceHit[]
+export interface CredentialHit {
+  file: string
+  line: number
+  /** What matched: a credential format, or the name it was assigned to. */
+  kind: string
+  text: string
+}
+export declare function credentialHits(text: string, file: string): CredentialHit[]

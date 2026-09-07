@@ -3,6 +3,7 @@ import {
   duplicateMigrationPrefixes,
   missingMigrationNumbers,
   commerceHits,
+  credentialHits,
 } from '../../scripts/lib/guards.mjs'
 import {
   parseTscErrors,
@@ -114,5 +115,54 @@ describe('PR annotations', () => {
   it('escapes newlines, which would otherwise truncate the command', () => {
     const annotation: Annotation = { file: 'a.ts', line: 1, col: 1, level: 'error', message: 'line one\nline two' }
     expect(toWorkflowCommand(annotation)).toBe('::error file=a.ts,line=1,col=1::line one%0Aline two')
+  })
+})
+
+/**
+ * The credential guard exists because push protection has a hole, so the
+ * fixtures here are not invented either: the Google API key shape below is the
+ * one that pushed cleanly to this repository while a Slack token and a Stripe
+ * key on the very next line were both refused.
+ *
+ * Fixtures are concatenated rather than written whole so this file does not
+ * trip the guard when it scans the tree it lives in.
+ */
+describe('committed credential guard', () => {
+  const googleKey = 'AIza' + 'b3F9kQ2xLmN7pR4tV8wY1zA5cD6eG0hJ2kL'
+
+  it('catches the key shape GitHub push protection let through', () => {
+    const hits = credentialHits(`VITE_GOOGLE_MAPS_API_KEY=${googleKey}`, '.dev.vars')
+    expect(hits).toHaveLength(1)
+    expect(hits[0]).toMatchObject({ file: '.dev.vars', line: 1, kind: 'Google API key' })
+  })
+
+  it('catches a token that has no recognisable shape, by the name it is given', () => {
+    const hits = credentialHits('CLOUDFLARE_API_TOKEN=' + 'k'.repeat(20) + 'Zq7', 'notes.md')
+    expect(hits[0]?.kind).toBe('CLOUDFLARE_API_TOKEN with a value')
+  })
+
+  it('reports one hit per line, at the line, so the fix is not a repository-wide search', () => {
+    const text = ['# notes', '', 'GOOGLE_CLIENT_SECRET=' + 'GOCSPX-' + 'a'.repeat(28)].join('\n')
+    const hits = credentialHits(text, 'notes.md')
+    expect(hits).toHaveLength(1)
+    expect(hits[0]).toMatchObject({ line: 3, kind: 'Google OAuth client secret' })
+  })
+
+  it('ignores everything a repository legitimately writes in those places', () => {
+    const benign = [
+      'CLOUDFLARE_API_TOKEN=',                                  // .dev.vars.example
+      'GOOGLE_CLIENT_SECRET: string',                           // a type annotation
+      "env.GOOGLE_CLIENT_SECRET = 'test-secret'",               // a test fixture
+      'apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}',          // a workflow reference
+      'CLOUDFLARE_ACCOUNT_ID=your-account-id-goes-right-here',  // a placeholder
+      'CLOUDFLARE_API_TOKEN=****************************',      // a redacted log line
+    ]
+    for (const line of benign) {
+      expect(credentialHits(line, 'f'), line).toEqual([])
+    }
+  })
+
+  it('honours the opt-out marker, which is how the patterns avoid matching themselves', () => {
+    expect(credentialHits(`key = ${googleKey} // secret-guard:allow`, 'f')).toEqual([])
   })
 })

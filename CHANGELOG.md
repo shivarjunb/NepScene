@@ -6,6 +6,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `npm run ci:guards` fails the build on a committed credential
+  (`scripts/check-secrets.mjs`). GitHub push protection is on and does block —
+  a Slack token and a Stripe key were both refused — but a Google API key in the
+  `AIza…` shape pushed to this repository cleanly, and that is the shape of the
+  Maps key. The guard covers what push protection does not: by format for the
+  Google credentials, by variable name for tokens no regex can recognise on
+  sight. It reads `git ls-files`, so a gitignored `.dev.vars` is not flagged (#13)
+
 ### Fixed
 - The social card is absolute. `og:image` was a relative `/brand/og-card.png`, and
   Facebook, X and WhatsApp fetch that URL with no base — the result is not a broken
