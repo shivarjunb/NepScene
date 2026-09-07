@@ -3,6 +3,7 @@ import { Logo } from '../components/Logo'
 import { Button } from '../components/primitives'
 import { ThemeToggle } from '../theme'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { Link, useRoute } from '../router'
 
 /**
  * The application shell (#18).
@@ -19,6 +20,7 @@ const NAV = [
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const path = useRoute()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   useFocusTrap(menuRef, menuOpen, () => setMenuOpen(false))
@@ -42,15 +44,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <header className="site-header">
         <div className="layout site-header__bar">
-          <a className="site-header__brand" href="/" aria-label="NepScene home">
+          <Link className="site-header__brand" href="/" aria-label="NepScene home">
             <Logo />
-          </a>
+          </Link>
 
           <nav className="site-nav" aria-label="Primary">
             <ul className="site-nav__list">
               {NAV.map((item) => (
                 <li key={item.href}>
-                  <a className="site-nav__link" href={item.href}>{item.label}</a>
+                  <Link
+                    className="site-nav__link"
+                    href={item.href}
+                    aria-current={path === item.href ? 'page' : undefined}
+                  >
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -86,8 +94,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <ul className="mobile-menu__list">
                 {NAV.map((item) => (
                   <li key={item.href}>
-                    <a className="mobile-menu__link" href={item.href}
-                       onClick={() => setMenuOpen(false)}>{item.label}</a>
+                    <Link className="mobile-menu__link" href={item.href}
+                          aria-current={path === item.href ? 'page' : undefined}
+                          onClick={() => setMenuOpen(false)}>{item.label}</Link>
                   </li>
                 ))}
               </ul>
@@ -107,9 +116,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <nav aria-label="Footer">
             <ul className="site-footer__list">
-              <li><a href="/about">About</a></li>
-              <li><a href="/submit">Submit an event</a></li>
-              <li><a href="/privacy">Privacy</a></li>
+              <li><Link href="/about">About</Link></li>
+              <li><Link href="/submit">Submit an event</Link></li>
+              <li><Link href="/privacy">Privacy</Link></li>
+              <li><Link href="/design-system">Design system</Link></li>
             </ul>
           </nav>
         </div>
