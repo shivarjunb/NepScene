@@ -1,9 +1,14 @@
 import { expect, test } from '@playwright/test'
 
-/** #16 — every primitive keyboard operable, focus visible, modals trapping. */
+/**
+ * #16 — every primitive keyboard operable, focus visible, modals trapping.
+ *
+ * The gallery moved from / to /design-system when routing landed; / is now the
+ * discovery page. Nothing about these criteria changed with it.
+ */
 
 test('the gallery renders every component in every state', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   for (const heading of ['Buttons', 'Form controls', 'Badges and chips', 'Alerts',
                          'Surfaces, loading and overlay', 'Tabs']) {
     await expect(page.getByRole('heading', { name: heading })).toBeVisible()
@@ -14,7 +19,7 @@ test('the gallery renders every component in every state', async ({ page }) => {
 })
 
 test('every interactive primitive is reachable by keyboard alone', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
 
   // Walk the whole page with Tab and collect what receives focus. A control
   // that never appears here cannot be operated without a mouse.
@@ -34,7 +39,7 @@ test('every interactive primitive is reachable by keyboard alone', async ({ page
 })
 
 test('focus is visible wherever it lands', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   await page.keyboard.press('Tab')
   await page.keyboard.press('Tab')
 
@@ -47,7 +52,7 @@ test('focus is visible wherever it lands', async ({ page }) => {
 })
 
 test('a modal traps focus and gives it back on close', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   const opener = page.getByRole('button', { name: 'Open dialog' })
   await opener.click()
 
@@ -67,7 +72,7 @@ test('a modal traps focus and gives it back on close', async ({ page }) => {
 })
 
 test('a modal closes on a click outside', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   await page.getByRole('button', { name: 'Open dialog' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
 
@@ -76,7 +81,7 @@ test('a modal closes on a click outside', async ({ page }) => {
 })
 
 test('tabs follow the arrow-key pattern', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   const tablist = page.getByRole('tablist', { name: 'Gallery example' })
   const first = tablist.getByRole('tab').first()
 
@@ -99,7 +104,7 @@ test('tabs follow the arrow-key pattern', async ({ page }) => {
 })
 
 test('every form control is labelled and errors are announced', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   await expect(page.getByLabel('Event name')).toBeVisible()
   await expect(page.getByLabel('Venue', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Description')).toBeVisible()
@@ -114,7 +119,7 @@ test('every form control is labelled and errors are announced', async ({ page })
 })
 
 test('a loading button is disabled and announced as busy', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/design-system')
   const loading = page.getByRole('button', { name: 'Loading' })
   await expect(loading).toBeDisabled()
   await expect(loading).toHaveAttribute('aria-busy', 'true')
