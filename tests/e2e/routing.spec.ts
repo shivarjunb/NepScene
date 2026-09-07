@@ -56,7 +56,8 @@ test('back and forward move between pages', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Organizers' })).toBeVisible()
 
   await page.goBack()
-  await expect(page.getByRole('heading', { level: 1, name: 'Discover' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Nepal/ }))
+    .toBeVisible()
 
   await page.goForward()
   await expect(page.getByRole('heading', { level: 1, name: 'Organizers' })).toBeVisible()
