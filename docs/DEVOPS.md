@@ -214,14 +214,40 @@ Leaving both empty disables Google sign-in rather than breaking it, so a preview
 environment without credentials still runs. `.dev.vars.example` documents everything a
 developer needs locally; nothing in it is a shared credential.
 
-> **Current state, to be fixed before anyone else touches this repository:** no GitHub
-> repository or Environment secrets are set. The deploy workflows succeed because
-> `wrangler-action` falls back to the **personal wrangler login on the self-hosted
-> runner** when `apiToken` is empty. That works, and it means deploy authority is a
-> developer's desktop session rather than a scoped, revocable token. Creating a
-> scoped Cloudflare API token and setting the two secrets per environment is #13.
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are set as **Environment** secrets
+on all three environments, not as repository secrets. That is deliberate: a repository
+secret is readable by any workflow, including one added in a pull request, and the
+production token would then be one merge away from anywhere. An Environment secret is
+only visible to a job that declares that `environment:` — which is why `ci.yml` cannot
+see them, and should not.
+
+### What push protection does and does not catch
+
+Secret scanning and push protection are both on, and they work — pushing a Slack token
+and a Stripe key to a branch was refused outright.
+
+They are not complete. A **Google API key** (`AIza…`, 35 characters) pushed to this
+repository **cleanly**, and that is the shape of the Maps key: the one credential here
+that is a build-time public value and the one most likely to be pasted somewhere for a
+moment. Do not rely on push protection to catch it.
+
+`npm run ci:guards` therefore runs `scripts/check-secrets.mjs`, which fails the build
+on a committed credential — by shape for the Google formats, and by name
+(`CLOUDFLARE_API_TOKEN=<40 characters>`) for the ones no regex can recognise on sight.
+It reads `git ls-files`, so an untracked, gitignored `.dev.vars` is correctly ignored.
+Prove it still works by committing a fake key and running it; it names the file and
+line.
+
+If a credential does reach a commit, **rotate it first**. Removing the line does not
+un-leak it — the value is in the reflog, in any fork, and in whatever scraped the push.
 
 ### Google Maps keys
+
+**Not provisioned yet — that is #36, with the map port in M3.** No key exists because
+nothing reads one: `VITE_GOOGLE_MAPS_API_KEY` is commented out in `.dev.vars.example`
+and no code references it. Creating four keys now would mean four unused credentials
+ageing in a console. The requirements below are settled; the provisioning happens the
+day the map lands.
 
 One key per environment, each restricted by HTTP referrer, each with a quota alert.
 The key is a build-time public value baked into the bundle — an unrestricted key
@@ -268,8 +294,6 @@ Rules, informed by WaahTickets carrying duplicate migration numbers (`0009`, `00
 - **Numbering is gapless.** `wrangler d1 migrations apply` tracks a high-water mark;
   a migration numbered below one already applied is skipped in silence. CI fails on a
   gap for that reason, not for tidiness.
-- **Additive first.** Add a column, backfill, switch the read, drop later — never in
-  one release.
 - **Every migration is rehearsed against a production-shaped staging database**
   before promotion.
 

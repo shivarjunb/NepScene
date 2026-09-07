@@ -22,7 +22,7 @@
     "db:import": "node scripts/import-waahtickets.mjs",
     "test:e2e": "playwright test",
     "brand": "node scripts/generate-brand-assets.mjs",
-    "ci:guards": "node scripts/check-migrations.mjs && node scripts/check-scope.mjs",
+    "ci:guards": "node scripts/check-migrations.mjs && node scripts/check-scope.mjs && node scripts/check-secrets.mjs",
     "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
