@@ -154,8 +154,31 @@ Applies migrations to staging, deploys, then runs `scripts/smoke.mjs`. A failed 
 test fails the run; rollback is the one command below, not automatic.
 
 ### `deploy-production.yml` — manual dispatch
-Requires a green staging deploy of the same SHA and an approval on the `production`
-GitHub Environment. Applies migrations, deploys, smoke tests.
+Two jobs, in this order and for a reason:
+
+1. **`gate`** — no `environment:`, so it runs immediately. It reads
+   `deploy-staging.yml`'s run history for the dispatched SHA and fails unless one
+   of those runs concluded `success`.
+2. **`promote`** — `needs: gate`, declares `environment: production`. Applies
+   migrations, deploys, smoke tests.
+
+The split matters. A job that declares an environment is held at the approval gate
+*before any of its steps run*, so while the check lived inside `promote` it could
+only reject an unverified SHA after a reviewer had already approved promoting it —
+the guard was real but fired too late to be useful. Now the refusal costs nobody a
+click.
+
+To see the gate refuse, dispatch a SHA that failed on staging:
+
+```
+gh workflow run deploy-production.yml \
+  -f sha=<a SHA whose staging deploy failed> \
+  -f reason="Negative test"
+```
+
+The `gate` job logs which staging runs it found for that SHA whether it passes or
+fails — a gate you can only observe when it refuses is indistinguishable from one
+that is broken open.
 
 ### Rollback
 
