@@ -6,6 +6,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- The production promotion gate now runs before the approval gate, not after it.
+  The check that an unverified SHA had passed staging lived inside the job that
+  declares `environment: production`, and GitHub holds such a job at the approval
+  gate before any step runs — so the refusal could only fire once a reviewer had
+  already approved the promotion. Split into an ungated `gate` job that `promote`
+  needs, and granted `actions: read` so the run-history query it depends on cannot
+  fail for a permissions reason and be mistaken for a refusal (#11)
+
 ## [0.1.0] — 2026-09-02
 
 First release. Everything below reached `main` in one merge (#54): the scaffold,
