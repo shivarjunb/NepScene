@@ -12,11 +12,18 @@
     <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/brand/icon-180.png" />
 
+    <!--
+      %SOCIAL_ORIGIN% is substituted at build time (vite.config.ts). Facebook,
+      X and WhatsApp fetch og:image with no base URL, so a relative path yields
+      no card at all — the origin has to be absolute and it differs per
+      environment, which is why it cannot simply be written here.
+    -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="%SOCIAL_ORIGIN%/" />
     <meta property="og:site_name" content="NepScene" />
     <meta property="og:title" content="NepScene — what's happening around Nepal" />
     <meta property="og:description" content="Concerts, festivals, sports, comedy, food and community events across Nepal." />
-    <meta property="og:image" content="/brand/og-card.png" />
+    <meta property="og:image" content="%SOCIAL_ORIGIN%/brand/og-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="NepScene — what's happening around Nepal" />

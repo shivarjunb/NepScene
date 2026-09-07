@@ -40,6 +40,8 @@ jobs:
         if: steps.guard.outputs.ready == 'true'
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          # Baked into og:image and og:url — see vite.config.ts. Update with #60.
+          VITE_PUBLIC_ORIGIN: https://nepscene-staging.bhattarai-shiva.workers.dev
 
       - name: Apply migrations to staging
         if: steps.guard.outputs.ready == 'true'

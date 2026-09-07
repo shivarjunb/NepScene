@@ -7,6 +7,12 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- The social card is absolute. `og:image` was a relative `/brand/og-card.png`, and
+  Facebook, X and WhatsApp fetch that URL with no base — the result is not a broken
+  image but no preview card at all, which nothing in the application ever notices.
+  The origin is injected at build time per environment (`VITE_PUBLIC_ORIGIN`), and
+  `scripts/smoke.mjs` now fails a deploy whose card is relative or does not resolve
+  (#19)
 - The production promotion gate now runs before the approval gate, not after it.
   The check that an unverified SHA had passed staging lived inside the job that
   declares `environment: production`, and GitHub holds such a job at the approval
