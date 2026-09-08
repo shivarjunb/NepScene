@@ -18,28 +18,51 @@ import { createContext, useContext, useEffect, useRef, useState,
 /** Trailing slashes are not a different page. `/` itself keeps its slash. */
 const normalise = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path)
 
-const RouteContext = createContext('/')
+type Location = { path: string; search: string }
 
-export const useRoute = () => useContext(RouteContext)
+const read = (): Location => ({
+  path: normalise(window.location.pathname),
+  search: window.location.search,
+})
 
-export function navigate(to: string) {
-  const target = normalise(to)
-  if (target === normalise(window.location.pathname)) return
-  window.history.pushState(null, '', to)
+const RouteContext = createContext<Location>({ path: '/', search: '' })
+
+/** The path alone — what picks the page. */
+export const useRoute = () => useContext(RouteContext).path
+
+/**
+ * The query string, parsed. Filters live here rather than in component state so
+ * a filtered view can be linked to, shared and reloaded — the WaahTickets
+ * storefront kept them in React state, and every filtered page was the
+ * homepage again when you sent it to someone.
+ */
+export function useSearch() {
+  return new URLSearchParams(useContext(RouteContext).search)
+}
+
+export function navigate(to: string, { replace = false } = {}) {
+  const target = new URL(to, window.location.href)
+  const current = window.location
+  // Compares the query too: /?category=film and /?category=comedy are different
+  // pages, and a rail's "see all" link is exactly that case.
+  if (normalise(target.pathname) === normalise(current.pathname)
+      && target.search === current.search) return
+
+  window.history[replace ? 'replaceState' : 'pushState'](null, '', to)
   // pushState fires no event of its own; the listener below is what re-renders.
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 export function Router({ children }: { children: ReactNode }) {
-  const [path, setPath] = useState(() => normalise(window.location.pathname))
+  const [location, setLocation] = useState(read)
 
   useEffect(() => {
-    const onPopState = () => setPath(normalise(window.location.pathname))
+    const onPopState = () => setLocation(read())
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  return <RouteContext.Provider value={path}>{children}</RouteContext.Provider>
+  return <RouteContext.Provider value={location}>{children}</RouteContext.Provider>
 }
 
 type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }

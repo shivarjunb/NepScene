@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Placeholder, type Planned } from './pages/Placeholder'
 import { NotFound } from './pages/NotFound'
 import { DesignSystem } from './pages/DesignSystem'
+import { Discover } from './pages/Discover'
 
 /**
  * Every path the shell links to, in one table.
@@ -17,8 +18,7 @@ export const ROUTES: Route[] = [
     path: '/',
     title: 'Discover',
     summary: 'What is on around Nepal — bounded and upcoming by default, near you when you allow it.',
-    issue: 41,
-    milestone: 'M4 — Public site',
+    element: <Discover />,
   },
   {
     path: '/map',
@@ -70,16 +70,40 @@ export function routeFor(path: string) {
   return ROUTES.find((route) => route.path === path)
 }
 
+/**
+ * One dynamic route, matched by prefix. The cards have to link somewhere real —
+ * a card that goes nowhere teaches people the feed is decorative — so a listing
+ * URL resolves to the page that will hold it. The slug is not read yet; #43 is
+ * what turns this into a listing.
+ */
+const LISTING_PREFIX = '/listings/'
+
 export function renderRoute(path: string): ReactNode {
   const route = routeFor(path)
-  if (!route) return <NotFound path={path} />
-  return route.element ?? <Placeholder {...route} />
+  if (route) return route.element ?? <Placeholder {...route} />
+
+  if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
+    return (
+      <Placeholder
+        title="Listing"
+        summary="The full listing: description, media, artists, the venue on a map, and the offer if it carries one."
+        issue={43}
+        milestone="M4 — Public site"
+      />
+    )
+  }
+
+  return <NotFound path={path} />
 }
 
 /** The tab title is the only thing that tells a user which page they are on. */
 export function titleFor(path: string) {
   const route = routeFor(path)
-  if (!route) return 'Page not found — NepScene'
+  if (!route) {
+    return path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length
+      ? 'Listing — NepScene'
+      : 'Page not found — NepScene'
+  }
   return route.path === '/'
     ? "NepScene — what's happening around Nepal"
     : `${route.title} — NepScene`
