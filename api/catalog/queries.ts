@@ -20,6 +20,31 @@ const CATEGORIES_JSON = `(
   WHERE lc.listing_id = l.id
 ) AS categories_json`
 
+/**
+ * The listing's first image, with its derivatives, on every feed row (#25).
+ *
+ * This is the correlated subquery that keeps a feed of twenty listings under
+ * 500KB: without the derivatives here the card has nothing to build a srcset
+ * from and falls back to the original, which is the WaahTickets behaviour this
+ * feature exists to replace.
+ */
+const COVER_JSON = `(
+  SELECT json_object(
+    'id', m.id, 'r2_key', m.r2_key, 'kind', m.kind, 'mime_type', m.mime_type,
+    'alt_text', m.alt_text, 'width', m.width, 'height', m.height,
+    'derivatives', (
+      SELECT json_group_array(json_object(
+        'r2_key', d.r2_key, 'format', d.format, 'width', d.width
+      ) ORDER BY d.width)
+      FROM media_derivatives d WHERE d.media_id = m.id
+    )
+  )
+  FROM listing_media m
+  WHERE m.listing_id = l.id AND m.kind = 'image'
+  ORDER BY m.sort_order
+  LIMIT 1
+) AS cover_json`
+
 const TAGS_JSON = `(
   SELECT json_group_array(json_object('slug', t.slug, 'label', t.label) ORDER BY t.slug)
   FROM listing_tags lt
@@ -39,7 +64,8 @@ const LISTING_SUMMARY_COLUMNS = `
   v.area AS venue_area, v.city AS venue_city,
   o.id AS organizer_id, o.slug AS organizer_slug, o.name AS organizer_name,
   o.is_verified AS organizer_verified,
-  ${CATEGORIES_JSON}`
+  ${CATEGORIES_JSON},
+  ${COVER_JSON}`
 
 const LISTING_JOINS = `
   FROM listings l
@@ -178,8 +204,14 @@ export function listingBySlugQuery(slug: string): SqlStatement {
             v.province AS venue_province, v.latitude AS venue_latitude,
             v.longitude AS venue_longitude,
             (SELECT json_group_array(json_object(
-               'id', m.id, 'r2_key', m.r2_key, 'kind', m.kind,
-               'alt_text', m.alt_text, 'width', m.width, 'height', m.height
+               'id', m.id, 'r2_key', m.r2_key, 'kind', m.kind, 'mime_type', m.mime_type,
+               'alt_text', m.alt_text, 'width', m.width, 'height', m.height,
+               'derivatives', (
+                 SELECT json_group_array(json_object(
+                   'r2_key', d.r2_key, 'format', d.format, 'width', d.width
+                 ) ORDER BY d.width)
+                 FROM media_derivatives d WHERE d.media_id = m.id
+               )
              ) ORDER BY m.sort_order)
              FROM listing_media m WHERE m.listing_id = l.id) AS media_json,
             (SELECT json_group_array(json_object(

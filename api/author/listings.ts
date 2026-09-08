@@ -113,9 +113,14 @@ authorListingRoutes.delete('/listings/:id', requirePermission('listing:edit_own'
 
   // Read the keys before the rows go: ON DELETE CASCADE removes the index
   // rows, and without this the bytes in R2 would be orphaned with no way left
-  // to find them.
+  // to find them. Derivatives cascade from the media row, so they have to be
+  // collected here too (#25).
   const media = await c.env.DB.prepare(
-    'SELECT r2_key FROM listing_media WHERE listing_id = ?1',
+    `SELECT r2_key FROM listing_media WHERE listing_id = ?1
+     UNION ALL
+     SELECT d.r2_key FROM media_derivatives d
+       JOIN listing_media m ON m.id = d.media_id
+      WHERE m.listing_id = ?1`,
   ).bind(listing.id).all<{ r2_key: string }>()
 
   await c.env.DB.batch([

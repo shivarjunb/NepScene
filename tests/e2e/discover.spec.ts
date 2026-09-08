@@ -35,6 +35,7 @@ const listing = (over: Record<string, unknown> & { id: string; starts_at: string
   latitude: null,
   longitude: null,
   pin: { icon: 'MapPin', color: '#64748b', category: null },
+  cover: null,
   venue: { id: 'v', slug: 'v', name: 'Purple Haze', area: 'Thamel', city: 'Kathmandu' },
   organizer: null,
   categories: [{ slug: 'concerts', name: 'Concerts', color: '#c1121f', icon: null, is_primary: true }],

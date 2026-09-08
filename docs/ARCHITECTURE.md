@@ -73,7 +73,7 @@ the key departure from WaahTickets, whose schema assumes an event exists in orde
 sell seats.
 
 ```
-organizations ──┬── listings ──┬── listing_media
+organizations ──┬── listings ──┬── listing_media ── media_derivatives
                 │      │       ├── listing_categories ── categories  (closed)
                 │      │       ├── listing_tags ─────── tags         (open)
                 │      │       └── listing_artists ──── artists
@@ -131,6 +131,7 @@ GET  /api/auth/google/callback
 
 POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
+POST   /api/author/media/sweep         admin; reclaims unreferenced R2 objects
 ```
 
 Shared feed parameters: `category`, `tag`, `artist`, `city`, `venue`, `organizer`, `type`,
@@ -150,6 +151,31 @@ returned the entire catalogue with 28 of 50 events already finished:
 
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
+
+## Media
+
+Bytes live in R2 and are proxied through the Worker, so the bucket stays private
+and the public URL survives a storage change. Keys are content-addressed —
+`listings/<listing id>/<sha256>.<ext>` — which is what makes `immutable` honest:
+the content behind a key cannot change, because different content is a different
+key. Scoped per listing rather than globally so deleting a listing can delete its
+objects without reference counting; cross-listing duplicates cost storage, and a
+wrongly deleted image costs a page.
+
+Derivatives are encoded **by the browser** and verified by the Worker. This
+deploys to `workers.dev`, which has no zone, so Cloudflare's `/cdn-cgi/image/`
+resizing is not reachable at all, and encoding AVIF in the Worker means a WASM
+codec inside the request's CPU budget for an image the uploading device has
+already decoded. Nothing the client *claims* is trusted: format, byte size,
+width and aspect ratio are read from each uploaded file's own header and checked
+against the original (`api/media/pipeline.ts`). An importer with no browser
+uploads no derivatives and its original is served alone — degraded, not broken.
+
+The read path returns a `srcset` per format, AVIF first, with the original as
+the fallback in `url`. Every listing summary carries a `cover` of the same
+shape: without derivatives on the *summary*, a card on a phone downloads the
+full-size banner, which is exactly the WaahTickets behaviour the pipeline exists
+to replace.
 
 ## The read path: edge-first, no external hops
 

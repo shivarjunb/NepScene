@@ -444,6 +444,9 @@ textarea.field__control { min-height: 6rem; resize: vertical; }
   border-bottom: 1px solid var(--border);
 }
 
+/* `<picture>` is a wrapper with no box of its own; the img is what the grid
+   places, so the picture must not become a grid item in between. */
+.listing-card__poster picture { display: contents; }
 .listing-card__poster img { width: 100%; height: 100%; object-fit: cover; }
 
 .listing-card__date {

@@ -10,7 +10,7 @@ const listing = (over: Partial<Listing> = {}): Listing => ({
   starts_at: '2026-09-11T13:15:00Z', ends_at: null, is_all_day: false,
   timezone: 'Asia/Kathmandu', cover_image_url: null, external_url: null,
   is_featured: false, latitude: null, longitude: null,
-  pin: { icon: 'MapPin', color: '#64748b', category: null }, venue: null, organizer: null, categories: [], offer: null, ...over,
+  pin: { icon: 'MapPin', color: '#64748b', category: null }, cover: null, venue: null, organizer: null, categories: [], offer: null, ...over,
 })
 
 const offer = (over: Partial<Offer> = {}): Offer => ({

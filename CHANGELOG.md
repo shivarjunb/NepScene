@@ -7,6 +7,26 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- The media pipeline generates and serves derivatives (#25). Images are stored
+  under a key derived from their own SHA-256, so the same file uploaded twice is
+  one object and `immutable` on the read path stops being a promise the
+  application cannot keep. Derivatives are encoded by the browser at four widths
+  (320/640/960/1440, never above the original) and **verified** on the way in —
+  format, size, width-on-the-ladder and aspect ratio are all read from each
+  file's own header, so nothing the request *claims* is trusted. The catalogue
+  serves them as a per-format `srcset`, AVIF then WebP then the original, with
+  `aspect_ratio` so the box exists before the bytes do. Feed rows carry a
+  `cover` with the same shape: without derivatives on the summary a card on a
+  phone downloads the full-size banner, which is the WaahTickets behaviour this
+  replaces
+- `POST /api/author/media/sweep` (admin, dry-run by default) reclaims R2 objects
+  no row references. Every write puts bytes before the row that points at them —
+  the other order leaves broken images — so a request that dies in between has
+  to be collected by something (#25)
+- `ResponsiveImage` renders a `<picture>` with `sizes`, intrinsic dimensions and
+  lazy loading. `sizes` is required by the component's own types: a srcset
+  without it is decoration, because the browser assumes full-viewport width and
+  fetches the widest rung on a phone (#25)
 - Free-form tags alongside the fixed categories: `tags` and `listing_tags`, a
   `tag=` filter on the feed and search, `GET /api/catalog/tags`, and tags on the
   listing detail. Categories stay closed and seeded so a filter chip means
@@ -25,6 +45,10 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sight. It reads `git ls-files`, so a gitignored `.dev.vars` is not flagged (#13)
 
 ### Changed
+- **Breaking (Catalog API).** `MediaItem` gains `sources`, `aspect_ratio` and a
+  `cover` on every listing summary; uploads now reject an image whose header
+  will not parse, because a picture with no intrinsic size cannot reserve a box
+  and layout shift is what a reader actually notices (#25)
 - **Breaking (Catalog API).** Map pin appearance is derived from the primary
   category instead of stored: `listings.map_pin_icon` is dropped and listings
   carry `pin: { icon, color, category }`, computed on every read. WaahTickets

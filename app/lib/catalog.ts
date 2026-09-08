@@ -98,8 +98,25 @@ export type Listing = {
   venue: VenueRef | null
   organizer: OrganizerRef | null
   categories: CategoryRef[]
+  cover: MediaItem | null
   offer: Offer | null
   distance_km?: number
+}
+
+export type MediaSource = {
+  type: string
+  srcset: string
+}
+
+export type MediaItem = {
+  id: string
+  url: string
+  kind: 'image' | 'video'
+  alt_text: string | null
+  width: number | null
+  height: number | null
+  aspect_ratio: number | null
+  sources: MediaSource[]
 }
 
 export type Bootstrap = {
