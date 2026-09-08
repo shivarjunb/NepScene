@@ -125,6 +125,9 @@ POST /api/auth/logout
 POST /api/auth/verify-email
 GET  /api/auth/me                   the account and its permissions
 PATCH /api/auth/me                  name, avatar
+DELETE /api/auth/me                 leave; confirmation required
+GET  /api/auth/me/export            everything held, as JSON
+POST /api/auth/email/change         claims a new address; proves it on verify
 POST /api/auth/sessions/revoke-all  sign out everywhere
 GET  /api/auth/google/start         authorization code flow with PKCE
 GET  /api/auth/google/callback
@@ -151,6 +154,26 @@ returned the entire catalogue with 28 of 50 events already finished:
 
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
+
+## Leaving
+
+Deleting an account is where a public catalogue and a personal record pull in
+opposite directions, so the rule is stated rather than discovered: **what was
+published stays published, what was never published goes.**
+
+A published or archived listing survives with `created_by` cleared. It belongs
+to the catalogue — people have linked to it and are planning to attend it — and
+ownership falls to the organization's other members where there is one, or to
+editors where there is not. That is `listing:edit_any` doing its existing job;
+nothing new is invented to hold an ownerless listing. Drafts, submissions
+awaiting review and rejected listings are deleted with their images: they are
+the person's own unfinished writing, and keeping them is a privacy problem
+rather than a preservation one.
+
+The user row is deleted, not flagged inactive. Sessions, tokens and memberships
+cascade; audit entries keep their action and the role at the time and lose the
+actor id, because what the catalogue did is its own history while who did it is
+personal data.
 
 ## Media
 

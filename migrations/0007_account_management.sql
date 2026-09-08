@@ -1,0 +1,15 @@
+-- 0007 — Account management (#29)
+--
+-- One column. Changing an email address is not an UPDATE, it is a claim about
+-- a mailbox that has not been proved yet, and the difference is the whole
+-- feature: an account whose address changes on submission can be taken over by
+-- anyone who reaches an unlocked laptop.
+--
+-- So the new address lands here and stays here until a token sent *to it* comes
+-- back. Until then `email` is untouched and sign-in, reset and notification all
+-- continue to use the address the person actually controls.
+--
+-- Deliberately not a second row in user_tokens' payload: a pending address is
+-- state on the account, it is visible in GET /api/auth/me, and one column is
+-- easier to reason about than a JSON blob whose absence means two things.
+ALTER TABLE users ADD COLUMN pending_email TEXT;
