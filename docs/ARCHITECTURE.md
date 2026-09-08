@@ -74,13 +74,21 @@ sell seats.
 
 ```
 organizations ──┬── listings ──┬── listing_media
-                │      │       ├── listing_categories
-                │      │       └── listing_artists ── artists
+                │      │       ├── listing_categories ── categories  (closed)
+                │      │       ├── listing_tags ─────── tags         (open)
+                │      │       └── listing_artists ──── artists
                 │      │
                 │      └── venue_id ──> venues
                 │
                 └── users (shared identity)
 ```
+
+The taxonomy has two halves and they are not interchangeable. **Categories** are
+seeded, closed and validated by a foreign key — that is what lets a filter chip
+mean something, and what map pin appearance is derived from. **Tags** are
+free-form and authored, normalised through the slug rules so one tag is one tag.
+Tags never affect appearance; if they did, the closed half would stop being
+canonical the first time somebody typed `concert`.
 
 Notable differences from the WaahTickets schema:
 
@@ -90,6 +98,7 @@ Notable differences from the WaahTickets schema:
 | `event_locations` is a per-event child row | `venues` is a canonical entity | A venue must own a page and dedupe across events |
 | Event implies ticket types | `listing_type` says whether it is even sellable | Free and external events are first-class |
 | No provenance | `source` column | A publicly writable catalogue must know who wrote what |
+| `map_pin_icon` set independently of `event_type` | Pin appearance derived from the primary category | Two fields for one fact drift; WaahTickets needed a separate `pinCategory` to reconcile them |
 
 ## API contracts
 
@@ -102,6 +111,7 @@ GET  /api/catalog/venues
 GET  /api/catalog/venues/:slug
 GET  /api/catalog/organizers/:slug
 GET  /api/catalog/categories
+GET  /api/catalog/tags              tags in use on upcoming listings
 GET  /api/catalog/search            q, city, category, date range, distance
 GET  /api/catalog/bootstrap         everything the homepage needs, in one call
 ```
@@ -123,7 +133,7 @@ POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
 ```
 
-Shared feed parameters: `category`, `city`, `venue`, `organizer`, `type`,
+Shared feed parameters: `category`, `tag`, `artist`, `city`, `venue`, `organizer`, `type`,
 `featured`, `from`, `to`, `include_past`, `cursor`, `limit` (max 50). Responses
 are `{ data, page: { limit, has_more, next_cursor } }`; the cursor is an opaque
 keyset over `(starts_at, id)`. Every response reports `x-cache` and

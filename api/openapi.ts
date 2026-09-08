@@ -8,13 +8,35 @@
  */
 const CATEGORY_REF = {
   type: 'object',
-  required: ['slug', 'name'],
+  required: ['slug', 'name', 'is_primary'],
   properties: {
     slug: { type: 'string' },
     name: { type: 'string' },
     color: { type: ['string', 'null'] },
     icon: { type: ['string', 'null'] },
+    // Exactly one per listing, and the one the pin is derived from.
+    is_primary: { type: 'boolean' },
   },
+} as const
+
+/**
+ * Computed from the primary category on every read. There is no stored icon to
+ * disagree with the filter chips — see api/catalog/pin.ts.
+ */
+const PIN = {
+  type: 'object',
+  required: ['icon', 'color', 'category'],
+  properties: {
+    icon: { type: 'string' },
+    color: { type: 'string' },
+    category: { type: ['string', 'null'] },
+  },
+} as const
+
+const TAG_REF = {
+  type: 'object',
+  required: ['slug', 'label'],
+  properties: { slug: { type: 'string' }, label: { type: 'string' } },
 } as const
 
 const VENUE_REF = {
@@ -53,7 +75,7 @@ const LISTING_SUMMARY = {
   type: 'object',
   required: [
     'id', 'slug', 'title', 'listing_type', 'source', 'starts_at',
-    'is_all_day', 'timezone', 'is_featured', 'venue', 'organizer', 'categories', 'offer',
+    'is_all_day', 'timezone', 'is_featured', 'venue', 'organizer', 'categories', 'pin', 'offer',
   ],
   properties: {
     id: { type: 'string' },
@@ -71,7 +93,6 @@ const LISTING_SUMMARY = {
     is_featured: { type: 'boolean' },
     latitude: { type: ['number', 'null'] },
     longitude: { type: ['number', 'null'] },
-    map_pin_icon: { type: ['string', 'null'] },
     distance_km: { type: 'number' },
     venue: VENUE_REF,
     organizer: {
@@ -83,6 +104,7 @@ const LISTING_SUMMARY = {
       },
     },
     categories: { type: 'array', items: CATEGORY_REF },
+    pin: PIN,
     offer: OFFER,
   },
 } as const
@@ -107,7 +129,7 @@ const PAGE = {
 
 const LISTING_DETAIL = {
   type: 'object',
-  required: [...LISTING_SUMMARY.required, 'description', 'media', 'artists'],
+  required: [...LISTING_SUMMARY.required, 'description', 'media', 'artists', 'tags'],
   properties: {
     ...LISTING_SUMMARY.properties,
     description: { type: ['string', 'null'] },
@@ -139,6 +161,7 @@ const LISTING_DETAIL = {
         },
       },
     },
+    tags: { type: 'array', items: TAG_REF },
   },
 } as const
 
@@ -163,7 +186,8 @@ export const SCHEMAS = {
 } as const
 
 const feedParameters = [
-  ['category', 'Category slug'], ['city', 'City name, case-insensitive'],
+  ['category', 'Category slug'], ['tag', 'Free-form tag; normalised, so `Open Mic` finds `open-mic`'],
+  ['artist', 'Artist slug'], ['city', 'City name, case-insensitive'],
   ['venue', 'Venue slug'], ['organizer', 'Organizer slug'],
   ['type', 'listing_type'], ['featured', 'Only featured listings'],
   ['from', 'ISO-8601 lower bound on starts_at'], ['to', 'ISO-8601 upper bound on starts_at'],
@@ -231,6 +255,7 @@ export const openApiDocument = {
     '/api/catalog/venues/{slug}': { get: { summary: 'A venue and what is on there', responses: { '200': { description: 'Venue with upcoming listings' }, ...errorResponses } } },
     '/api/catalog/organizers/{slug}': { get: { summary: 'An organizer and their listings', responses: { '200': { description: 'Organizer with upcoming listings' }, ...errorResponses } } },
     '/api/catalog/categories': { get: { summary: 'Reference categories with upcoming counts', responses: { '200': { description: 'All active categories' } } } },
+    '/api/catalog/tags': { get: { summary: 'Tags in use on upcoming listings, most used first', responses: { '200': { description: 'Up to 40 tags with upcoming counts' } } } },
     '/api/catalog/bootstrap': { get: { summary: 'Everything the homepage needs, in one request', responses: { '200': { description: 'Categories, upcoming and featured listings' } } } },
     '/api/health': { get: { summary: 'Liveness and version. Touches no dependency.', responses: { '200': { description: 'ok' } } } },
     '/api/cache/status': { get: { summary: 'Live read/write probes of the cache, KV and D1 with measured latency', responses: { '200': { description: 'ok or degraded' }, '503': { description: 'D1 unreachable' } } } },

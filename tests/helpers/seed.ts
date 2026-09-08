@@ -27,9 +27,11 @@ export async function seedCatalogue(): Promise<void> {
     env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM slug_redirects'),
     env.DB.prepare('DELETE FROM listing_artists'),
+    env.DB.prepare('DELETE FROM listing_tags'),
     env.DB.prepare('DELETE FROM listing_categories'),
     env.DB.prepare('DELETE FROM listing_media'),
     env.DB.prepare('DELETE FROM listings'),
+    env.DB.prepare('DELETE FROM tags'),
     env.DB.prepare('DELETE FROM artists'),
     env.DB.prepare('DELETE FROM venues'),
     env.DB.prepare('DELETE FROM organizations'),
@@ -99,6 +101,16 @@ export async function seedCatalogue(): Promise<void> {
     env.DB.prepare(
       `INSERT INTO listing_artists (listing_id, artist_id, billing_order)
        VALUES ('lst_soon', 'art_a', 0)`,
+    ),
+    env.DB.prepare(
+      `INSERT INTO tags (slug, label, created_at)
+       VALUES ('live-music', 'Live Music', ?1), ('outdoors', 'Outdoors', ?1),
+              ('stale', 'Stale', ?1)`,
+    ).bind(now),
+    env.DB.prepare(
+      `INSERT INTO listing_tags (listing_id, tag_slug)
+       VALUES ('lst_soon', 'live-music'), ('lst_later', 'live-music'),
+              ('lst_free', 'outdoors'), ('lst_past', 'stale')`,
     ),
     env.DB.prepare(
       `INSERT INTO slug_redirects (entity_type, old_slug, entity_id, created_at)

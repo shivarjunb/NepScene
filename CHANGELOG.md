@@ -7,6 +7,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Free-form tags alongside the fixed categories: `tags` and `listing_tags`, a
+  `tag=` filter on the feed and search, `GET /api/catalog/tags`, and tags on the
+  listing detail. Categories stay closed and seeded so a filter chip means
+  something; tags absorb `holi`, `open-mic` and `kids-welcome` without a
+  migration each time. Spellings normalise through the same slug rules as URLs,
+  so `Open Mic`, `open mic` and `Open-Mic` are one tag rather than three
+  half-empty browse pages (#22)
+- An `artist=` filter on the feed, so the listing-to-artist relationship
+  resolves in both directions rather than only outwards from a listing (#22)
 - `npm run ci:guards` fails the build on a committed credential
   (`scripts/check-secrets.mjs`). GitHub push protection is on and does block —
   a Slack token and a Stripe key were both refused — but a Google API key in the
@@ -14,6 +23,18 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Maps key. The guard covers what push protection does not: by format for the
   Google credentials, by variable name for tokens no regex can recognise on
   sight. It reads `git ls-files`, so a gitignored `.dev.vars` is not flagged (#13)
+
+### Changed
+- **Breaking (Catalog API).** Map pin appearance is derived from the primary
+  category instead of stored: `listings.map_pin_icon` is dropped and listings
+  carry `pin: { icon, color, category }`, computed on every read. WaahTickets
+  let an author set a pin icon independently of the event's type, and paid for
+  it twice — the map needed a separate `pinCategory` concept to reconcile the
+  icon with the filter chips, and the two drifted anyway. A partial unique index
+  makes "the primary category" a function rather than a convention, so a pin's
+  colour can no longer depend on row order. The WaahTickets importer reports the
+  events whose stored icon disagreed with their type rather than carrying the
+  disagreement across (#22, and the default #32 customises on top of)
 
 ### Fixed
 - The social card is absolute. `og:image` was a relative `/brand/og-card.png`, and

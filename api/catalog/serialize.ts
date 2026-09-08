@@ -1,6 +1,7 @@
 import type {
-  ArtistRef, CategoryRef, ListingDetail, ListingSummary, MediaItem, Offer, VenueSummary,
+  ArtistRef, CategoryRef, ListingDetail, ListingSummary, MediaItem, Offer, TagRef, VenueSummary,
 } from './types'
+import { resolvePin } from './pin'
 
 /** Public URL for an R2 object. Derived, never stored (see migration 0001). */
 export function mediaUrl(r2Key: string): string {
@@ -40,6 +41,16 @@ function toOffer(row: Record<string, unknown>): Offer | null {
 }
 
 export function toListingSummary(row: Record<string, unknown>): ListingSummary {
+  // Ordered primary-first by the query, so the pin is a read, not a search.
+  const categories = parseJsonArray<Record<string, unknown>>(row.categories_json)
+    .map<CategoryRef>((category) => ({
+      slug: category.slug as string,
+      name: category.name as string,
+      color: (category.color as string | null) ?? null,
+      icon: (category.icon as string | null) ?? null,
+      is_primary: bool(category.is_primary),
+    }))
+
   return {
     id: row.id as string,
     slug: row.slug as string,
@@ -56,7 +67,6 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
     is_featured: bool(row.is_featured),
     latitude: (row.latitude as number | null) ?? null,
     longitude: (row.longitude as number | null) ?? null,
-    map_pin_icon: (row.map_pin_icon as string | null) ?? null,
     venue: row.venue_id
       ? {
           id: row.venue_id as string,
@@ -74,7 +84,8 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
           is_verified: bool(row.organizer_verified),
         }
       : null,
-    categories: parseJsonArray<CategoryRef>(row.categories_json),
+    categories,
+    pin: resolvePin(categories),
     offer: toOffer(row),
   }
 }
@@ -110,6 +121,7 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
       height: m.height ?? null,
     })),
     artists: parseJsonArray<ArtistRef>(row.artists_json),
+    tags: parseJsonArray<TagRef>(row.tags_json),
   }
 }
 

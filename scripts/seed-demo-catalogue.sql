@@ -13,9 +13,11 @@
 DELETE FROM audit_log;
 DELETE FROM slug_redirects;
 DELETE FROM listing_artists;
+DELETE FROM listing_tags;
 DELETE FROM listing_categories;
 DELETE FROM listing_media;
 DELETE FROM listings;
+DELETE FROM tags;
 DELETE FROM artists;
 DELETE FROM venues;
 DELETE FROM organizations;
@@ -44,7 +46,7 @@ INSERT INTO listings
   (id, slug, title, summary, description, listing_type, source, status,
    organization_id, venue_id, starts_at, ends_at, is_all_day, cover_image_url,
    external_url, offer_url, offer_provider, offer_price_from_paisa, offer_sold_out,
-   location_lat, location_lng, map_pin_icon, is_featured, published_at, created_at, updated_at)
+   location_lat, location_lng, is_featured, published_at, created_at, updated_at)
 VALUES
   -- Ticketed on WaahTickets, featured, two listings share Purple Haze.
   ('lst_rocknight', 'kathmandu-rock-night', 'Kathmandu Rock Night',
@@ -53,14 +55,14 @@ VALUES
    'ticketed_internal', 'organizer', 'published', 'org_himalayan', 'ven_purple',
    strftime('%Y-%m-%dT19:00:00Z', 'now', '+5 days'), strftime('%Y-%m-%dT23:30:00Z', 'now', '+5 days'), 0, NULL,
    NULL, 'https://waahtickets.example/e/kathmandu-rock-night', 'waahtickets', 80000, 0,
-   NULL, NULL, 'Concert', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_acoustic', 'acoustic-sundays-thamel', 'Acoustic Sundays',
    'Unplugged sets every Sunday evening.', NULL,
    'free', 'organizer', 'published', 'org_himalayan', 'ven_purple',
    strftime('%Y-%m-%dT17:30:00Z', 'now', '+2 days'), NULL, 0, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Concert', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Sold elsewhere: NepScene links out and computes nothing.
   ('lst_bipul', 'bipul-chettri-live-pokhara', 'Bipul Chettri Live in Pokhara',
@@ -68,7 +70,7 @@ VALUES
    'ticketed_external', 'organizer', 'published', 'org_lakeside', 'ven_lakeside',
    strftime('%Y-%m-%dT18:00:00Z', 'now', '+12 days'), NULL, 0, NULL,
    'https://example.np/bipul-pokhara', 'https://example.np/bipul-pokhara/tickets', 'external', 150000, 0,
-   NULL, NULL, 'Concert', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Free, community-run, no organization at all — the listing WaahTickets could not represent.
   ('lst_cleanup', 'phewa-lake-cleanup', 'Phewa Lake Clean-up',
@@ -76,7 +78,7 @@ VALUES
    'free', 'submission', 'published', NULL, 'ven_lakeside',
    strftime('%Y-%m-%dT01:15:00Z', 'now', '+3 days'), strftime('%Y-%m-%dT06:00:00Z', 'now', '+3 days'), 0, NULL,
    NULL, NULL, NULL, NULL, 0,
-   28.2130, 83.9490, 'Community', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   28.2130, 83.9490, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Multi-day festival, all-day, editorial provenance.
   ('lst_indrajatra', 'indra-jatra-basantapur', 'Indra Jatra',
@@ -84,35 +86,35 @@ VALUES
    'free', 'editorial', 'published', 'org_nepscene', 'ven_patan',
    strftime('%Y-%m-%dT00:00:00Z', 'now', '+20 days'), strftime('%Y-%m-%dT23:59:00Z', 'now', '+27 days'), 1, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Festival', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_football', 'nepal-vs-bhutan-friendly', 'Nepal vs Bhutan — International Friendly',
    'Kick-off at Dashrath Rangasala.', NULL,
    'ticketed_internal', 'organizer', 'published', 'org_himalayan', 'ven_dashrath',
    strftime('%Y-%m-%dT10:00:00Z', 'now', '+9 days'), NULL, 0, NULL,
    NULL, 'https://waahtickets.example/e/nepal-bhutan', 'waahtickets', 30000, 1,
-   NULL, NULL, 'Sports', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_comedy', 'standup-night-lalitpur', 'Stand-up Night Lalitpur',
    'Six comics, English and Nepali sets.', NULL,
    'ticketed_external', 'organizer', 'published', 'org_lakeside', 'ven_patan',
    strftime('%Y-%m-%dT13:30:00Z', 'now', '+6 days'), NULL, 0, NULL,
    'https://example.np/standup', 'https://example.np/standup/book', 'external', 50000, 0,
-   NULL, NULL, 'Comedy', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_foodfest', 'newari-food-festival', 'Newari Food Festival',
    'Yomari, chatamari and bara across twenty stalls.', NULL,
    'free', 'import', 'published', NULL, 'ven_bhaktapur',
    strftime('%Y-%m-%dT05:00:00Z', 'now', '+15 days'), strftime('%Y-%m-%dT14:00:00Z', 'now', '+16 days'), 0, NULL,
    'https://example.np/newari-food', NULL, NULL, NULL, 0,
-   NULL, NULL, 'Food & Drink', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_birding', 'chitwan-birding-walk', 'Chitwan Birding Walk',
    'Early morning walk along the Rapti with a park guide.', NULL,
    'ticketed_external', 'submission', 'published', NULL, 'ven_sauraha',
    strftime('%Y-%m-%dT00:30:00Z', 'now', '+30 days'), NULL, 0, NULL,
    NULL, 'https://example.np/birding', 'external', 120000, 0,
-   NULL, NULL, 'Community', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- No venue: an announcement is not an attendance model.
   ('lst_reopen', 'patan-museum-reopens', 'Patan Museum Reopens',
@@ -120,7 +122,7 @@ VALUES
    'announcement', 'editorial', 'published', 'org_nepscene', NULL,
    strftime('%Y-%m-%dT04:00:00Z', 'now', '+40 days'), NULL, 1, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Finished last week: must not appear unless include_past=true.
   ('lst_past', 'jazzmandu-closing-night', 'Jazzmandu Closing Night',
@@ -128,7 +130,7 @@ VALUES
    'ticketed_internal', 'organizer', 'published', 'org_himalayan', 'ven_purple',
    strftime('%Y-%m-%dT13:00:00Z', 'now', '-8 days'), strftime('%Y-%m-%dT18:00:00Z', 'now', '-8 days'), 0, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Concert', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-40 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-40 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Running right now: started yesterday, ends tomorrow. Still "upcoming".
   ('lst_running', 'kathmandu-art-week', 'Kathmandu Art Week',
@@ -136,7 +138,7 @@ VALUES
    'free', 'editorial', 'published', 'org_nepscene', 'ven_patan',
    strftime('%Y-%m-%dT03:00:00Z', 'now', '-1 days'), strftime('%Y-%m-%dT12:00:00Z', 'now', '+1 days'), 0, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Arts & Theatre', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-10 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-10 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Devanagari titles: slugs are the transliteration api/lib/devanagari.ts
   -- produces, so the seed exercises #24 rather than assuming it.
@@ -145,26 +147,26 @@ VALUES
    'free', 'editorial', 'published', 'org_nepscene', 'ven_basantapur',
    strftime('%Y-%m-%dT00:00:00Z', 'now', '+21 days'), strftime('%Y-%m-%dT23:59:00Z', 'now', '+28 days'), 1, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Festival', 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 1, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_yamari', 'yamari-punhi', 'यमरी पुन्ही',
    'नेवार समुदायको चाड — यमरी बनाउने र बाँड्ने दिन।', NULL,
    'free', 'submission', 'published', NULL, 'ven_bhaktapur',
    strftime('%Y-%m-%dT04:00:00Z', 'now', '+35 days'), NULL, 0, NULL,
    NULL, NULL, NULL, NULL, 0,
-   NULL, NULL, 'Food & Drink', 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, 0, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   -- Neither of these is published, and neither may ever appear in a public read.
   ('lst_draft', 'unfinished-draft-listing', 'Draft — do not publish',
    NULL, NULL, 'free', 'organizer', 'draft', 'org_himalayan', 'ven_purple',
    strftime('%Y-%m-%dT12:00:00Z', 'now', '+7 days'), NULL, 0, NULL,
-   NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 0, NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+   NULL, NULL, NULL, NULL, 0, NULL, NULL, 0, NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
 
   ('lst_pending', 'submitted-awaiting-review', 'Submitted — awaiting review',
    'A public submission in the moderation queue.', NULL,
    'free', 'submission', 'pending_review', NULL, 'ven_lakeside',
    strftime('%Y-%m-%dT12:00:00Z', 'now', '+8 days'), NULL, 0, NULL,
-   NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, 0, NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
+   NULL, NULL, NULL, NULL, 0, NULL, NULL, 0, NULL, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
 
 INSERT INTO listing_categories (listing_id, category_id, is_primary) VALUES
   ('lst_rocknight',  'cat_concert',   1),
@@ -187,6 +189,38 @@ INSERT INTO listing_categories (listing_id, category_id, is_primary) VALUES
   ('lst_yamari',     'cat_food',      1),
   ('lst_yamari',     'cat_community', 0),
   ('lst_reopen',     'cat_arts',      1);
+
+-- Tags are the things a closed taxonomy cannot anticipate: 'holi' is not a
+-- category, but it is exactly what someone types into a search box in March.
+INSERT INTO tags (slug, label, created_at) VALUES
+  ('live-music',    'Live Music',    strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('open-mic',      'Open Mic',      strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('free-entry',    'Free Entry',    strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('family',        'Family',        strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('outdoors',      'Outdoors',      strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('newari',        'Newari',        strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('volunteering',  'Volunteering',  strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+  ('heritage',      'Heritage',      strftime('%Y-%m-%dT%H:%M:%SZ', 'now'));
+
+INSERT INTO listing_tags (listing_id, tag_slug) VALUES
+  ('lst_rocknight',     'live-music'),
+  ('lst_acoustic',      'live-music'),
+  ('lst_acoustic',      'open-mic'),
+  ('lst_acoustic',      'free-entry'),
+  ('lst_bipul',         'live-music'),
+  ('lst_bipul',         'outdoors'),
+  ('lst_cleanup',       'volunteering'),
+  ('lst_cleanup',       'outdoors'),
+  ('lst_cleanup',       'free-entry'),
+  ('lst_indrajatra',    'heritage'),
+  ('lst_indrajatra',    'family'),
+  ('lst_indrajatra_ne', 'heritage'),
+  ('lst_foodfest',      'newari'),
+  ('lst_foodfest',      'family'),
+  ('lst_yamari',        'newari'),
+  ('lst_yamari',        'family'),
+  ('lst_birding',       'outdoors'),
+  ('lst_running',       'heritage');
 
 INSERT INTO listing_artists (listing_id, artist_id, billing_order) VALUES
   ('lst_rocknight', 'art_1974ad',  0),

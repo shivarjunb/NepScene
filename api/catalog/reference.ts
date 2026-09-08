@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import type { Env } from '../env'
 import { readSession } from '../lib/d1'
 import { REFERENCE_TTL_SECONDS, withEdgeCache } from '../lib/cache'
-import { buildFeedQuery, categoriesQuery } from './queries'
+import { buildFeedQuery, categoriesQuery, tagsQuery } from './queries'
 import { toListingSummary } from './serialize'
 import { withRoundTrips } from './shared'
 
@@ -10,6 +10,8 @@ export const referenceRoutes = new Hono<{ Bindings: Env }>()
 
 const BOOTSTRAP_UPCOMING = 24
 const BOOTSTRAP_FEATURED = 6
+/** Enough to fill a chip row without turning the tail of the long tail into UI. */
+const TAG_CLOUD_SIZE = 40
 
 // ─── GET /api/catalog/categories ─────────────────────────────────────────────
 referenceRoutes.get('/categories', async (c) => {
@@ -19,6 +21,24 @@ referenceRoutes.get('/categories', async (c) => {
     { params: [], ttlSeconds: REFERENCE_TTL_SECONDS },
     async () => {
       const { sql, params } = categoriesQuery(new Date().toISOString())
+      const rows = await session.all<Record<string, unknown>>(sql, params)
+      return Response.json({ data: rows })
+    },
+  )
+  return withRoundTrips(response, session)
+})
+
+// ─── GET /api/catalog/tags ───────────────────────────────────────────────────
+// The open half of the taxonomy. Unlike categories this list is not a contract
+// — it is whatever authors have used lately — so it is ordered by how much is
+// on, not by a curated sort order.
+referenceRoutes.get('/tags', async (c) => {
+  const session = readSession(c.env)
+  const response = await withEdgeCache(
+    c,
+    { params: [], ttlSeconds: REFERENCE_TTL_SECONDS },
+    async () => {
+      const { sql, params } = tagsQuery(new Date().toISOString(), TAG_CLOUD_SIZE)
       const rows = await session.all<Record<string, unknown>>(sql, params)
       return Response.json({ data: rows })
     },
