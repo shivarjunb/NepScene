@@ -4,6 +4,7 @@ import type { ReadSession } from '../lib/d1'
 import { decodeCursor, encodeCursor } from '../lib/cursor'
 import { boundingBox, haversineKm } from '../lib/geo'
 import { badRequest, boolParam, dateParam, floatParam, intParam } from '../lib/http'
+import { normaliseTag } from './tags'
 import { buildFeedQuery, type FeedFilters } from './queries'
 import { toListingSummary } from './serialize'
 import type { ListingSummary, Page } from './types'
@@ -15,7 +16,7 @@ export const MAX_LIMIT = 50
 export const LISTING_TYPES = ['ticketed_internal', 'ticketed_external', 'free', 'announcement']
 
 export const FEED_PARAMS = [
-  'category', 'city', 'venue', 'organizer', 'type', 'featured',
+  'category', 'tag', 'artist', 'city', 'venue', 'organizer', 'type', 'featured',
   'from', 'to', 'include_past', 'cursor', 'limit',
 ] as const
 
@@ -44,6 +45,10 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
 
   const filters: FeedFilters = {
     category: q.get('category') ?? undefined,
+    // Tags are free-form, so the filter normalises the same way authoring does
+    // — a link to ?tag=Open%20Mic finds what was saved as `open-mic`.
+    tag: tagParam(q.get('tag')),
+    artist: q.get('artist') ?? undefined,
     city: q.get('city') ?? undefined,
     venue: q.get('venue') ?? undefined,
     organizer: q.get('organizer') ?? undefined,
@@ -71,6 +76,13 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
   }
 
   return filters
+}
+
+function tagParam(raw: string | null): string | undefined {
+  if (!raw) return undefined
+  const slug = normaliseTag(raw)
+  if (!slug) throw badRequest('invalid_parameter', 'tag must contain a letter or a digit')
+  return slug
 }
 
 export type Centre = { lat: number; lng: number; radiusKm: number }

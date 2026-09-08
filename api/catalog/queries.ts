@@ -8,19 +8,29 @@ import type { Cursor } from '../lib/cursor'
  * Kathmandu. So categories come back as an aggregated JSON column rather than
  * as a second query.
  */
+// Primary first, then by the taxonomy's own order. The pin reads element
+// zero (api/catalog/pin.ts), so this ORDER BY is load-bearing, not cosmetic.
 const CATEGORIES_JSON = `(
   SELECT json_group_array(json_object(
-    'slug', c.slug, 'name', c.name, 'color', c.color, 'icon', c.icon
-  ))
+    'slug', c.slug, 'name', c.name, 'color', c.color, 'icon', c.icon,
+    'is_primary', lc.is_primary
+  ) ORDER BY lc.is_primary DESC, c.sort_order ASC)
   FROM listing_categories lc
   JOIN categories c ON c.id = lc.category_id
   WHERE lc.listing_id = l.id
 ) AS categories_json`
 
+const TAGS_JSON = `(
+  SELECT json_group_array(json_object('slug', t.slug, 'label', t.label) ORDER BY t.slug)
+  FROM listing_tags lt
+  JOIN tags t ON t.slug = lt.tag_slug
+  WHERE lt.listing_id = l.id
+) AS tags_json`
+
 const LISTING_SUMMARY_COLUMNS = `
   l.id, l.slug, l.title, l.summary, l.listing_type, l.source,
   l.starts_at, l.ends_at, l.is_all_day, l.timezone,
-  l.cover_image_url, l.external_url, l.is_featured, l.map_pin_icon,
+  l.cover_image_url, l.external_url, l.is_featured,
   l.offer_url, l.offer_provider, l.offer_price_from_paisa,
   l.offer_currency, l.offer_sold_out, l.offer_checked_at,
   COALESCE(l.location_lat, v.latitude)  AS latitude,
@@ -38,6 +48,8 @@ const LISTING_JOINS = `
 
 export type FeedFilters = {
   category?: string
+  tag?: string
+  artist?: string
   city?: string
   venue?: string
   organizer?: string
@@ -82,6 +94,23 @@ export function buildFeedQuery(filters: FeedFilters): SqlStatement {
       WHERE lc.listing_id = l.id AND c2.slug = ?
     )`)
     params.push(filters.category)
+  }
+  if (filters.tag) {
+    where.push(`EXISTS (
+      SELECT 1 FROM listing_tags lt
+      WHERE lt.listing_id = l.id AND lt.tag_slug = ?
+    )`)
+    params.push(filters.tag)
+  }
+  if (filters.artist) {
+    // The reverse of the artists on a listing detail: this is what makes the
+    // relationship resolve in both directions without an artists table scan.
+    where.push(`EXISTS (
+      SELECT 1 FROM listing_artists la
+      JOIN artists a2 ON a2.id = la.artist_id
+      WHERE la.listing_id = l.id AND a2.slug = ?
+    )`)
+    params.push(filters.artist)
   }
   if (filters.city) {
     where.push(`LOWER(v.city) = LOWER(?)`)
@@ -157,7 +186,8 @@ export function listingBySlugQuery(slug: string): SqlStatement {
                'slug', a.slug, 'name', a.name, 'image_url', a.image_url
              ) ORDER BY la.billing_order)
              FROM listing_artists la JOIN artists a ON a.id = la.artist_id
-             WHERE la.listing_id = l.id) AS artists_json
+             WHERE la.listing_id = l.id) AS artists_json,
+            ${TAGS_JSON}
           ${LISTING_JOINS}
           WHERE l.slug = ? AND l.status = 'published'
           LIMIT 1`,
@@ -251,6 +281,25 @@ export function categoriesQuery(now: string): SqlStatement {
           WHERE c.is_active = 1
           ORDER BY c.sort_order ASC`,
     params: [now],
+  }
+}
+
+/**
+ * Tags that are actually on something upcoming. The join is inner on purpose:
+ * a tag nobody has used since last winter is not a browse surface, it is a
+ * dead chip, and a free-form vocabulary accumulates those quickly.
+ */
+export function tagsQuery(now: string, limit: number): SqlStatement {
+  return {
+    sql: `SELECT t.slug, t.label, COUNT(*) AS upcoming_listing_count
+          FROM tags t
+          JOIN listing_tags lt ON lt.tag_slug = t.slug
+          JOIN listings l      ON l.id = lt.listing_id
+          WHERE l.status = 'published' AND COALESCE(l.ends_at, l.starts_at) >= ?
+          GROUP BY t.slug, t.label
+          ORDER BY upcoming_listing_count DESC, t.slug ASC
+          LIMIT ?`,
+    params: [now, limit],
   }
 }
 

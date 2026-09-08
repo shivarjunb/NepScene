@@ -22,7 +22,7 @@ const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Li
   is_featured: false,
   latitude: null,
   longitude: null,
-  map_pin_icon: null,
+  pin: { icon: 'MapPin', color: '#64748b', category: null },
   venue: null,
   organizer: null,
   categories: [],
@@ -92,14 +92,14 @@ describe('every row is a rule over the catalogue', () => {
     featured: [listing({ id: 'featured-1', starts_at: '2026-09-20T12:00:00Z' })],
     upcoming: [
       listing({ id: 'ktm-weekend', starts_at: '2026-09-11T13:00:00Z',
-                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null }] }),
+                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
       listing({ id: 'ktm-later', starts_at: '2026-09-20T13:00:00Z',
-                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null }] }),
+                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
       listing({ id: 'ktm-free', starts_at: '2026-09-21T13:00:00Z',
                 listing_type: 'free', venue: venue('Kathmandu'),
-                categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null }] }),
+                categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
       listing({ id: 'pokhara', starts_at: '2026-09-22T13:00:00Z',
-                venue: venue('Pokhara'), categories: [{ slug: 'film', name: 'film', color: null, icon: null }] }),
+                venue: venue('Pokhara'), categories: [{ slug: 'film', name: 'film', color: null, icon: null, is_primary: true }] }),
     ],
   })
 

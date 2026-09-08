@@ -16,10 +16,33 @@ export type CategoryRef = {
   name: string
   color: string | null
   icon: string | null
+  is_primary: boolean
 }
 
-export type Category = CategoryRef & {
+/** Derived from the primary category by the API; there is no stored icon. */
+export type PinAppearance = {
+  icon: string
+  color: string
+  category: string | null
+}
+
+export type TagRef = {
+  slug: string
+  label: string
+}
+
+/**
+ * The taxonomy itself, as /api/catalog/categories returns it. `is_primary`
+ * belongs to a listing's use of a category, not to the category, so it is not
+ * here — the two shapes are deliberately not interchangeable.
+ */
+export type Category = Omit<CategoryRef, 'is_primary'> & {
   name_ne: string | null
+  upcoming_listing_count: number
+}
+
+/** As /api/catalog/tags returns it. */
+export type Tag = TagRef & {
   upcoming_listing_count: number
 }
 
@@ -71,7 +94,7 @@ export type Listing = {
   is_featured: boolean
   latitude: number | null
   longitude: number | null
-  map_pin_icon: string | null
+  pin: PinAppearance
   venue: VenueRef | null
   organizer: OrganizerRef | null
   categories: CategoryRef[]

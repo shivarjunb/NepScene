@@ -5,6 +5,24 @@ export type CategoryRef = {
   name: string
   color: string | null
   icon: string | null
+  /** Exactly one category per listing carries this (migration 0005). */
+  is_primary: boolean
+}
+
+/**
+ * Derived from the primary category, never stored. See api/catalog/pin.ts for
+ * why there is no `map_pin_icon` column to keep in sync with it.
+ */
+export type PinAppearance = {
+  icon: string
+  color: string
+  category: string | null
+}
+
+/** Free-form, author-supplied, and deliberately not an input to appearance. */
+export type TagRef = {
+  slug: string
+  label: string
 }
 
 export type VenueRef = {
@@ -53,7 +71,7 @@ export type ListingSummary = {
   is_featured: boolean
   latitude: number | null
   longitude: number | null
-  map_pin_icon: string | null
+  pin: PinAppearance
   venue: VenueRef | null
   organizer: OrganizerRef | null
   categories: CategoryRef[]
@@ -90,6 +108,7 @@ export type ListingDetail = ListingSummary & {
   }) | null
   media: MediaItem[]
   artists: ArtistRef[]
+  tags: TagRef[]
 }
 
 export type VenueSummary = {

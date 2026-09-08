@@ -58,6 +58,7 @@ function query(database, sql, { remote = true, env = null } = {}) {
 const esc = (v) => (v === null || v === undefined || v === '' ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`)
 
 const repairs = []
+const notes = []
 
 /**
  * An end before its start is an overnight event whose end time lost a day —
@@ -184,7 +185,6 @@ function buildListing(event, index) {
     ends_at: toIso(event.end_datetime),
     location_lat: event.location_lat ?? null,
     location_lng: event.location_lng ?? null,
-    map_pin_icon: event.map_pin_icon ?? null,
     map_popup_config: event.map_popup_config ?? null,
     offer_url: ticketed ? `https://waahtickets.bhattarai-shiva.workers.dev/e/${event.slug}` : null,
     offer_provider: ticketed ? 'waahtickets' : null,
@@ -198,6 +198,24 @@ function buildListing(event, index) {
 }
 
 // ─── Loss check, before anything is written ──────────────────────────────────
+//
+// map_pin_icon is deliberately not imported: NepScene derives pin appearance
+// from the category (#22, migration 0005). Where the source set an icon that
+// its own event_type does not imply, that is the drift the derivation exists to
+// end — reported rather than dropped in silence, because the mapping above is
+// what a reviewer should be checking.
+const drifted = events.filter((event) => {
+  const icon = (event.map_pin_icon ?? '').trim().toLowerCase()
+  return icon && icon !== String(event.event_type ?? '').trim().toLowerCase()
+})
+if (drifted.length > 0) {
+  notes.push(
+    `${drifted.length} events had a pin icon their event_type does not imply ` +
+    `(e.g. ${drifted.slice(0, 3).map((e) => `${e.id}: ${e.event_type} -> ${e.map_pin_icon}`).join(', ')}). ` +
+    'Appearance now derives from the category; check CATEGORY_BY_EVENT_TYPE if those look wrong.',
+  )
+}
+
 const problems = []
 if (listings.length !== events.length) problems.push(`event count changed: ${events.length} -> ${listings.length}`)
 for (const listing of listings) {
@@ -218,6 +236,7 @@ if (repairs.length > 0) {
   console.log(`  ${repairs.length} repaired on the way in:`)
   for (const r of repairs) console.log(`    ${r}`)
 }
+for (const note of notes) console.log(`  note: ${note}`)
 
 // ─── SQL ─────────────────────────────────────────────────────────────────────
 const now = new Date().toISOString()
@@ -250,14 +269,14 @@ sql.push(
 for (let i = 0; i < listings.length; i += 50) {
   sql.push(
     'INSERT INTO listings (id, slug, title, description, listing_type, source, status,' +
-    ' organization_id, venue_id, starts_at, ends_at, location_lat, location_lng, map_pin_icon,' +
+    ' organization_id, venue_id, starts_at, ends_at, location_lat, location_lng,' +
     ' map_popup_config, offer_url, offer_provider, offer_price_from_paisa, published_at,' +
     ' created_at, updated_at) VALUES',
     listings.slice(i, i + 50).map((l) =>
       `(${esc(l.id)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.description)}, ${esc(l.listing_type)}, ` +
       `${esc(l.source)}, ${esc(l.status)}, ${esc(l.organization_id)}, ${esc(l.venue_id)}, ` +
       `${esc(l.starts_at)}, ${esc(l.ends_at)}, ${l.location_lat ?? 'NULL'}, ${l.location_lng ?? 'NULL'}, ` +
-      `${esc(l.map_pin_icon)}, ${esc(l.map_popup_config)}, ${esc(l.offer_url)}, ${esc(l.offer_provider)}, ` +
+      `${esc(l.map_popup_config)}, ${esc(l.offer_url)}, ${esc(l.offer_provider)}, ` +
       `${l.offer_price_from_paisa ?? 'NULL'}, ${esc(l.published_at)}, ${esc(l.created_at)}, ${esc(l.updated_at)})`,
     ).join(',\n') + ';',
   )
