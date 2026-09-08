@@ -10,6 +10,22 @@ updates:
       react:
         patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
     labels: ["type:chore", "area:devops"]
+    ignore:
+      # @cloudflare/vitest-pool-workers@0.22.0 (latest as of 2026-09) pins its
+      # peer dep to vitest ^4.1.0. A grouped major bump to vitest 5 breaks
+      # `npm ci` with an ERESOLVE before any test even runs (PR #70). Drop
+      # this once pool-workers ships vitest 5 support.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/coverage-istanbul"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/coverage-v8"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 (the native Go port) is a major toolchain change, not a
+      # dev-dependency patch. It deserves its own reviewed PR, not a spot in
+      # a grouped bump alongside eslint and @types packages.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
