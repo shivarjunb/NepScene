@@ -7,6 +7,24 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Account management (#29): `POST /api/auth/email/change`, `GET /api/auth/me/export`
+  and `DELETE /api/auth/me`.
+  - Changing an address does not change it. The new one waits in
+    `users.pending_email` until a token sent *to it* comes back, so the change
+    proves control of the address being claimed rather than of the session
+    making the claim. Confirming it signs every session out — the mailbox that
+    receives password resets has just moved.
+  - Deletion follows one rule: what was published stays published, what was
+    never published goes. Published and archived listings survive with
+    `created_by` cleared, falling to the organization's other members or to
+    editors; drafts and submissions awaiting review are deleted with their
+    images. The user row goes rather than being flagged inactive, and audit
+    entries keep their action and role while losing the actor. Confirmation —
+    the current password, or typing the address on a Google-only account — is
+    required, because a session is not consent.
+  - The export returns the columns under the names they are stored under, so it
+    can be checked against what someone believes is held. The password digest is
+    the one omission.
 - The media pipeline generates and serves derivatives (#25). Images are stored
   under a key derived from their own SHA-256, so the same file uploaded twice is
   one object and `immutable` on the read path stops being a promise the

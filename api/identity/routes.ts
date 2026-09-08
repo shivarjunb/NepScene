@@ -139,16 +139,23 @@ identityRoutes.post('/logout', async (c) => {
 })
 
 // ─── GET /api/auth/me ────────────────────────────────────────────────────────
-identityRoutes.get('/me', requireAuth, (c) => {
+identityRoutes.get('/me', requireAuth, async (c) => {
   // session_id is the digest of the caller's cookie — internal, and not part of
   // what an account tells you about itself.
   const { session_id: _session, ...user } = c.get('user')
-  return c.json({ user, permissions: permissionsFor(user.role) })
+  // An address waiting on confirmation is visible, so "I changed my email and
+  // nothing happened" is answerable without reading a mailbox (#29).
+  const pending = await c.env.DB.prepare('SELECT pending_email FROM users WHERE id = ?1')
+    .bind(user.id).first<{ pending_email: string | null }>()
+  return c.json({
+    user: { ...user, pending_email: pending?.pending_email ?? null },
+    permissions: permissionsFor(user.role),
+  })
 })
 
 // ─── PATCH /api/auth/me ──────────────────────────────────────────────────────
-// Account management (#29) is a decision in the backlog; this is the part that
-// is not — a person can correct their own name and avatar.
+// Profile editing (#29). The address is not here: changing it has to prove
+// control of the new mailbox, which is POST /api/auth/email/change.
 identityRoutes.patch('/me', requireAuth, async (c) => {
   const user = c.get('user')
   const body = await readJson(c.req.raw)
@@ -179,6 +186,15 @@ identityRoutes.post('/sessions/revoke-all', requireAuth, async (c) => {
 })
 
 // ─── POST /api/auth/verify-email ─────────────────────────────────────────────
+/**
+ * Proves control of a mailbox. Which mailbox depends on the account: normally
+ * the one it registered with, and — when a change is pending (#29) — the new
+ * one, because the token was sent there.
+ *
+ * The two are the same operation, so they are the same endpoint. A separate
+ * `confirm-email-change` route would be a second copy of the token discipline
+ * here, and the second copy is always the one that forgets to expire.
+ */
 identityRoutes.post('/verify-email', async (c) => {
   await throttle(c, 'verify', 20)
   const body = await readJson(c.req.raw)
@@ -187,17 +203,33 @@ identityRoutes.post('/verify-email', async (c) => {
 
   const now = new Date().toISOString()
   const row = await c.env.DB.prepare(
-    `SELECT id, user_id FROM user_tokens
-     WHERE token_hash = ?1 AND kind = 'email_verify' AND used_at IS NULL AND expires_at > ?2`,
-  ).bind(await sha256Hex(token), now).first<{ id: string; user_id: string }>()
+    `SELECT t.id, t.user_id, u.pending_email FROM user_tokens t
+       JOIN users u ON u.id = t.user_id
+     WHERE t.token_hash = ?1 AND t.kind = 'email_verify'
+       AND t.used_at IS NULL AND t.expires_at > ?2`,
+  ).bind(await sha256Hex(token), now).first<{ id: string; user_id: string; pending_email: string | null }>()
 
   if (!row) throw badRequest('invalid_token', 'That link has expired or was already used')
 
+  const email = row.pending_email
   await c.env.DB.batch([
     c.env.DB.prepare('UPDATE user_tokens SET used_at = ?1 WHERE id = ?2').bind(now, row.id),
-    c.env.DB.prepare('UPDATE users SET email_verified = 1, updated_at = ?1 WHERE id = ?2')
-      .bind(now, row.user_id),
+    // COALESCE, not a branch: with nothing pending this is the plain
+    // verification it always was. The unique index on email is what stops two
+    // accounts converging on one address between the request and this moment.
+    c.env.DB.prepare(
+      `UPDATE users SET email = COALESCE(?3, email), pending_email = NULL,
+                        email_verified = 1, updated_at = ?1
+        WHERE id = ?2`,
+    ).bind(now, row.user_id, email),
   ])
 
-  return c.json({ ok: true })
+  // Whoever asked for the change may be doing it to lock someone else out, and
+  // the address that receives password resets has just moved.
+  if (email) {
+    await revokeAllSessions(c.env, row.user_id)
+    c.header('set-cookie', clearedSessionCookie(c.env))
+  }
+
+  return c.json({ ok: true, ...(email ? { email, sessions_revoked: true } : {}) })
 })
