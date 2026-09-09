@@ -57,6 +57,9 @@ jobs:
           node scripts/annotate.mjs eslint eslint-report.json
           exit ${LINT_FAILED:-0}
 
+      - name: Kata Jaam importer tests
+        run: node scripts/tests/katajaam.test.mjs
+
       - name: Test with coverage
         # Thresholds live in vitest.config.ts and are set at the measured floor,
         # so a coverage drop fails here rather than being noticed later.

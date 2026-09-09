@@ -1,163 +1,317 @@
 #!/usr/bin/env node
-/* global AbortSignal */
+/**
+ * WaahTickets → NepScene catalogue import (#20, #21).
+ *
+ * Reads the WaahTickets D1 read-only, reshapes it around listings and canonical
+ * venues, and reports what it did. Nothing is written back to the source.
+ *
+ * Two reshapes matter:
+ *
+ *   events           -> listings   with a listing_type inferred from whether
+ *                                  the event has ticket types, and source
+ *                                  'import' so provenance is never guessed at
+ *   event_locations  -> venues     deduplicated by name and position, because
+ *                                  47 rows describe fewer real places and a
+ *                                  venue has to own a page
+ *
+ * Usage:
+ *   node scripts/import-waahtickets.mjs --dry-run
+ *   node scripts/import-waahtickets.mjs
+ *   node scripts/import-waahtickets.mjs --env staging
+ */
 import { execFileSync } from 'node:child_process'
-import { createRequire } from 'node:module'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve, join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { setTimeout as delay } from 'node:timers/promises'
-import { crawl, transform, plan, buildSql, ORIGIN } from './lib/katajaam.mjs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-export function options(args) {
-  const o = { env: null, apply: false, publish: false, scrapeOnly: false, repo: process.cwd(), out: null, input: null, overrides: null }
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i]
-    if (a === '--apply') o.apply = true
-    else if (a === '--publish') o.publish = true
-    else if (a === '--dry-run') { /* Dry run is already the default. */ }
-    else if (a === '--scrape-only') o.scrapeOnly = true
-    else if (['--env','--repo','--out','--input','--overrides'].includes(a)) {
-      if (!args[i+1] || args[i+1].startsWith('--')) throw Error(`Missing value for ${a}`)
-      o[a.slice(2)] = args[++i]
-    } else if (a === '--help') o.help = true
-    else throw Error(`Unknown option: ${a}`)
-  }
-  if (o.env && !['preview','staging','production'].includes(o.env)) throw Error('--env must be preview, staging, or production')
-  if (o.apply && (o.scrapeOnly || args.includes('--dry-run'))) throw Error('--apply cannot be combined with --dry-run or --scrape-only')
-  return o
+const args = process.argv.slice(2)
+const arg = (name, fallback) => {
+  const i = args.indexOf(`--${name}`)
+  return i === -1 ? fallback : args[i + 1]
+}
+const DRY_RUN = args.includes('--dry-run')
+const ENV = arg('env', null)
+// The source database is addressed by uuid, so this script has no dependency on
+// the WaahTickets repository being checked out anywhere.
+const SOURCE = arg('source', '8382ba7d-a43d-41e1-896d-8d897aeb5f11')
+
+const CATEGORY_BY_EVENT_TYPE = {
+  concert: 'cat_concert',    festival: 'cat_festival',  sports: 'cat_sports',
+  comedy: 'cat_comedy',      food: 'cat_food',          nightlife: 'cat_nightlife',
+  workshop: 'cat_workshop',  conference: 'cat_workshop',
+  community: 'cat_community', college: 'cat_community',
 }
 
-async function readPublic(url) {
-  if (new URL(url).origin !== ORIGIN) throw Error('Only public Kata Jaam pages may be fetched')
-  for (let attempt = 0; attempt < 3; attempt++) {
-    // Redirects are refused rather than silently fetching another destination.
-    const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000),
-      headers: { 'User-Agent': 'NepScene-KataJaam-Importer/1.0', Accept: 'text/html,application/xml' } })
-    if ((response.status === 429 || response.status >= 500) && attempt < 2) {
-      await delay(1000 * 2**attempt); continue
-    }
-    if (!response.ok) throw Error(`Kata Jaam returned HTTP ${response.status} for ${url}`)
-    const body = await response.text()
-    if (body.length > 10_000_000) throw Error(`Unexpectedly large source page: ${url}`)
-    return body
-  }
-  throw Error(`Could not read ${url}`)
-}
-export function runWrangler(args, config, execute = execFileSync) {
-  try {
-    return execute(process.execPath, args, config)
-  } catch (error) {
-    const details = [error.stdout, error.stderr]
-      .map((value) => value?.toString().trim()).filter(Boolean).join('\n')
-    throw new Error(`Wrangler D1 command failed (exit ${error.status ?? 'unknown'}).${details ? `\n${details}` : `\n${error.message}`}`, { cause: error })
-  }
-}
-
-export function parseD1Output(output) {
-  // Remote file imports can print progress lines even with --json.
-  const text = output.trim()
-  let result
-  for (const match of text.matchAll(/^[\t ]*(?=[\[{])/gm)) {
-    try { result = JSON.parse(text.slice(match.index)); break } catch { /* Try the next JSON boundary. */ }
-  }
-  if (result === undefined) throw Error('Wrangler did not return a valid D1 JSON result')
-  if (!Array.isArray(result) || !result.length || result.some((x) => !x || x.success !== true || x.error)) {
-    throw Error(`D1 reported an unsuccessful statement: ${JSON.stringify(result)}`)
-  }
-  return result.flatMap((x) => x.results ?? [])
-}
-
-function database(o) {
-  const require = createRequire(join(resolve(o.repo), 'package.json'))
-  let wrangler
-  try { wrangler = require.resolve('wrangler') } catch {
-    throw Error('Run npm install in NepScene first (or set --repo to its directory).')
-  }
-  const target = o.env ? ['DB','--env',o.env,'--remote'] : ['nepscene-local','--local']
-  const run = (extra) => {
-    const output = runWrangler([wrangler,'d1','execute',...target,...extra,'--json'], {
-      cwd: resolve(o.repo), encoding: 'utf8', maxBuffer: 64*1024*1024,
-      env: { ...process.env, CI: 'true' }, stdio: ['ignore','pipe','pipe'],
-    })
-    // Wrangler --json is structured output; do not accept a failed statement.
-    return parseD1Output(output)
-  }
-  return { query: (sql) => run(['--command',sql]), apply: (file) => run(['--file',file]) }
-}
-
-export async function main(args = process.argv.slice(2)) {
-  const o = options(args)
-  if (o.help) {
-    console.log(`Kata Jaam → NepScene (Node 22+; run inside NepScene)
-  node scripts/import-katajaam.mjs --scrape-only
-  node scripts/import-katajaam.mjs --env production --dry-run
-  node scripts/import-katajaam.mjs --env production --apply
-  node scripts/import-katajaam.mjs --env production --apply --publish
-
-Default: preview only; local D1 unless --env is supplied. --apply inserts drafts.
---publish publishes only complete new events; uncertain events remain drafts.
-Events without a valid start date/time are excluded; end dates are optional.
---input FILE uses a saved inventory. --overrides FILE supplies reviewed corrections.
---repo DIR chooses the NepScene checkout. --out DIR chooses the report directory.
-Existing listings are never overwritten, republished, or deleted.`)
-    return
-  }
-  const dir = resolve(o.out ?? join(o.repo,'.katajaam-imports',new Date().toISOString().replace(/[:.]/g,'-')))
-  mkdirSync(dir,{recursive:true})
-  console.log(`Reading ${o.input ? 'saved inventory' : 'live Kata Jaam events'}…`)
-  const inventory = o.input ? JSON.parse(readFileSync(o.input,'utf8')) : await crawl(readPublic)
-  if (!Array.isArray(inventory.events) || !inventory.events.length) throw Error('Inventory has no events')
-  writeFileSync(join(dir,'inventory.json'),JSON.stringify(inventory,null,2))
-  const overrides = o.overrides ? JSON.parse(readFileSync(o.overrides,'utf8')) : {}
-  const now = new Date().toISOString()
-  const candidates = inventory.events.map((e) => {
-    const candidate = transform(e,overrides[e.url?.split('/').at(-1)] ?? {},o.publish,now)
-    if (!candidate.skip && !candidate.starts_at) {
-      candidate.skip = 'Missing valid start date/time'
-    }
-    return candidate
+function query(database, sql, { remote = true, env = null } = {}) {
+  const wranglerArgs = ['wrangler', 'd1', 'execute', database]
+  // A binding name like DB only resolves inside its environment.
+  if (env) wranglerArgs.push('--env', env)
+  if (remote) wranglerArgs.push('--remote')
+  else wranglerArgs.push('--local')
+  wranglerArgs.push('--command', sql, '--json')
+  const out = execFileSync('npx', wranglerArgs, {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024,
   })
-  if (o.scrapeOnly) {
-    const result = plan(candidates)
-    writeFileSync(join(dir,'report.json'),JSON.stringify({mode:'scrape-only',checked_against_database:false,events:result},null,2))
-    console.log(`Saved ${inventory.events.length} source entries to ${dir}. No database accessed.`)
-    return
-  }
-  const db = database(o)
-  const columns = db.query('PRAGMA table_info(listings)').map((x) => x.name)
-  if (!columns.includes('import_source_id') || !columns.includes('import_fingerprint')) throw Error('Apply migrations through 0009_katajaam_import.sql to this database first; see docs/KATAJAAM_IMPORT.md.')
-  const existing = db.query(`SELECT l.id,l.title,l.starts_at,l.external_url AS url,l.import_source_id,l.import_fingerprint AS fingerprint,
-    v.name AS venue_name,v.city,COALESCE(l.location_lat,v.latitude) AS latitude,COALESCE(l.location_lng,v.longitude) AS longitude
-    FROM listings l LEFT JOIN venues v ON v.id=l.venue_id`).map((r) => ({...r,venue:r.venue_name?{name:r.venue_name,city:r.city,latitude:r.latitude,longitude:r.longitude}:null}))
-  const sources = db.query('SELECT source_id,listing_id FROM import_sources')
-  const venues = db.query('SELECT id,name,city,latitude,longitude FROM venues')
-  const orgs = db.query('SELECT id,name FROM organizations')
-  const categories = new Set(db.query('SELECT id FROM categories WHERE is_active=1').map((x) => x.id))
-  for (const e of candidates) if (!e.skip && !categories.has(e.category_id)) throw Error(`Missing/inactive category: ${e.category_id}`)
-  const result = plan(candidates,existing,sources)
-  const summary = { source_entries:inventory.events.length, new_drafts:0,new_published:0,duplicates:0,excluded:0,changed_duplicates:0 }
-  for (const e of result) {
-    if (e.action==='insert') summary[e.status==='published'?'new_published':'new_drafts']++
-    else if (e.action==='duplicate') { summary.duplicates++; if(e.changed)summary.changed_duplicates++ }
-    else summary.excluded++
-  }
-  const report = { target:o.env??'local',mode:o.apply?'apply':'dry-run',checked_at:now,summary,events:result }
-  writeFileSync(join(dir,'report.json'),JSON.stringify(report,null,2))
-  const sql = buildSql(result,venues,orgs), file = join(dir,'import.sql')
-  writeFileSync(file,sql)
-  console.log(JSON.stringify(summary,null,2))
-  console.log(`Report: ${join(dir,'report.json')}`)
-  if (!o.apply) { console.log('Preview only. Run again with --apply to insert.'); return }
-  if (sql.trim()) db.apply(file)
-  // Resolve every source, including source aliases, before reporting success.
-  const after = new Map(db.query('SELECT source_id,listing_id FROM import_sources').map((r) => [r.source_id,r.listing_id]))
-  const missing = result.filter((e) => e.action!=='excluded' && !after.has(e.source_id))
-  report.verified = missing.length===0
-  report.resolved = result.filter((e) => e.action!=='excluded').map((e) => ({source_id:e.source_id,listing_id:after.get(e.source_id)??null}))
-  writeFileSync(join(dir,'report.json'),JSON.stringify(report,null,2))
-  if (missing.length) throw Error(`Import verification failed for ${missing.length} entries. Inspect report; rerunning is safe.`)
-  console.log(`Verified ${report.resolved.length} source entries in ${o.env??'local'} D1. Existing listings were preserved.`)
+  return JSON.parse(out.slice(out.indexOf('[')))[0].results
 }
-if (process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
-  main().catch((error) => { console.error(error.message); process.exitCode=1 })
+
+const esc = (v) => (v === null || v === undefined || v === '' ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`)
+
+const repairs = []
+const notes = []
+
+/**
+ * An end before its start is an overnight event whose end time lost a day —
+ * "19:00 to 00:00" means midnight tonight, not midnight this morning. Repaired
+ * rather than imported broken, and rather than dropped: both alternatives lose
+ * something. Anything more than a day out is left alone and reported, because
+ * that is not this bug.
+ */
+function repairOvernight(listing) {
+  if (!listing.ends_at || !listing.starts_at || listing.ends_at >= listing.starts_at) return listing
+  const start = Date.parse(listing.starts_at)
+  const end = Date.parse(listing.ends_at)
+  if (start - end < 24 * 60 * 60 * 1000) {
+    const fixed = new Date(end + 24 * 60 * 60 * 1000).toISOString()
+    repairs.push(`${listing.id}: ends_at ${listing.ends_at} -> ${fixed} (overnight)`)
+    return { ...listing, ends_at: fixed }
+  }
+  repairs.push(`${listing.id}: ends_at ${listing.ends_at} is before starts_at by more than a day — left as is`)
+  return listing
 }
+
+/** WaahTickets stores 'YYYY-MM-DD HH:MM:SS' local time; NepScene stores ISO-8601 UTC. */
+function toIso(value) {
+  if (!value) return null
+  const text = String(value).trim()
+  if (text.includes('T') && text.endsWith('Z')) return text
+  const [date, time = '00:00:00'] = text.split(/[ T]/)
+  return `${date}T${time.slice(0, 8)}Z`
+}
+
+const slugify = (text) =>
+  String(text).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80)
+
+console.log(`Reading WaahTickets (${SOURCE})…`)
+
+const events = query(SOURCE, `
+  SELECT e.id, e.name, e.slug, e.description, e.event_type, e.status,
+         e.start_datetime, e.end_datetime, e.location_lat, e.location_lng,
+         e.map_pin_icon, e.map_popup_config, e.organization_id, e.created_at, e.updated_at,
+         (SELECT COUNT(*) FROM ticket_types t WHERE t.event_id = e.id) AS ticket_types,
+         (SELECT MIN(t.price_paisa) FROM ticket_types t WHERE t.event_id = e.id) AS min_price,
+         (SELECT a.event_location_id FROM event_location_assignments a WHERE a.event_id = e.id LIMIT 1) AS location_id
+    FROM events e`)
+
+const locations = query(SOURCE, `
+  SELECT id, name, address, latitude, longitude, total_capacity FROM event_locations`)
+
+const organizations = query(SOURCE, `
+  SELECT id, name, legal_name, contact_email, contact_phone, created_at, updated_at
+    FROM organizations`)
+
+console.log(`  ${events.length} events, ${locations.length} locations, ${organizations.length} organizations`)
+
+// ─── Venues: deduplicate ─────────────────────────────────────────────────────
+// Same name at the same place is the same venue, however many rows describe it.
+// Coordinates are rounded to ~10m so that trivially different pins collapse.
+const venueKey = (loc) =>
+  `${slugify(loc.name)}@${(loc.latitude ?? 0).toFixed(4)},${(loc.longitude ?? 0).toFixed(4)}`
+
+const venues = new Map()          // key -> venue
+const venueIdByLocationId = new Map()
+
+for (const loc of locations) {
+  const key = venueKey(loc)
+  if (!venues.has(key)) {
+    const slug = slugify(loc.name) || `venue-${venues.size + 1}`
+    venues.set(key, {
+      id: `wt_ven_${venues.size + 1}`,
+      slug,
+      name: loc.name,
+      address: loc.address ?? null,
+      // "Lazimpat, Kathmandu 44600" -> area Lazimpat, city Kathmandu
+      area: (loc.address ?? '').split(',')[0]?.trim() || null,
+      city: (loc.address ?? '').split(',')[1]?.trim().replace(/\s+\d{5}$/, '') || null,
+      latitude: loc.latitude ?? null,
+      longitude: loc.longitude ?? null,
+      capacity: loc.total_capacity ?? null,
+      sources: [],
+    })
+  }
+  const venue = venues.get(key)
+  venue.sources.push(loc.id)
+  venueIdByLocationId.set(loc.id, venue.id)
+}
+
+const deduped = locations.length - venues.size
+console.log(`  ${locations.length} locations deduplicate to ${venues.size} venues (${deduped} merged)`)
+
+// Slugs must still be unique after dedupe.
+const usedSlugs = new Set()
+for (const venue of venues.values()) {
+  let slug = venue.slug, n = 2
+  while (usedSlugs.has(slug)) slug = `${venue.slug}-${n++}`
+  usedSlugs.add(slug)
+  venue.slug = slug
+}
+
+// ─── Listings ────────────────────────────────────────────────────────────────
+const listingSlugs = new Set()
+const listings = events.map((event, index) => repairOvernight(buildListing(event, index)))
+
+function buildListing(event, index) {
+  let slug = slugify(event.slug || event.name) || `imported-listing-${index + 1}`
+  let candidate = slug, n = 2
+  while (listingSlugs.has(candidate)) candidate = `${slug}-${n++}`
+  listingSlugs.add(candidate)
+
+  const ticketed = (event.ticket_types ?? 0) > 0
+  const venueId = event.location_id ? venueIdByLocationId.get(event.location_id) ?? null : null
+
+  return {
+    id: `wt_${event.id}`,
+    slug: candidate,
+    title: event.name,
+    description: event.description ?? null,
+    // Everything sellable in WaahTickets stays sellable there; NepScene links out.
+    listing_type: ticketed ? 'ticketed_internal' : 'free',
+    source: 'import',
+    status: event.status === 'published' ? 'published' : 'draft',
+    organization_id: event.organization_id ? `wt_org_${event.organization_id}` : null,
+    venue_id: venueId,
+    starts_at: toIso(event.start_datetime),
+    ends_at: toIso(event.end_datetime),
+    location_lat: event.location_lat ?? null,
+    location_lng: event.location_lng ?? null,
+    map_popup_config: event.map_popup_config ?? null,
+    offer_url: ticketed ? `https://waahtickets.bhattarai-shiva.workers.dev/e/${event.slug}` : null,
+    offer_provider: ticketed ? 'waahtickets' : null,
+    offer_price_from_paisa: ticketed ? event.min_price ?? null : null,
+    category_id: CATEGORY_BY_EVENT_TYPE[event.event_type] ?? 'cat_community',
+    published_at: event.status === 'published' ? toIso(event.created_at) : null,
+    created_at: toIso(event.created_at) ?? new Date().toISOString(),
+    updated_at: toIso(event.updated_at) ?? new Date().toISOString(),
+    source_event: event,
+  }
+}
+
+// ─── Loss check, before anything is written ──────────────────────────────────
+//
+// map_pin_icon is deliberately not imported: NepScene derives pin appearance
+// from the category (#22, migration 0005). Where the source set an icon that
+// its own event_type does not imply, that is the drift the derivation exists to
+// end — reported rather than dropped in silence, because the mapping above is
+// what a reviewer should be checking.
+const drifted = events.filter((event) => {
+  const icon = (event.map_pin_icon ?? '').trim().toLowerCase()
+  return icon && icon !== String(event.event_type ?? '').trim().toLowerCase()
+})
+if (drifted.length > 0) {
+  notes.push(
+    `${drifted.length} events had a pin icon their event_type does not imply ` +
+    `(e.g. ${drifted.slice(0, 3).map((e) => `${e.id}: ${e.event_type} -> ${e.map_pin_icon}`).join(', ')}). ` +
+    'Appearance now derives from the category; check CATEGORY_BY_EVENT_TYPE if those look wrong.',
+  )
+}
+
+const problems = []
+if (listings.length !== events.length) problems.push(`event count changed: ${events.length} -> ${listings.length}`)
+for (const listing of listings) {
+  if (!listing.title) problems.push(`${listing.id}: lost its title`)
+  if (!listing.starts_at) problems.push(`${listing.id}: lost its start time`)
+  if (listing.source_event.location_id && !listing.venue_id) {
+    problems.push(`${listing.id}: had a location and lost it`)
+  }
+  if (!/^[a-z0-9-]+$/.test(listing.slug)) problems.push(`${listing.id}: unusable slug "${listing.slug}"`)
+}
+if (problems.length > 0) {
+  console.error('\nRefusing to import — the transform loses data:')
+  for (const p of problems.slice(0, 20)) console.error(`  ${p}`)
+  process.exit(1)
+}
+console.log(`  ${listings.length} listings, no data loss detected`)
+if (repairs.length > 0) {
+  console.log(`  ${repairs.length} repaired on the way in:`)
+  for (const r of repairs) console.log(`    ${r}`)
+}
+for (const note of notes) console.log(`  note: ${note}`)
+
+// ─── SQL ─────────────────────────────────────────────────────────────────────
+const now = new Date().toISOString()
+const sql = [
+  '-- Generated by scripts/import-waahtickets.mjs — regenerate, do not edit.',
+  "DELETE FROM listing_categories WHERE listing_id LIKE 'wt_%';",
+  "DELETE FROM listing_media WHERE listing_id LIKE 'wt_%';",
+  "DELETE FROM listings WHERE id LIKE 'wt_%';",
+  "DELETE FROM venues WHERE id LIKE 'wt_ven_%';",
+  "DELETE FROM organizations WHERE id LIKE 'wt_org_%';",
+]
+
+sql.push(
+  'INSERT INTO organizations (id, slug, name, legal_name, contact_email, contact_phone, created_at, updated_at) VALUES',
+  organizations.map((org) => {
+    let slug = slugify(org.name) || org.id
+    return `(${esc(`wt_org_${org.id}`)}, ${esc(slug)}, ${esc(org.name)}, ${esc(org.legal_name)}, ` +
+           `${esc(org.contact_email)}, ${esc(org.contact_phone)}, ${esc(toIso(org.created_at) ?? now)}, ${esc(toIso(org.updated_at) ?? now)})`
+  }).join(',\n') + ';',
+)
+
+sql.push(
+  'INSERT INTO venues (id, slug, name, address, area, city, latitude, longitude, capacity, created_at, updated_at) VALUES',
+  [...venues.values()].map((v) =>
+    `(${esc(v.id)}, ${esc(v.slug)}, ${esc(v.name)}, ${esc(v.address)}, ${esc(v.area)}, ${esc(v.city)}, ` +
+    `${v.latitude ?? 'NULL'}, ${v.longitude ?? 'NULL'}, ${v.capacity ?? 'NULL'}, ${esc(now)}, ${esc(now)})`,
+  ).join(',\n') + ';',
+)
+
+for (let i = 0; i < listings.length; i += 50) {
+  sql.push(
+    'INSERT INTO listings (id, slug, title, description, listing_type, source, status,' +
+    ' organization_id, venue_id, starts_at, ends_at, location_lat, location_lng,' +
+    ' map_popup_config, offer_url, offer_provider, offer_price_from_paisa, published_at,' +
+    ' created_at, updated_at) VALUES',
+    listings.slice(i, i + 50).map((l) =>
+      `(${esc(l.id)}, ${esc(l.slug)}, ${esc(l.title)}, ${esc(l.description)}, ${esc(l.listing_type)}, ` +
+      `${esc(l.source)}, ${esc(l.status)}, ${esc(l.organization_id)}, ${esc(l.venue_id)}, ` +
+      `${esc(l.starts_at)}, ${esc(l.ends_at)}, ${l.location_lat ?? 'NULL'}, ${l.location_lng ?? 'NULL'}, ` +
+      `${esc(l.map_popup_config)}, ${esc(l.offer_url)}, ${esc(l.offer_provider)}, ` +
+      `${l.offer_price_from_paisa ?? 'NULL'}, ${esc(l.published_at)}, ${esc(l.created_at)}, ${esc(l.updated_at)})`,
+    ).join(',\n') + ';',
+  )
+  sql.push(
+    'INSERT OR IGNORE INTO listing_categories (listing_id, category_id, is_primary) VALUES',
+    listings.slice(i, i + 50).map((l) => `(${esc(l.id)}, ${esc(l.category_id)}, 1)`).join(',\n') + ';',
+  )
+}
+
+const file = join(mkdtempSync(join(tmpdir(), 'nepscene-import-')), 'import.sql')
+writeFileSync(file, sql.join('\n'))
+
+const byType = {}
+for (const l of listings) byType[l.listing_type] = (byType[l.listing_type] ?? 0) + 1
+console.log(`  listing types: ${JSON.stringify(byType)}`)
+console.log(`  SQL written to ${file}`)
+
+if (DRY_RUN) {
+  console.log('\nDry run — nothing written.')
+  process.exit(0)
+}
+
+const target = ENV ? ['DB', '--env', ENV, '--remote'] : ['nepscene-local', '--local']
+console.log(`\nImporting into ${ENV ?? 'local'}…`)
+execFileSync('npx', ['wrangler', 'd1', 'execute', ...target, `--file=${file}`], { stdio: 'ignore' })
+
+const check = query(ENV ? 'DB' : 'nepscene-local', `
+  SELECT (SELECT COUNT(*) FROM listings WHERE id LIKE 'wt_%') listings,
+         (SELECT COUNT(*) FROM venues WHERE id LIKE 'wt_ven_%') venues,
+         (SELECT COUNT(*) FROM listings WHERE id LIKE 'wt_%' AND venue_id IS NULL) without_venue`,
+  { remote: Boolean(ENV), env: ENV })[0]
+
+console.log(`Imported: ${check.listings} listings, ${check.venues} venues, ${check.without_venue} without a venue`)
+if (check.listings !== events.length) {
+  console.error(`MISMATCH: expected ${events.length} listings, found ${check.listings}`)
+  process.exit(1)
+}
+console.log('Every source event is present.')

@@ -73,7 +73,7 @@ export async function crawl(read) {
     if (pages.has(next) || pages.size >= 100) throw Error('Pagination loop or unexpected page count')
     pages.add(next)
     let page
-    try { page = listingPage(await read(next)) } catch (e) { throw Error(`${next}: ${e.message}`) }
+    try { page = listingPage(await read(next)) } catch (e) { throw Error(`${next}: ${e.message}`, { cause: e }) }
     if (expected !== undefined && page.count !== expected) throw Error('Inventory changed during scrape; run again')
     expected = page.count
     for (const u of page.urls) urls.add(u)
