@@ -15,3 +15,6 @@ test-results/
 PROJECT_CONTEXT.md
 eslint-report.json
 tsc.log
+
+# Agent git worktrees — a second checkout of this repo, never a commit of it.
+.claude/worktrees/

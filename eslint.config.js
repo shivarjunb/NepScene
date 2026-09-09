@@ -16,7 +16,10 @@ const boundary = (module, restricted) => ({
 })
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', '.wrangler/**', 'coverage/**'] },
+  /* `.claude/**` holds git worktrees, each a second checkout of this repo with
+     its own tsconfig. Left in scope they make every candidate root ambiguous
+     and typed linting stops resolving at all. */
+  { ignores: ['dist/**', 'node_modules/**', '.wrangler/**', 'coverage/**', '.claude/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
