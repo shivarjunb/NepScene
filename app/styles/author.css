@@ -666,3 +666,158 @@
   .queue__row,
   .queue__row-actions { width: 100%; }
 }
+
+/* ── Organizer dashboard (#34) ─────────────────────────────────────────────
+   Shares the queue's tab pills — they are the same object doing the same job,
+   and two visual languages for "listings by state" inside one product is one
+   too many. What is different is the row: this one carries numbers, because
+   the numbers are the reason to come back. */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.board__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.board__header h1 { margin: 0; }
+
+.board__signed-in {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.board__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.board__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.board__controls .field { min-width: 14rem; }
+
+.board__locals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board__locals li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.board__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board__row {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.board__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.board__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+}
+
+.board__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__stats {
+  display: flex;
+  gap: var(--space-7);
+  margin: 0;
+}
+
+.board__stats dt {
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.board__stats dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-extrabold);
+}
+
+.board__stats-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  grid-column: 1 / -1;
+}
+
+.board__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+  text-align: start;
+}
+
+.board__empty h2 { margin: 0; }
+.board__empty p { margin: 0; max-width: 42ch; color: var(--text-secondary); }
+
+@media (max-width: 46rem) {
+  .board__row { grid-template-columns: minmax(0, 1fr); }
+  .board__stats { flex-wrap: wrap; gap: var(--space-6); }
+}

@@ -107,6 +107,7 @@ Notable differences from the WaahTickets schema:
 ```
 GET  /api/catalog/listings          cursor-paginated, upcoming by default
 GET  /api/catalog/listings/:slug
+POST /api/catalog/listings/:slug/events  the view/click beacon; 202, no body
 GET  /api/catalog/venues
 GET  /api/catalog/venues/:slug
 GET  /api/catalog/organizers/:slug
@@ -146,6 +147,9 @@ POST   /api/author/listings/:id/merge   body: { into } — folds this one into t
 
 GET    /api/author/queue?status=        the moderation queue, oldest first
 POST   /api/author/queue/actions        body: { action, ids[], reason? } — max 50
+
+GET    /api/author/dashboard            your own listings, with view counts; one round trip
+POST   /api/author/listings/:id/duplicate  copies into a new, dateless draft
 
 GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
 POST   /api/author/venues               creates one; 409 names the venue it resembles
@@ -338,6 +342,35 @@ be the status of every event that ever happened, and the queue counts, the
 dashboard filters and every future report would describe a catalogue that is
 mostly the past. The day of grace is because a gig that ended at 2am is still
 being looked up at 9am.
+
+## Counting, and what is deliberately not counted
+
+An organizer who can see that 400 people looked at their listing has a reason
+to post the next one. That is the whole justification for `listing_stats`
+(migration 0011), and it is why the numbers are on the dashboard row rather
+than behind an analytics tab.
+
+**A daily counter, not an event log.** `POST /api/catalog/listings/:slug/events`
+upserts into `(listing_id, day)` — one statement, off the response path,
+bounded at one row per listing per day. An event log with a row per view is the
+obvious alternative and it is the shape that makes this the largest table in the
+database within a month, needs a retention policy nobody will write, and buys
+precision no criterion asks for. What it costs, said now rather than discovered
+later: no per-visitor detail, no funnel, no referrer. The day any of those is
+wanted, a rollup is what an event log would have produced anyway.
+
+**The beacon is a POST from JavaScript, and that is the bot filter.** A crawler
+fetching the page never runs it, which removes the largest source of noise
+without a user-agent list to maintain. A view is deduplicated per browser tab
+session, so a reload is not a second person; a click is not, because going to
+the ticket page twice is two clicks.
+
+**Nothing here identifies anybody.** No cookie is read, no IP is stored, and
+the row has no dimension but the day — so there is nothing to disclose beyond
+"we count views" and nothing to delete when an account is (#29).
+
+The day is Kathmandu's. A Friday gig is looked up until 2am, and a UTC boundary
+would file half of those views under Saturday.
 
 ## Leaving
 

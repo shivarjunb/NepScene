@@ -5,6 +5,7 @@ import { authorMediaRoutes } from './author/media'
 import { authorLookupRoutes } from './author/lookups'
 import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
+import { dashboardRoutes } from './author/dashboard'
 import { moderationRoutes } from './author/moderation'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
@@ -56,6 +57,7 @@ app.route('/api/author', authorWriteRoutes)
 app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
 app.route('/api/author', moderationRoutes)
+app.route('/api/author', dashboardRoutes)
 
 app.notFound((c) =>
   errorResponse(new ApiError(404, 'not_found', 'No such endpoint'), requestId(c)),

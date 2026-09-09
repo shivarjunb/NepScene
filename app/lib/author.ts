@@ -243,6 +243,46 @@ export const submitListing = (id: string) =>
     `/api/author/listings/${encodeURIComponent(id)}/submit`, { method: 'POST' },
   )
 
+// ── The organizer's own listings (#34) ──────────────────────────────────────
+
+export type DashboardListing = {
+  id: string; slug: string; title: string; status: string
+  listing_type: string
+  starts_at: string | null; updated_at: string; published_at: string | null
+  rejection_reason: string | null
+  venue_name: string | null
+  media_count: number
+  views: number
+  clicks: number
+}
+
+export type Dashboard = {
+  data: DashboardListing[]
+  counts: Record<string, number>
+  page: { limit: number; offset: number; has_more: boolean }
+}
+
+export const fetchDashboard = (
+  { status, query, offset = 0 }: { status?: string; query?: string; offset?: number } = {},
+) => {
+  const params = new URLSearchParams()
+  if (status) params.set('status', status)
+  if (query) params.set('q', query)
+  if (offset) params.set('offset', String(offset))
+  const suffix = params.toString()
+  return request<Dashboard>(`/api/author/dashboard${suffix ? `?${suffix}` : ''}`)
+}
+
+export const duplicateListing = (id: string) =>
+  request<{ id: string; slug: string; status: string }>(
+    `/api/author/listings/${encodeURIComponent(id)}/duplicate`, { method: 'POST' },
+  )
+
+export const archiveListing = (id: string) =>
+  request<{ id: string; slug: string; status: string }>(
+    `/api/author/listings/${encodeURIComponent(id)}/archive`, { method: 'POST' },
+  )
+
 // ── Moderation (#33) ────────────────────────────────────────────────────────
 
 export type QueueEntry = {
