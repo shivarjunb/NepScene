@@ -60,7 +60,7 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 | [#32](../../issues/32) | Map pin appearance and popup customisation |
 | [#33](../../issues/33) | Publication workflow and moderation queue |
 | [#34](../../issues/34) | Organizer dashboard |
-| [#35](../../issues/35) | Decision: recurring and multi-date events · *spike, 3 days* |
+| [#35](../../issues/35) | Decision: recurring and multi-date events · *spike — decided, see [RECURRING_EVENTS.md](RECURRING_EVENTS.md)* |
 
 ## M3 — Map discovery
 *The map works against real listings.*
@@ -73,6 +73,8 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 | [#38](../../issues/38) | Geolocation, distance filtering and the hero map |
 | [#39](../../issues/39) | Map performance at catalogue scale |
 | [#40](../../issues/40) | Map accessibility and a non-map fallback |
+| [#81](../../issues/81) | Occurrence model and the read path · *from the #35 decision* |
+| [#82](../../issues/82) | Authoring recurring and multi-date events · *from the #35 decision* |
 
 ## M4 — Public site
 *Publicly usable and findable.*

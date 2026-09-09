@@ -100,6 +100,15 @@ Notable differences from the WaahTickets schema:
 | No provenance | `source` column | A publicly writable catalogue must know who wrote what |
 | `map_pin_icon` set independently of `event_type` | Pin appearance derived from the primary category | Two fields for one fact drift; WaahTickets needed a separate `pinCategory` to reconcile them |
 
+**One date per listing, for now.** `listings.starts_at` and `ends_at` hold a
+single occurrence, which is enough for a gig and wrong for a festival, a
+theatre run or a weekly residency. The model that replaces it was decided in
+#35 — one listing, many materialised occurrence rows, with any recurrence rule
+demoted to an authoring convenience that generates them — and is written up in
+[RECURRING_EVENTS.md](RECURRING_EVENTS.md), with the implementation in #81 and
+#82. Nothing here anticipates it; the point of that document is that it does
+not have to.
+
 ## API contracts
 
 ### Catalog API (public, read-only)
