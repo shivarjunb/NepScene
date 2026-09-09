@@ -14,12 +14,13 @@ const sheets = () => ({
   components: env.COMPONENTS_CSS,
   base: env.BASE_CSS,
   shell: env.SHELL_CSS,
+  author: env.AUTHOR_CSS,
 })
 
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('the token layer is the only place colour is written', () => {
-  it.each(['components', 'base', 'shell'] as const)(
+  it.each(['components', 'base', 'shell', 'author'] as const)(
     '%s.css contains no literal hex colour',
     (name) => {
       const found = stripComments(sheets()[name]).match(/#[0-9a-fA-F]{3,8}\b/g) ?? []
@@ -27,7 +28,7 @@ describe('the token layer is the only place colour is written', () => {
     },
   )
 
-  it.each(['components', 'base', 'shell'] as const)(
+  it.each(['components', 'base', 'shell', 'author'] as const)(
     '%s.css names no colour function outside a token',
     (name) => {
       // rgb()/hsl() with numbers is a literal by another spelling.
@@ -38,7 +39,7 @@ describe('the token layer is the only place colour is written', () => {
 })
 
 describe('stacking order is a named scale', () => {
-  it.each(['components', 'base', 'shell'] as const)(
+  it.each(['components', 'base', 'shell', 'author'] as const)(
     '%s.css uses z-index tokens, never a number',
     (name) => {
       const declarations = stripComments(sheets()[name]).match(/z-index:\s*[^;]+/g) ?? []

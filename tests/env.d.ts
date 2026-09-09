@@ -14,6 +14,7 @@ declare global {
       COMPONENTS_CSS: string
       BASE_CSS: string
       SHELL_CSS: string
+      AUTHOR_CSS: string
     }
   }
 }
