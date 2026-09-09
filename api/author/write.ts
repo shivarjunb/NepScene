@@ -10,6 +10,7 @@ import { mediaUrl } from '../catalog/serialize'
 import { requirePermission, type AuthVariables } from '../identity/middleware'
 import { loadEditableListing } from './access'
 import { LISTING_TYPES, validateListing, type ListingInput, type ListingType } from './validate'
+import { parsePopupConfig, serialisePopupConfig } from './popupConfig'
 
 /**
  * Create, read-for-edit and update (#30). The status verbs live in
@@ -79,7 +80,15 @@ export function parseListingInput(body: unknown): Partial<ListingInput> {
   if (raw.offer_url !== undefined) input.offer_url = str(raw.offer_url) ?? null
   if (raw.location_lat !== undefined) input.location_lat = num(raw.location_lat) ?? null
   if (raw.location_lng !== undefined) input.location_lng = num(raw.location_lng) ?? null
-  if (raw.map_popup_config !== undefined) input.map_popup_config = raw.map_popup_config ?? null
+  // Validated rather than passed through (#32). It arrives as arbitrary JSON,
+  // is stored, and is later rendered on a public map — so the field set is
+  // closed and the labels are capped here, at the boundary, not in whichever
+  // component happens to read it.
+  if (raw.map_popup_config !== undefined) {
+    input.map_popup_config = raw.map_popup_config === null
+      ? null
+      : serialisePopupConfig(parsePopupConfig(raw.map_popup_config))
+  }
 
   const categories = strings(raw.category_slugs)
   if (categories) input.category_slugs = [...new Set(categories)]

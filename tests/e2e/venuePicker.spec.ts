@@ -236,6 +236,11 @@ test('the venue picker is operable from the keyboard alone', async ({ page }) =>
   await page.goto('/submit')
   await toWhere(page)
 
+  // Let autosave land first. Its 1.5s debounce re-renders the wizard, and a
+  // re-render arriving between focusing a result and pressing Enter is a
+  // keystroke delivered to nothing — which is a flake, not a finding.
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+
   const search = page.getByLabel('Venue', { exact: true })
   await search.focus()
   await page.keyboard.type('Patan')
@@ -243,6 +248,7 @@ test('the venue picker is operable from the keyboard alone', async ({ page }) =>
   const result = page.getByRole('button', { name: /Patan Durbar Square/ })
   await expect(result).toBeVisible()
   await result.focus()
+  await expect(result).toBeFocused()
   await page.keyboard.press('Enter')
 
   await expect(page.getByRole('button', { name: 'Change venue' })).toBeVisible()

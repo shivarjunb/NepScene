@@ -16,8 +16,8 @@ These are good and should be moved with minimal change.
 | `apps/web/src/features/public/HeroLiveMap.tsx` | `app/public/map/HeroMap.tsx` | Keep IP city detection, distance chips |
 | `apps/web/src/features/public/heroMapStyles.css` | `app/styles/map.css` | Remove dead Leaflet class names |
 | `apps/web/src/features/admin/MapLocationPicker.tsx` | `app/author/MapLocationPicker.tsx` | Already on Google Maps |
-| `apps/web/src/features/admin/MapPinAppearance.tsx` | `app/author/MapPinAppearance.tsx` | Leaflet residue to clean |
-| `apps/web/src/features/admin/MapPopupCustomizer.tsx` | `app/author/MapPopupCustomizer.tsx` | |
+| `apps/web/src/features/admin/MapPopupCustomizer.tsx` | `app/author/AppearanceStep.tsx` | Field set closed on the way in; ported #32 |
+| `apps/web/src/features/public/EventMapPopup.tsx` | `app/map/ListingPopup.tsx` | Ported early, in #32, so the wizard previews the real thing |
 | `apps/web/src/shared/utils.tsx` | `app/shared/utils.ts` | Drop money helpers |
 | `src/utils/errors.ts` | `api/utils/errors.ts` | |
 
@@ -57,6 +57,8 @@ Findings from the 2026-08-20 audit that touch code we are porting:
 |---|---|
 | **F4** — public events endpoint unbounded and serving finished events | Catalog API is paginated and upcoming-by-default from day one (`CORE-009` equivalent, folded into the Catalog API feature) |
 | **F7** — `tests/ads.test.ts` ad rotation returns `undefined` | Fix before porting the ad platform, or leave ads out of MVP |
+| `MapPinAppearance.tsx` — an icon and colour picker independent of the event's category | **Not ported** (#32). It is why the map needed a separate `pinCategory` to reconcile the pin with the filter chips, and the two drifted anyway. Appearance is derived from the primary category instead (`api/catalog/pin.ts`) |
+| `MapWizardPreview.tsx` — built a `map-leaflet-pin` HTML string with `pin-ripple` children that the Google map never rendered, then drew a plain circle instead | **Not ported.** The preview now mounts the same marker SVG and the same popup component the public map will (#36), so there is nothing separate left to drift |
 | Upstash cache wrapper (dead backend added ~1.7s/request in prod) | Not ported — replaced by Cache API + KV, see ARCHITECTURE.md |
 | Partial Google Maps migration | Finish it — remove Leaflet class names and dead CSS during the port |
 | `date-utils.ts` is an empty file | Delete rather than port |

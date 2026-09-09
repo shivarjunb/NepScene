@@ -12,8 +12,9 @@ import { navigate } from '../router'
 import { browserStorage, clearDraft, isWorthRecovering, loadDraft, type StoredDraft } from './draftStore'
 import { useDraft } from './useDraft'
 import {
-  AppearanceStep, DetailsStep, MediaStep, ReviewStep, WhenStep, WhereStep,
+  DetailsStep, MediaStep, ReviewStep, WhenStep, WhereStep,
 } from './steps'
+import { AppearanceStep } from './AppearanceStep'
 
 /**
  * The listing creation wizard (#30) — the WaahTickets `CreateEventWizard` with
@@ -363,7 +364,9 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
             if (listingId) void fetchListing(listingId).then((saved) => setMedia(saved.media))
           }} />
         )}
-        {step === 'appearance' && <AppearanceStep listing={listing} lookups={lookups} />}
+        {step === 'appearance' && (
+          <AppearanceStep listing={listing} set={set} lookups={lookups} />
+        )}
         {step === 'review' && (
           <ReviewStep listing={listing} set={set} lookups={lookups}
                       errors={allErrors} onJump={jumpToField} />
