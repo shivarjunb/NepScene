@@ -9,7 +9,7 @@ import {
   checkDerivative, contentHash, derivativeKey, FORMATS, MAX_ORIGINAL_BYTES,
   MIME_BY_FORMAT, originalKey, sizeOf, widthsFor, type Format,
 } from '../media/pipeline'
-import { loadEditableListing } from './listings'
+import { loadEditableListing } from './access'
 
 /**
  * The write half of the media pipeline (#25): bytes go to R2 under a key

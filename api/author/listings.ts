@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
-import { ApiError, badRequest, notFound } from '../lib/http'
+import { badRequest } from '../lib/http'
 import { auditStatement, recordAudit } from '../lib/audit'
 import { bumpCatalogVersion } from '../lib/cache'
 import { requirePermission, type AuthVariables } from '../identity/middleware'
-import { can, type Permission, type Role } from '../identity/roles'
+import type { Permission } from '../identity/roles'
+import { loadEditableListing } from './access'
+import { validateForSubmission } from './write'
 
 /**
  * The publication workflow's API surface (#20's state transitions, #23's
@@ -12,29 +14,6 @@ import { can, type Permission, type Role } from '../identity/roles'
  * through — is #33; this is the verb underneath it.
  */
 export const authorListingRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
-
-type Listing = { id: string; slug: string; status: string; created_by: string | null; organization_id: string | null }
-
-export async function loadEditableListing(
-  env: Env, userId: string, role: Role, listingId: string,
-): Promise<Listing> {
-  const listing = await env.DB.prepare(
-    'SELECT id, slug, status, created_by, organization_id FROM listings WHERE id = ?1',
-  ).bind(listingId).first<Listing>()
-  if (!listing) throw notFound('No such listing')
-
-  if (can(role, 'listing:edit_any')) return listing
-  if (listing.created_by === userId) return listing
-
-  if (listing.organization_id) {
-    const membership = await env.DB.prepare(
-      'SELECT 1 AS ok FROM organization_users WHERE organization_id = ?1 AND user_id = ?2',
-    ).bind(listing.organization_id, userId).first<{ ok: number }>()
-    if (membership) return listing
-  }
-
-  throw new ApiError(403, 'forbidden', 'That listing belongs to someone else')
-}
 
 /**
  * The publication state machine (#20). `from` is not decoration: it goes into
@@ -68,6 +47,24 @@ for (const [verb, transition] of Object.entries(TRANSITIONS)) {
 
       if (listing.status === transition.to) {
         throw badRequest('already_in_state', `That listing is already ${transition.to}`)
+      }
+
+      // Where the rules finally bite (#30). Everything up to here accepts a
+      // half-written listing, because that is what a draft is; leaving the
+      // catalogue is the moment it has to be complete. The errors come back
+      // per field so the wizard can send the author to the step that is wrong
+      // rather than to a paragraph of prose.
+      if (verb === 'submit') {
+        const errors = await validateForSubmission(c.env, listing.id)
+        if (errors.length > 0) {
+          return c.json({
+            error: {
+              code: 'incomplete_listing',
+              message: 'Some things still need filling in before this can be reviewed',
+              fields: errors,
+            },
+          }, 400)
+        }
       }
 
       const now = new Date().toISOString()

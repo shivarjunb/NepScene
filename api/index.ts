@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import type { Env } from './env'
 import { authorListingRoutes } from './author/listings'
 import { authorMediaRoutes } from './author/media'
+import { authorLookupRoutes } from './author/lookups'
+import { authorWriteRoutes } from './author/write'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
 import { accountRoutes } from './identity/account'
@@ -45,6 +47,8 @@ app.route('/api/media', mediaRoutes)
 app.route('/api/auth/google', googleRoutes)
 app.route('/api/auth', accountRoutes)
 app.route('/api/auth', identityRoutes)
+app.route('/api/author', authorLookupRoutes)
+app.route('/api/author', authorWriteRoutes)
 app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
 

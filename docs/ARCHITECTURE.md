@@ -132,10 +132,36 @@ POST /api/auth/sessions/revoke-all  sign out everywhere
 GET  /api/auth/google/start         authorization code flow with PKCE
 GET  /api/auth/google/callback
 
+GET    /api/author/lookups              categories, venues, artists, orgs, tags — one batch
+GET    /api/author/listings             the author's own work, newest first
+POST   /api/author/listings             creates a draft; accepts an incomplete one
+GET    /api/author/listings/:id         edit mode's load, one round trip
+PATCH  /api/author/listings/:id         the autosave target; partial by construction
+DELETE /api/author/listings/:id
+POST   /api/author/listings/:id/submit  validates; 400 lists the fields still missing
+POST   /api/author/listings/:id/publish editor and above
+POST   /api/author/listings/:id/{reject,archive,unpublish}
+
 POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
 POST   /api/author/media/sweep         admin; reclaims unreferenced R2 objects
 ```
+
+**A draft is not validated; a submission is.** The wizard autosaves every few
+seconds and a half-written listing is the normal state of a draft, so `POST` and
+`PATCH` accept anything that parses. The rules in `api/author/validate.ts` gate
+the `draft → pending_review` transition and nothing before it, and a refusal
+comes back as `{ error: { code: 'incomplete_listing', fields: [{ field, message }] } }`
+so the wizard can send the author to the step that is wrong.
+
+That module is the one file shared between the Worker and the browser. The read
+types are mirrored rather than imported (`app/lib/catalog.ts` says why), but
+rules are not additive the way types are: two copies of "an external listing
+needs a ticket URL" drift silently. It stays free of platform globals so both
+halves can compile it.
+
+Write handlers report `x-d1-round-trips` exactly as the read path does. The
+budget is 1 for a lookup or an edit-mode load, 2 for a create or an update.
 
 Shared feed parameters: `category`, `tag`, `artist`, `city`, `venue`, `organizer`, `type`,
 `featured`, `from`, `to`, `include_past`, `cursor`, `limit` (max 50). Responses

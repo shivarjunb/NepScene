@@ -1,6 +1,7 @@
 import type { Context } from 'hono'
 import type { Env } from '../env'
 import type { ReadSession } from '../lib/d1'
+import { withRoundTrips } from '../lib/d1'
 import { decodeCursor, encodeCursor } from '../lib/cursor'
 import { boundingBox, haversineKm } from '../lib/geo'
 import { badRequest, boolParam, dateParam, floatParam, intParam } from '../lib/http'
@@ -25,10 +26,7 @@ export const SEARCH_PARAMS = [...FEED_PARAMS, 'q', 'lat', 'lng', 'radius_km'] as
 export type CatalogContext = Context<{ Bindings: Env }>
 
 /** Every catalog handler reports its D1 round trips; the budget is 1–3. */
-export function withRoundTrips(response: Response, session: ReadSession): Response {
-  response.headers.set('x-d1-round-trips', String(session.roundTrips))
-  return response
-}
+export { withRoundTrips }
 
 export function limitParam(url: URL): number {
   return intParam(url.searchParams.get('limit') ?? undefined, {
