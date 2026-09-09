@@ -491,3 +491,487 @@
     align-items: stretch;
   }
 }
+
+/* ── Moderation queue (#33) ────────────────────────────────────────────────
+   A worklist, not a dashboard: rows are dense, the flagged ones are visibly
+   different, and the actions sit at a fixed place on every row so a run of
+   decisions is one repeated movement rather than a hunt. */
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.queue__header h1 { margin: 0; }
+
+.queue__signed-in {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__tabs {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: thin;
+}
+
+.queue__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-extrabold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.queue__tab.is-current {
+  border-color: var(--border-strong);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}
+
+.queue__count {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.queue__tab.is-current .queue__count {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+
+/* The bulk bar sticks: an editor scrolling a page of forty must not lose the
+   actions for the thirty they have already ticked. */
+.queue__bulk {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.queue__select-all {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+/* Flagged rows are marked on the edge as well as by the alert inside them, so
+   a page of forty shows at a glance which two need thought. */
+.queue__row--flagged {
+  border-inline-start: 3px solid var(--warning);
+}
+
+.queue__row-main {
+  display: flex;
+  flex: 1 1 20rem;
+  gap: var(--space-5);
+}
+
+.queue__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.queue__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+}
+
+.queue__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.queue__pick input { margin-block-start: var(--space-2); }
+
+.queue__reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.queue__reject h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.queue__reject-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.queue__empty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 40rem) {
+  .queue__row,
+  .queue__row-actions { width: 100%; }
+}
+
+/* ── Organizer dashboard (#34) ─────────────────────────────────────────────
+   Shares the queue's tab pills — they are the same object doing the same job,
+   and two visual languages for "listings by state" inside one product is one
+   too many. What is different is the row: this one carries numbers, because
+   the numbers are the reason to come back. */
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.board__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.board__header h1 { margin: 0; }
+
+.board__signed-in {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.board__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.board__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.board__controls .field { min-width: 14rem; }
+
+.board__locals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board__locals li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.board__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board__row {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.board__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.board__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+}
+
+.board__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__stats {
+  display: flex;
+  gap: var(--space-7);
+  margin: 0;
+}
+
+.board__stats dt {
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.board__stats dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-extrabold);
+}
+
+.board__stats-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.board__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  grid-column: 1 / -1;
+}
+
+.board__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+  text-align: start;
+}
+
+.board__empty h2 { margin: 0; }
+.board__empty p { margin: 0; max-width: 42ch; color: var(--text-secondary); }
+
+@media (max-width: 46rem) {
+  .board__row { grid-template-columns: minmax(0, 1fr); }
+  .board__stats { flex-wrap: wrap; gap: var(--space-6); }
+}
+
+/* ── Map pin and popup (#32) ───────────────────────────────────────────────
+   Named for what they are rather than for the library that used to draw them.
+   WaahTickets' `map-leaflet-pin`, `pin-ripple` and `map-wizard-preview-leaflet`
+   outlived Leaflet by a whole migration; nothing here mentions a renderer. */
+
+.pin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(18rem, 100%);
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--pin-color, var(--accent));
+  border-radius: var(--radius-xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pin-card__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-extrabold);
+  line-height: 1.25;
+}
+
+.pin-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pin-card__row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.pin-card__row dt {
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pin-card__row dd {
+  margin: 0;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.pin-card__open {
+  padding: var(--space-3) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--pin-color, var(--accent));
+  color: var(--text-on-accent);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+/* ── The appearance step ─────────────────────────────────────────────────── */
+
+.appearance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.appearance__split {
+  display: grid;
+  gap: var(--space-7);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.appearance__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.appearance__field {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.appearance__field.is-hidden { opacity: 0.55; }
+
+.appearance__move {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.appearance__move button {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--surface-raised);
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-3xs);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.appearance__move button[disabled] { opacity: 0.4; cursor: default; }
+
+.appearance__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+.appearance__map {
+  width: min(20rem, 100%);
+  height: 12rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+}
+
+.appearance__pin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.appearance__legend {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 44rem) {
+  .appearance__split { grid-template-columns: minmax(0, 1fr); }
+}

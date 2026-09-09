@@ -18,10 +18,15 @@ async function signIn(email: string, role: 'visitor' | 'organizer' | 'editor' | 
   return { cookie, id }
 }
 
-const act = (cookie: string, id: string, verb: string) =>
+const act = (cookie: string, id: string, verb: string, body?: Record<string, unknown>) =>
   SELF.fetch(`https://nepscene.test/api/author/listings/${id}/${verb}`, {
-    method: 'POST', headers: { cookie },
+    method: 'POST',
+    headers: body ? { cookie, 'content-type': 'application/json' } : { cookie },
+    body: body ? JSON.stringify(body) : undefined,
   })
+
+/** A rejection has to say why (#33), so every rejection here carries one. */
+const REASON = 'The date is wrong — this is next month, not this one.'
 
 const statusOf = async (id: string) =>
   (await env.DB.prepare('SELECT status FROM listings WHERE id = ?1').bind(id)
@@ -61,10 +66,40 @@ describe('publication workflow', () => {
     expect(row!.published_at).toBeTruthy()
   })
 
-  it('lets an editor reject a submission', async () => {
+  it('lets an editor reject a submission, with the reason on the row', async () => {
     const { cookie } = await signIn('editor3@example.np', 'editor')
-    expect((await act(cookie, 'lst_pending', 'reject')).status).toBe(200)
+    expect((await act(cookie, 'lst_pending', 'reject', { reason: REASON })).status).toBe(200)
     expect(await statusOf('lst_pending')).toBe('rejected')
+
+    // Denormalised onto the listing, not left in the audit log's JSON: the
+    // author has to be shown it on every load of their own listing (#33).
+    const row = await env.DB.prepare('SELECT rejection_reason FROM listings WHERE id = ?1')
+      .bind('lst_pending').first<{ rejection_reason: string | null }>()
+    expect(row!.rejection_reason).toBe(REASON)
+  })
+
+  it('refuses a rejection that does not say why', async () => {
+    const { cookie } = await signIn('editor-silent@example.np', 'editor')
+
+    for (const body of [undefined, {}, { reason: '   ' }, { reason: 'no' }]) {
+      const response = await act(cookie, 'lst_pending', 'reject', body)
+      expect(response.status).toBe(400)
+      expect(((await response.json()) as any).error.code).toBe('reason_required')
+    }
+    // Refused, not merely unrecorded: an author told nothing cannot resubmit.
+    expect(await statusOf('lst_pending')).toBe('pending_review')
+  })
+
+  it('clears the reason when the author resubmits', async () => {
+    const { cookie } = await signIn('editor-cycle@example.np', 'editor')
+    await act(cookie, 'lst_pending', 'reject', { reason: REASON })
+    await act(cookie, 'lst_pending', 'submit')
+
+    // The author needs to know what to fix now. The old argument stays in the
+    // audit log, which is where history belongs.
+    const row = await env.DB.prepare('SELECT rejection_reason FROM listings WHERE id = ?1')
+      .bind('lst_pending').first<{ rejection_reason: string | null }>()
+    expect(row!.rejection_reason).toBeNull()
   })
 
   it('will not let an organizer publish their own work', async () => {

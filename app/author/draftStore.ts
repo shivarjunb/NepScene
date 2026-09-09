@@ -95,6 +95,40 @@ export function loadDraft(
 }
 
 /**
+ * Every draft this device is holding, newest first (#34).
+ *
+ * The dashboard needs this because the wizard's own recovery prompt only
+ * appears if you go back to the page the draft belongs to — which is exactly
+ * what someone who abandoned a draft on a phone three days ago will not do.
+ * The entry point has to be somewhere they *do* go.
+ *
+ * Enumeration is not part of `DraftStorage`, which is deliberately the three
+ * methods the wizard needs so that `memoryStorage()` can stand in for tests.
+ * The key list is read from `localStorage` directly and defensively: it throws
+ * outright in some privacy modes, and there is nothing to recover in that case
+ * anyway.
+ */
+export function listLocalDrafts(
+  storage: DraftStorage, now = Date.now(),
+): { id: string | null; draft: StoredDraft }[] {
+  const keys = quietly(() => {
+    const store = globalThis.localStorage as Storage | undefined
+    if (!store) return [] as string[]
+    return Object.keys(store).filter((key) => key.startsWith(PREFIX))
+  }, [] as string[])
+
+  return keys
+    .map((key) => {
+      const suffix = key.slice(PREFIX.length)
+      const id = suffix === NEW ? null : suffix
+      const draft = loadDraft(storage, id, now)
+      return draft && isWorthRecovering(draft) ? { id, draft } : null
+    })
+    .filter((entry): entry is { id: string | null; draft: StoredDraft } => entry !== null)
+    .sort((a, b) => b.draft.savedAt.localeCompare(a.draft.savedAt))
+}
+
+/**
  * Fills a stored object out to a whole `ListingInput`, taking each field only
  * when it is the right type. A field the stored draft never had comes back at
  * its default, so a draft written before a field existed still opens.

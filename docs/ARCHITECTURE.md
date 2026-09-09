@@ -100,6 +100,15 @@ Notable differences from the WaahTickets schema:
 | No provenance | `source` column | A publicly writable catalogue must know who wrote what |
 | `map_pin_icon` set independently of `event_type` | Pin appearance derived from the primary category | Two fields for one fact drift; WaahTickets needed a separate `pinCategory` to reconcile them |
 
+**One date per listing, for now.** `listings.starts_at` and `ends_at` hold a
+single occurrence, which is enough for a gig and wrong for a festival, a
+theatre run or a weekly residency. The model that replaces it was decided in
+#35 — one listing, many materialised occurrence rows, with any recurrence rule
+demoted to an authoring convenience that generates them — and is written up in
+[RECURRING_EVENTS.md](RECURRING_EVENTS.md), with the implementation in #81 and
+#82. Nothing here anticipates it; the point of that document is that it does
+not have to.
+
 ## API contracts
 
 ### Catalog API (public, read-only)
@@ -107,6 +116,7 @@ Notable differences from the WaahTickets schema:
 ```
 GET  /api/catalog/listings          cursor-paginated, upcoming by default
 GET  /api/catalog/listings/:slug
+POST /api/catalog/listings/:slug/events  the view/click beacon; 202, no body
 GET  /api/catalog/venues
 GET  /api/catalog/venues/:slug
 GET  /api/catalog/organizers/:slug
@@ -140,7 +150,15 @@ PATCH  /api/author/listings/:id         the autosave target; partial by construc
 DELETE /api/author/listings/:id
 POST   /api/author/listings/:id/submit  validates; 400 lists the fields still missing
 POST   /api/author/listings/:id/publish editor and above
-POST   /api/author/listings/:id/{reject,archive,unpublish}
+POST   /api/author/listings/:id/reject   body: { reason } — refused without one
+POST   /api/author/listings/:id/{archive,unpublish}
+POST   /api/author/listings/:id/merge   body: { into } — folds this one into that
+
+GET    /api/author/queue?status=        the moderation queue, oldest first
+POST   /api/author/queue/actions        body: { action, ids[], reason? } — max 50
+
+GET    /api/author/dashboard            your own listings, with view counts; one round trip
+POST   /api/author/listings/:id/duplicate  copies into a new, dateless draft
 
 GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
 POST   /api/author/venues               creates one; 409 names the venue it resembles
@@ -274,6 +292,122 @@ uploads no derivatives and its original is served alone.
 
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
+
+## Publication: the path out of a draft
+
+The state machine is migration 0004 and `TRANSITIONS` in `api/author/listings.ts`
+— one table, and every status write goes through it. The queue, the bulk action
+and the merge in `api/author/moderation.ts` add no transition of their own: a
+bulk action that could reach a state the single action cannot would be a hole in
+the state machine with a friendly name on it.
+
+**A rejection is refused without a reason.** The author reads what the editor
+types, verbatim, and "rejected" on its own tells them nothing they can act on.
+The check is in the handler rather than the form, because a reason a client may
+omit is a reason that will be omitted — by the bulk action, by a script, by the
+next client. The reason is denormalised onto `listings.rejection_reason`
+(migration 0010) and cleared by every move that is not a rejection; the history
+stays in the audit log, which is what an audit log is for.
+
+**Trusted authors do not wait, but they do not skip review either.** An editor
+publishing their own listing submits and publishes in one motion — two
+transitions, both audited — rather than moving `draft → published`, which the
+state machine does not have. The distinction matters when someone asks later
+who reviewed a listing: the answer is always a name and a timestamp, even when
+it is the author's own.
+
+**Duplicate detection runs at submission and flags rather than refuses.** The
+asymmetry with the venue check (which refuses) is about who is next. A duplicate
+venue is created by the author, seen by nobody, and merged by nobody. A
+duplicate listing goes straight to a moderator about to look at both, so the
+flag has a reader — and refusing a genuine second event that merely resembles
+the first would be worse than a warning an editor can dismiss. The score is
+stored on the row (`suspected_duplicate_of`, `duplicate_score`) rather than
+recomputed, because recomputing would put a similarity search inside the one
+screen that is worked through in bulk.
+
+Three signals, weighted 0.5 / 0.3 / 0.2 across title, time and place, with a
+threshold of 0.75 — and a *contradicted* place vetoes outright, whatever the
+title says, because the same tribute night in Kathmandu and in Pokhara is two
+gigs. A listing needs three signals where a venue needed two: a venue's name is
+close to an identity, and "Open Mic Night" is the title of fifty-two different
+events a year. The numbers are reasoned rather than measured — there is no
+corpus of known-duplicate Nepali listings yet — so the calibration lives in
+`tests/unit/listingMatch.test.ts` as the cases they must get right.
+
+**Merging: the survivor wins every field it has an answer for, the loser fills
+the blanks.** Not "longest wins", which rewards padding; not "newest wins",
+since the second submission is usually the thinner one, which is why it looked
+like a duplicate. Sets — categories, tags, artists — are unioned. Media *moves*
+rather than being copied, so no R2 object ends up with two owners. The loser is
+archived pointing at the survivor rather than deleted: its slug has to stay
+redirectable (#24), and its author deserves to be shown where it went.
+
+**Auto-archive is the Worker's one cron**, at 18:15 UTC — midnight in Kathmandu.
+It archives published listings whose `COALESCE(ends_at, starts_at)` passed more
+than 24 hours ago, a hundred at a time. The read path already hides finished
+events, so this is not about what the public sees: without it, `published` would
+be the status of every event that ever happened, and the queue counts, the
+dashboard filters and every future report would describe a catalogue that is
+mostly the past. The day of grace is because a gig that ended at 2am is still
+being looked up at 9am.
+
+## The pin and the popup
+
+Pin appearance is a **function of the primary category**, never a stored field
+(`api/catalog/pin.ts`). WaahTickets carried a `map_pin_icon` an author could set
+independently, then needed a separate `pinCategory` concept to reconcile the pin
+with the filter chips, and the two drifted anyway. One value read twice cannot
+disagree with itself, so the wizard's map step shows the pin rather than
+offering to change it, and the way to change it is to change the category.
+
+What *is* customisable is the popup: which of a **closed** set of fields shows,
+in what order, under what label (`api/author/popupConfig.ts`). Closed, because
+the field name was previously rendered as a key lookup — an unknown field was a
+blank row nobody could explain — and because a stored label is arbitrary text
+that ends up on a public page. Labels are capped and the whole config is
+validated at the write boundary rather than wherever it is next read.
+
+**The default config is stored as `NULL`.** Reset is therefore a clearing, and a
+later change to the defaults reaches every listing that never overrode them
+instead of only the ones created after it.
+
+`app/map/` holds the marker SVG and the popup component. They live there rather
+than under `author/` because the wizard's preview has to be accurate against the
+*real* map component, and the only way to make that a fact rather than an
+aspiration is for there to be one component. WaahTickets had two — a preview
+that assembled an HTML string full of Leaflet class names, and a map that drew a
+plain circle — and they had drifted apart before anybody noticed. #36 mounts
+these same two files on the public map.
+
+## Counting, and what is deliberately not counted
+
+An organizer who can see that 400 people looked at their listing has a reason
+to post the next one. That is the whole justification for `listing_stats`
+(migration 0011), and it is why the numbers are on the dashboard row rather
+than behind an analytics tab.
+
+**A daily counter, not an event log.** `POST /api/catalog/listings/:slug/events`
+upserts into `(listing_id, day)` — one statement, off the response path,
+bounded at one row per listing per day. An event log with a row per view is the
+obvious alternative and it is the shape that makes this the largest table in the
+database within a month, needs a retention policy nobody will write, and buys
+precision no criterion asks for. What it costs, said now rather than discovered
+later: no per-visitor detail, no funnel, no referrer. The day any of those is
+wanted, a rollup is what an event log would have produced anyway.
+
+**The beacon is a POST from JavaScript, and that is the bot filter.** A crawler
+fetching the page never runs it, which removes the largest source of noise
+without a user-agent list to maintain. A view is deduplicated per browser tab
+session, so a reload is not a second person; a click is not, because going to
+the ticket page twice is two clicks.
+
+**Nothing here identifies anybody.** No cookie is read, no IP is stored, and
+the row has no dimension but the day — so there is nothing to disclose beyond
+"we count views" and nothing to delete when an account is (#29).
+
+The day is Kathmandu's. A Friday gig is looked up until 2am, and a UTC boundary
+would file half of those views under Saturday.
 
 ## Leaving
 

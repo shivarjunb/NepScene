@@ -4,6 +4,9 @@ import { NotFound } from './pages/NotFound'
 import { DesignSystem } from './pages/DesignSystem'
 import { Discover } from './pages/Discover'
 import { SubmitPage } from './author/SubmitPage'
+import { QueuePage } from './moderation/QueuePage'
+import { DashboardPage } from './author/DashboardPage'
+import { ListingRoute } from './pages/ListingRoute'
 
 /**
  * Every path the shell links to, in one table.
@@ -47,6 +50,18 @@ export const ROUTES: Route[] = [
     title: 'Submit an event',
     summary: 'The listing wizard: what, where, when, and a picture.',
     element: <SubmitPage listingId={null} />,
+  },
+  {
+    path: '/dashboard',
+    title: 'Your listings',
+    summary: 'Everything you have listed, what state it is in, and how many people looked.',
+    element: <DashboardPage />,
+  },
+  {
+    path: '/moderate',
+    title: 'Moderation queue',
+    summary: 'Everything waiting for review, oldest first, with the duplicates already flagged.',
+    element: <QueuePage />,
   },
   {
     path: '/about',
@@ -95,12 +110,14 @@ export function renderRoute(path: string): ReactNode {
 
   if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
     return (
-      <Placeholder
-        title="Listing"
-        summary="The full listing: description, media, artists, the venue on a map, and the offer if it carries one."
-        issue={43}
-        milestone="M4 — Public site"
-      />
+      <ListingRoute slug={path.slice(LISTING_PREFIX.length)}>
+        <Placeholder
+          title="Listing"
+          summary="The full listing: description, media, artists, the venue on a map, and the offer if it carries one."
+          issue={43}
+          milestone="M4 — Public site"
+        />
+      </ListingRoute>
     )
   }
 

@@ -6,14 +6,15 @@ import {
 import { Alert, Button, Card, Spinner } from '../components/primitives'
 import {
   AuthorError, fetchListing, fetchLookups, publishListing, submitListing,
-  type Account, type Lookups, type SavedListing,
+  type Account, type DuplicateFlag, type Lookups, type SavedListing,
 } from '../lib/author'
 import { navigate } from '../router'
 import { browserStorage, clearDraft, isWorthRecovering, loadDraft, type StoredDraft } from './draftStore'
 import { useDraft } from './useDraft'
 import {
-  AppearanceStep, DetailsStep, MediaStep, ReviewStep, WhenStep, WhereStep,
+  DetailsStep, MediaStep, ReviewStep, WhenStep, WhereStep,
 } from './steps'
+import { AppearanceStep } from './AppearanceStep'
 
 /**
  * The listing creation wizard (#30) — the WaahTickets `CreateEventWizard` with
@@ -68,6 +69,10 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [submitErrors, setSubmitErrors] = useState<{ field: string; message: string }[]>([])
   const [published, setPublished] = useState<string | null>(null)
+  /** Why an editor sent this back, shown until it is resubmitted (#33). */
+  const [rejection, setRejection] = useState<string | null>(null)
+  /** What the submission was flagged against, if anything (#33). */
+  const [duplicate, setDuplicate] = useState<DuplicateFlag | null>(null)
 
   const storage = useMemo(() => browserStorage(), [])
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -94,6 +99,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
           setListing(saved.listing)
           setMedia(saved.media)
           setStatus(saved.status)
+          setRejection(saved.rejection_reason ?? null)
           setFurthest(stepsFor(saved.listing.listing_type).length - 1)
         }
 
@@ -187,6 +193,8 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
       await saveNow()
       const submitted = await submitListing(listingId)
       setStatus('pending_review')
+      setRejection(null)
+      setDuplicate(submitted.duplicate)
 
       // An editor publishes in the same motion rather than queueing work for
       // themselves; an organizer's listing waits for one.
@@ -240,6 +248,18 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
           An editor will look at it shortly. Nothing is public until one of them
           publishes it.
         </p>
+        {/* Said now rather than days later through a rejection. Most authors
+            know something the detector does not and can say so; the rest have
+            just been saved a wasted submission. */}
+        {duplicate && (
+          <Alert tone="warning" title="This may already be listed">
+            <p>{duplicate.message}</p>
+            <p>
+              An editor will decide, but if it is the same event you can{' '}
+              <a href={`/listings/${duplicate.slug}`}>look at the one already there</a>.
+            </p>
+          </Alert>
+        )}
         <Button variant="secondary" onClick={() => navigate('/')}>Back to the catalogue</Button>
       </Card>
     )
@@ -253,6 +273,17 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
 
   return (
     <div className="wizard">
+      {/* Above the recovery prompt and above the steps, because it is the
+          reason the author is on this page at all. */}
+      {rejection && (
+        <Alert tone="warning" title="An editor sent this back">
+          <p>{rejection}</p>
+          <p className="wizard__note">
+            Fix it and send it again — the same editors see it next.
+          </p>
+        </Alert>
+      )}
+
       {recoverable && (
         <RecoveryPrompt
           draft={recoverable}
@@ -333,7 +364,9 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
             if (listingId) void fetchListing(listingId).then((saved) => setMedia(saved.media))
           }} />
         )}
-        {step === 'appearance' && <AppearanceStep listing={listing} lookups={lookups} />}
+        {step === 'appearance' && (
+          <AppearanceStep listing={listing} set={set} lookups={lookups} />
+        )}
         {step === 'review' && (
           <ReviewStep listing={listing} set={set} lookups={lookups}
                       errors={allErrors} onJump={jumpToField} />

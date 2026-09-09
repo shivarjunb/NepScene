@@ -470,49 +470,6 @@ export function MediaStep({ listingId, media, onUploaded }: {
   )
 }
 
-// ── Appearance ──────────────────────────────────────────────────────────────
-
-/**
- * A preview rather than a picker. Pin appearance is *derived* from the primary
- * category and has no column of its own — that duplicate field is precisely
- * what made WaahTickets' pins and filter chips disagree (migration 0005). The
- * popup customiser on top of this derivation is #32.
- */
-export function AppearanceStep({ listing, lookups }: Pick<StepProps, 'listing' | 'lookups'>) {
-  const primary = lookups.categories.find((c) => c.slug === listing.primary_category_slug)
-
-  return (
-    <div className="wizard__fields">
-      <p className="wizard__note">
-        Your pin takes its colour and icon from the main category, so the map and
-        the filter chips always agree.
-      </p>
-
-      <div className="wizard__pin-preview">
-        <span className="wizard__pin" style={{ background: primary?.color ?? 'var(--accent)' }}
-              aria-hidden="true" />
-        <div>
-          <strong>{listing.title || 'Your listing'}</strong>
-          <p>{listing.summary ?? 'Your one-line summary appears here.'}</p>
-          <Badge tone="accent">{primary?.name ?? 'No category yet'}</Badge>
-        </div>
-      </div>
-
-      {!primary && (
-        <Alert tone="warning" title="No main category">
-          Go back to the first step and pick one — without it your listing has no
-          pin colour and sits under no filter.
-        </Alert>
-      )}
-
-      <Alert tone="info" title="More control coming">
-        Choosing what the popup shows, and overriding the icon, arrive with the
-        pin appearance work (#32).
-      </Alert>
-    </div>
-  )
-}
-
 // ── Review ──────────────────────────────────────────────────────────────────
 
 export function ReviewStep({ listing, lookups, errors, onJump }: StepProps & {

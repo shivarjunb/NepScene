@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  clearDraft, hasContent, isWorthRecovering, loadDraft, memoryStorage, saveDraft,
-  type StoredDraft,
+  clearDraft, hasContent, isWorthRecovering, listLocalDrafts, loadDraft, memoryStorage,
+  saveDraft, type StoredDraft,
 } from '../../app/author/draftStore'
 import { emptyListing, type ListingInput } from '../../api/author/validate'
 
@@ -183,5 +183,63 @@ describe('storage that fights back', () => {
     expect(() => saveDraft(hostile, draft())).not.toThrow()
     expect(() => clearDraft(hostile, null)).not.toThrow()
     expect(loadDraft(hostile, null)).toBeNull()
+  })
+})
+
+describe('listing what this device is holding (#34)', () => {
+  const draftFor = (title: string): ListingInput => ({ ...emptyListing(), title })
+
+  const seed = (entries: { key: string; draft: unknown }[]) => {
+    const data = new Map<string, string>(
+      entries.map(({ key, draft }) => [key, JSON.stringify(draft)]),
+    )
+    // `listLocalDrafts` enumerates through `globalThis.localStorage` because
+    // `DraftStorage` is deliberately only the three methods the wizard needs.
+    const store = {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => { data.set(key, value) },
+      removeItem: (key: string) => { data.delete(key) },
+    }
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: Object.assign(Object.create(null), Object.fromEntries(data), store),
+      configurable: true,
+    })
+    return store
+  }
+
+  it('returns every draft worth recovering, newest first', () => {
+    const storage = seed([
+      { key: 'nepscene:draft:new', draft: { id: null, step: 'details', savedAt: '2026-09-01T00:00:00.000Z', listing: draftFor('Older') } },
+      { key: 'nepscene:draft:lst_a', draft: { id: 'lst_a', step: 'when', savedAt: '2026-09-05T00:00:00.000Z', listing: draftFor('Newer') } },
+    ])
+
+    const found = listLocalDrafts(storage, Date.parse('2026-09-06T00:00:00.000Z'))
+    expect(found.map((entry) => entry.draft.listing.title)).toEqual(['Newer', 'Older'])
+    expect(found.map((entry) => entry.id)).toEqual(['lst_a', null])
+  })
+
+  it('leaves out the empty ones, which are not unfinished work', () => {
+    const storage = seed([
+      { key: 'nepscene:draft:new', draft: { id: null, step: 'details', savedAt: '2026-09-05T00:00:00.000Z', listing: emptyListing() } },
+    ])
+    expect(listLocalDrafts(storage, Date.parse('2026-09-06T00:00:00.000Z'))).toEqual([])
+  })
+
+  it('leaves out the stale ones, and ignores keys that are not ours', () => {
+    const storage = seed([
+      { key: 'nepscene:draft:lst_old', draft: { id: 'lst_old', step: 'details', savedAt: '2026-01-01T00:00:00.000Z', listing: draftFor('Ancient') } },
+      { key: 'nepscene:theme', draft: 'dark' },
+    ])
+    expect(listLocalDrafts(storage, Date.parse('2026-09-06T00:00:00.000Z'))).toEqual([])
+  })
+
+  it('returns nothing rather than throwing where storage is unavailable', () => {
+    // Some privacy modes throw on the property access itself, and the
+    // dashboard must render either way.
+    Object.defineProperty(globalThis, 'localStorage', {
+      get() { throw new Error('denied') },
+      configurable: true,
+    })
+    expect(listLocalDrafts(memoryStorage())).toEqual([])
   })
 })
