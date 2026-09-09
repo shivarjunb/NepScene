@@ -3,6 +3,7 @@ import { Placeholder, type Planned } from './pages/Placeholder'
 import { NotFound } from './pages/NotFound'
 import { DesignSystem } from './pages/DesignSystem'
 import { Discover } from './pages/Discover'
+import { SubmitPage } from './author/SubmitPage'
 
 /**
  * Every path the shell links to, in one table.
@@ -45,8 +46,7 @@ export const ROUTES: Route[] = [
     path: '/submit',
     title: 'Submit an event',
     summary: 'The listing wizard: what, where, when, and a picture.',
-    issue: 30,
-    milestone: 'M2 — Event authoring',
+    element: <SubmitPage listingId={null} />,
   },
   {
     path: '/about',
@@ -78,9 +78,20 @@ export function routeFor(path: string) {
  */
 const LISTING_PREFIX = '/listings/'
 
+/**
+ * A draft's own address. The wizard rewrites the URL to this the moment
+ * autosave first succeeds, so a reload returns to the draft in progress rather
+ * than starting a second empty one.
+ */
+const SUBMIT_PREFIX = '/submit/'
+
 export function renderRoute(path: string): ReactNode {
   const route = routeFor(path)
   if (route) return route.element ?? <Placeholder {...route} />
+
+  if (path.startsWith(SUBMIT_PREFIX) && path.length > SUBMIT_PREFIX.length) {
+    return <SubmitPage listingId={path.slice(SUBMIT_PREFIX.length)} />
+  }
 
   if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
     return (
@@ -100,9 +111,13 @@ export function renderRoute(path: string): ReactNode {
 export function titleFor(path: string) {
   const route = routeFor(path)
   if (!route) {
-    return path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length
-      ? 'Listing — NepScene'
-      : 'Page not found — NepScene'
+    if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
+      return 'Listing — NepScene'
+    }
+    if (path.startsWith(SUBMIT_PREFIX) && path.length > SUBMIT_PREFIX.length) {
+      return 'Edit your listing — NepScene'
+    }
+    return 'Page not found — NepScene'
   }
   return route.path === '/'
     ? "NepScene — what's happening around Nepal"

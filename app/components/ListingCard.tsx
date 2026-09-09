@@ -5,13 +5,13 @@ import { LISTING_TYPE_LABEL, offerLine, startDay, startTime, venueLine } from '.
 import { Link } from '../router'
 
 /**
- * A row card is 15rem (13rem on a small phone); a grid card is a column of a
- * `minmax(11rem, 1fr)` grid. Without a `sizes` hint the browser assumes
- * full-viewport width and fetches the widest rung there is, which is the whole
- * feature undone.
+ * A row card is 300px (82vw on a phone); a grid card is one column of a four,
+ * two or one-up grid. Without a `sizes` hint the browser assumes full-viewport
+ * width and fetches the widest rung there is, which is the whole feature
+ * undone.
  */
-const GRID_SIZES = '(max-width: 30rem) 45vw, (max-width: 60rem) 30vw, 20rem'
-const ROW_SIZES = '(max-width: 30rem) 13rem, 15rem'
+const GRID_SIZES = '(max-width: 40rem) 100vw, (max-width: 68.75rem) 45vw, 25vw'
+const ROW_SIZES = '(max-width: 40rem) 82vw, 18.75rem'
 
 /**
  * The listing card (#41), in two layouts: `grid` fills a responsive grid,
@@ -19,15 +19,16 @@ const ROW_SIZES = '(max-width: 30rem) 13rem, 15rem'
  *
  * The poster shows the listing's cover through the media pipeline (#25) when it
  * has one, an authored `cover_image_url` when that is all an import gave us,
- * and otherwise the date drawn in the first category's colour — distinctive per
- * category, needing no network. All three occupy the same fixed 3:2 box, so
- * which one a listing gets changes nothing about the page's layout.
+ * and otherwise the date on the marketplace's violet night. All three occupy
+ * the same fixed 16:10 box, so which one a listing gets changes nothing about
+ * the page's layout.
  */
 export function ListingCard({ listing, layout = 'grid' }: {
   listing: Listing
   layout?: 'grid' | 'row'
 }) {
   const { day, month, weekday } = startDay(listing)
+  const hasPoster = Boolean(listing.cover || listing.cover_image_url)
   const category = listing.categories[0]
   const place = venueLine(listing)
   const price = offerLine(listing)
@@ -42,6 +43,12 @@ export function ListingCard({ listing, layout = 'grid' }: {
     >
       <Link className="listing-card__link" href={`/listings/${listing.slug}`}>
         <div className="listing-card__poster" aria-hidden="true">
+          {/* Over a photograph the date floats on a pill; with no photograph
+              the poster already *is* the date, and two of them is one too
+              many. */}
+          {hasPoster && (
+            <span className="listing-card__badge">{`${day} ${month}`}</span>
+          )}
           {listing.cover ? (
             // The title is right there in the card, so the poster is decorative
             // here — repeating the alt text would make a screen reader read the

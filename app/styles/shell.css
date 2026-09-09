@@ -1,34 +1,48 @@
 /*
- * Shell layout (#18). Holds from 320px to 2560px: nothing has a fixed width,
- * the header collapses to a menu below 48rem, and no rule may introduce a
- * horizontal scrollbar — asserted in the Playwright suite at 320, 372
- * (Z Fold cover screen), 768, 1280 and 2560.
+ * Shell layout (#18), matched to WaahTickets' marketplace chrome (#77).
+ *
+ * Holds from 320px to 2560px: nothing has a fixed width, the header collapses
+ * to a menu below 48rem, and no rule may introduce a horizontal scrollbar —
+ * asserted in the Playwright suite at 320, 372 (Z Fold cover screen), 768,
+ * 1280 and 2560.
  */
 
+/*
+ * Glass over the page, not a solid bar. The blur is the recognisable part:
+ * content passing underneath stays visible and out of focus, which is why the
+ * header reads as a layer rather than a lid.
+ */
 .site-header {
   position: sticky;
   top: 0;
   z-index: var(--z-header);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-glass);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .site-header__bar {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-5);
   min-height: var(--header-height);
 }
 
-.site-header__brand { text-decoration: none; color: inherit; margin-inline-end: auto; }
+.site-header__brand {
+  text-decoration: none;
+  color: inherit;
+  margin-inline-end: auto;
+  min-width: max-content;
+}
 
-.logo { display: inline-flex; align-items: center; gap: var(--space-2); }
+.logo { display: inline-flex; align-items: center; gap: var(--space-4); }
 
 .logo__word {
   font-family: var(--font-display);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-lg);
-  letter-spacing: -0.02em;
+  font-weight: var(--weight-black);
+  font-size: var(--text-xl);
+  letter-spacing: 0;
   color: var(--text-primary);
   white-space: nowrap;
 }
@@ -37,42 +51,57 @@
 
 .site-nav__list {
   display: flex;
+  align-items: center;
   gap: var(--space-1);
   list-style: none;
   padding: 0;
 }
 
+/*
+ * Nav items are pills with no resting ground — they only become visible as
+ * controls on hover, which is what keeps four of them from competing with the
+ * brand. 800 is not a shout here; it is this interface's normal.
+ */
 .site-nav__link {
   display: inline-flex;
   align-items: center;
-  min-height: 2.75rem;
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-weight: var(--weight-medium);
-  font-size: var(--text-sm);
-}
-
-.site-nav__link:hover { background: var(--surface-raised); color: var(--text-primary); }
-
-/* The current page is marked with aria-current, and the underline is drawn from
-   it — the state a screen reader is told about and the state a sighted user
-   sees are the same attribute, so they cannot drift apart. */
-.site-nav__link[aria-current='page'] {
+  min-height: 2.75rem;          /* 44px — the pointer target minimum */
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-full);
   color: var(--text-primary);
-  font-weight: var(--weight-semibold);
-  box-shadow: inset 0 -2px 0 var(--accent);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  text-decoration: none;
+  font-weight: var(--weight-extrabold);
+  font-size: var(--text-md);
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
 }
 
-.site-header__actions { display: flex; align-items: center; gap: var(--space-2); }
+.site-nav__link:hover { background: var(--accent-wash); color: var(--accent); }
 
+/* The current page is marked with aria-current, and its appearance is drawn
+   from that attribute — the state a screen reader is told about and the state
+   a sighted user sees are the same thing, so they cannot drift apart. */
+.site-nav__link[aria-current='page'] {
+  color: var(--accent);
+  background: var(--accent-wash);
+  font-weight: var(--weight-black);
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: max-content;
+}
+
+/* Every round control in the chrome is the same object: a hairline pill on
+   the page's own ground that takes the accent when pointed at. */
 .theme-toggle {
   display: inline-flex;
   padding: 2px;
   gap: 2px;
-  background: var(--surface-sunken);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
 }
@@ -84,13 +113,17 @@
   border-radius: var(--radius-full);
   background: transparent;
   color: var(--text-secondary);
+  font-weight: var(--weight-black);
   cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
 }
 
+.theme-toggle__option:hover { background: var(--accent-wash); color: var(--accent); }
+
 .theme-toggle__option[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
 }
 
 .site-header__menu-button { display: none; }
@@ -101,8 +134,8 @@
   z-index: var(--z-dropdown);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-4);
+  gap: var(--space-7);
+  padding: var(--space-9) var(--space-7);
   background: var(--surface);
   overflow-y: auto;
 }
@@ -113,41 +146,58 @@
   display: flex;
   align-items: center;
   min-height: 3rem;
-  padding-inline: var(--space-3);
-  border-radius: var(--radius-md);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-lg);
   color: var(--text-primary);
   text-decoration: none;
   font-size: var(--text-lg);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-extrabold);
 }
 
-.mobile-menu__link:hover { background: var(--surface-raised); }
+.mobile-menu__link:hover { background: var(--accent-wash); color: var(--accent); }
 
 .mobile-menu__link[aria-current='page'] {
-  color: var(--text-primary);
-  font-weight: var(--weight-semibold);
-  border-inline-start: 3px solid var(--accent);
+  color: var(--accent);
+  background: var(--accent-wash);
+  font-weight: var(--weight-black);
 }
 
-.site-main { min-height: 60dvh; padding-block: var(--space-6); }
+/* 26px above the first section and 48px of air below the last, which is what
+   the marketplace shell reserves. */
+.site-main { min-height: 60dvh; padding-block: var(--space-9) var(--space-11); }
 .site-main:focus-visible { outline: none; }
 
 .site-footer {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-hairline);
   background: var(--surface-raised);
-  padding-block: var(--space-6);
-  margin-top: var(--space-8);
+  padding-block: var(--space-9);
+  margin-top: var(--space-11);
 }
 
 .site-footer__inner {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-5);
+  gap: var(--space-9);
   justify-content: space-between;
 }
 
-.site-footer__tagline { color: var(--text-secondary); font-size: var(--text-sm); margin-top: var(--space-2); }
-.site-footer__list { list-style: none; padding: 0; display: grid; gap: var(--space-2); font-size: var(--text-sm); }
+.site-footer__tagline {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  margin-top: var(--space-3);
+}
+
+.site-footer__list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.site-footer__list a { color: var(--text-secondary); }
+.site-footer__list a:hover { color: var(--accent); }
 
 /* Below 48rem the inline nav becomes the menu button. */
 @media (max-width: 47.99rem) {
@@ -158,8 +208,8 @@
 /* The Z Fold cover screen is 372px and is the narrowest real device we target;
    at that width the brand word would otherwise crowd the controls out. */
 @media (max-width: 23.5rem) {
-  .logo__word { font-size: var(--text-base); }
-  .site-header__bar { gap: var(--space-2); }
+  .logo__word { font-size: var(--text-lg); }
+  .site-header__bar { gap: var(--space-3); }
 }
 
 /*
@@ -171,16 +221,16 @@
 .page-placeholder__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  margin-bottom: var(--space-7);
 }
 
-.page-placeholder h1 { margin-bottom: var(--space-3); }
+.page-placeholder h1 { margin-bottom: var(--space-5); }
 
 .page-placeholder__note {
-  padding: var(--space-4);
+  padding: var(--space-7);
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-2xl);
   background: var(--surface-raised);
   color: var(--text-secondary);
   font-size: var(--text-sm);

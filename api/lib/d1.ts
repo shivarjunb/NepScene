@@ -47,3 +47,58 @@ export function readSession(env: Env): ReadSession {
     },
   }
 }
+
+/**
+ * The write path's counterpart. Two differences from `readSession`, both
+ * deliberate: it goes to the primary, because an author who has just saved must
+ * read back what they saved and a replica may lag; and it counts the same way,
+ * because "no sequential request that could run in parallel" (#30) is only a
+ * real constraint if something measures it. Handlers stamp the count with
+ * `withRoundTrips`, and the integration tests assert on it.
+ */
+export type WriteSession = {
+  first<T = Record<string, unknown>>(statement: D1PreparedStatement): Promise<T | null>
+  batch(statements: D1PreparedStatement[]): Promise<D1Result[]>
+  readonly roundTrips: number
+}
+
+export function writeSession(env: Env): WriteSession {
+  let roundTrips = 0
+  return {
+    async first<T>(statement: D1PreparedStatement) {
+      roundTrips++
+      return (await statement.first<T>()) ?? null
+    },
+    async batch(statements: D1PreparedStatement[]) {
+      roundTrips++
+      return env.DB.batch(statements)
+    },
+    get roundTrips() {
+      return roundTrips
+    },
+  }
+}
+
+/**
+ * Every handler that touches D1 reports how many round trips it took. From
+ * Kathmandu each one is a flat ~200ms (docs/ARCHITECTURE.md), so this number is
+ * the response time, and leaving it unmeasured is how a waterfall gets in.
+ */
+export function withRoundTrips(response: Response, session: { roundTrips: number }): Response {
+  response.headers.set('x-d1-round-trips', String(session.roundTrips))
+  return response
+}
+
+/**
+ * D1 hands back `unknown` columns, and `noUncheckedIndexedAccess` makes a
+ * batch's result slots optional. These three are the whole answer: read a
+ * column at the type you expect, or get null.
+ */
+export const text = (value: unknown): string | null =>
+  typeof value === 'string' && value !== '' ? value : null
+
+export const numeric = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null
+
+export const rowsOf = <T>(result: { results?: unknown[] } | undefined): T[] =>
+  (result?.results ?? []) as T[]

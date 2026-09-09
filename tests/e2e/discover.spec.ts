@@ -170,6 +170,25 @@ test('a catalogue that fails to load says so rather than showing a blank page', 
   await page.goto('/')
 
   await expect(page.getByRole('alert')).toContainText('The catalogue did not load')
+
+  // The heading is kept on this screen deliberately, and it is the one place
+  // .hero__title appears outside the dark hero. Stating the hero's ink on the
+  // class rather than inheriting it made this white on white — a heading that
+  // is present in the DOM, announced to a screen reader, and invisible to
+  // everyone else. Nothing else in the suite looks at a colour, which is
+  // exactly how it reached a deployed preview.
+  const contrast = await page.locator('.hero__title').evaluate((el) => {
+    const channels = (value: string) =>
+      (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
+    const luminance = (value: string) =>
+      channels(value).map((c) => c / 255)
+        .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, c, i) => sum + [0.2126, 0.7152, 0.0722][i]! * c, 0)
+    const [a, b] = [luminance(getComputedStyle(el).color),
+                    luminance(getComputedStyle(document.body).backgroundColor)]
+    return (Math.max(a!, b!) + 0.05) / (Math.min(a!, b!) + 0.05)
+  })
+  expect(contrast).toBeGreaterThan(4.5)
 })
 
 test('the feed is usable at 320px with no horizontal scroll', async ({ page }) => {

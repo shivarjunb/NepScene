@@ -19,6 +19,7 @@ const tokensCss = sheet('tokens.css')
 const componentsCss = sheet('components.css')
 const baseCss = sheet('base.css')
 const shellCss = sheet('shell.css')
+const authorCss = sheet('author.css')
 
 export default defineConfig({
   plugins: [
@@ -31,6 +32,7 @@ export default defineConfig({
           COMPONENTS_CSS: componentsCss,
           BASE_CSS: baseCss,
           SHELL_CSS: shellCss,
+          AUTHOR_CSS: authorCss,
         },
       },
     }),

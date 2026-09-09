@@ -96,7 +96,13 @@ export async function seedCatalogue(): Promise<void> {
       `INSERT INTO listing_categories (listing_id, category_id, is_primary)
        VALUES ('lst_soon', 'cat_concert', 1), ('lst_soon', 'cat_nightlife', 0),
               ('lst_later', 'cat_concert', 1), ('lst_free', 'cat_community', 1),
-              ('lst_running', 'cat_arts', 1), ('lst_past', 'cat_concert', 1)`,
+              ('lst_running', 'cat_arts', 1), ('lst_past', 'cat_concert', 1),
+              -- The two unpublished fixtures carry a category because the
+              -- publishing tests walk them through submit, and #30 refuses to
+              -- send an uncategorised listing for review: pin appearance is
+              -- derived from the primary category, so a published listing
+              -- without one has no pin and sits under no filter chip.
+              ('lst_draft', 'cat_community', 1), ('lst_pending', 'cat_community', 1)`,
     ),
     env.DB.prepare(
       `INSERT INTO listing_artists (listing_id, artist_id, billing_order)

@@ -9,7 +9,7 @@ test('honours the OS preference when no choice has been made', async ({ browser 
   const dark = await browser.newContext({ colorScheme: 'dark' })
   const darkPage = await dark.newPage()
   await darkPage.goto('/')
-  expect(await backgroundOf(darkPage)).toBe('rgb(15, 23, 42)')
+  expect(await backgroundOf(darkPage)).toBe('rgb(20, 28, 56)')
 
   const light = await browser.newContext({ colorScheme: 'light' })
   const lightPage = await light.newPage()
@@ -41,7 +41,7 @@ test('paints the stored theme on the first frame, with no flash', async ({ brows
   await page.goto('/')
   await expect.poll(() => backgrounds.length).toBeGreaterThan(0)
   expect(backgrounds[0], 'the document was not dark at DOMContentLoaded').toBe('dark')
-  expect(await backgroundOf(page)).toBe('rgb(15, 23, 42)')
+  expect(await backgroundOf(page)).toBe('rgb(20, 28, 56)')
 
   await context.close()
 })
@@ -50,7 +50,7 @@ test('an explicit choice survives a reload and beats the OS', async ({ browser }
   const context = await browser.newContext({ colorScheme: 'dark' })
   const page = await context.newPage()
   await page.goto('/')
-  expect(await backgroundOf(page)).toBe('rgb(15, 23, 42)')
+  expect(await backgroundOf(page)).toBe('rgb(20, 28, 56)')
 
   await page.getByRole('group', { name: 'Colour theme' })
     .getByRole('button', { name: 'Light' }).click()
@@ -73,7 +73,7 @@ test('returning to System hands control back to the OS', async ({ browser }) => 
   expect(await backgroundOf(page)).toBe('rgb(255, 255, 255)')
 
   await toggle.getByRole('button', { name: 'System' }).click()
-  expect(await backgroundOf(page)).toBe('rgb(15, 23, 42)')
+  expect(await backgroundOf(page)).toBe('rgb(20, 28, 56)')
 
   await context.close()
 })
@@ -119,7 +119,7 @@ test('theme survives storage being unavailable', async ({ browser }) => {
 
   await page.goto('/')
   await expect(page.getByRole('main')).toBeVisible()
-  expect(await backgroundOf(page)).toBe('rgb(15, 23, 42)')
+  expect(await backgroundOf(page)).toBe('rgb(20, 28, 56)')
   expect(errors).toEqual([])
 
   await context.close()

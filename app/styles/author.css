@@ -1,0 +1,286 @@
+/*
+ * The authoring surface (#30), in the marketplace idiom (#77).
+ *
+ * Every colour, space and radius here is a token. WaahTickets' own wizard is
+ * an admin surface — a dark modal with indigo step dots — and copying it would
+ * put a second look inside the product for the one page an organiser sees
+ * most. So this is the public surface's vocabulary applied to a form: pill
+ * steps, heavy labels, hairline panels.
+ */
+
+.wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-9);
+}
+
+.wizard__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-11) 0;
+}
+
+/* ── Step rail ─────────────────────────────────────────────────────────────
+   A horizontal rail that scrolls on a narrow screen rather than wrapping into
+   an unreadable stack: at 320px six steps do not fit and must not try. */
+.wizard__steps {
+  display: flex;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0 0 var(--space-3);
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.wizard__step button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-extrabold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.wizard__step button:hover:not(:disabled) { background: var(--surface-raised); }
+.wizard__step button:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* A step not yet reached is unavailable, not invisible — knowing what is coming
+   is most of what a step rail is for. */
+.wizard__step button:disabled { opacity: 0.5; cursor: default; }
+
+.wizard__step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-black);
+}
+
+.wizard__step--current button {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+  color: var(--accent);
+  font-weight: var(--weight-black);
+}
+
+.wizard__step--current .wizard__step-number {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.wizard__step--done .wizard__step-number { background: var(--success-surface); color: var(--success); }
+
+/* ── Step body ─────────────────────────────────────────────────────────────*/
+
+.wizard__heading {
+  margin: 0 0 var(--space-7);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-extrabold);
+  line-height: 1;
+}
+
+/* Focus moves here on every step change so the new step announces itself; the
+   ring is suppressed because this is programmatic focus, not a tab stop. */
+.wizard__heading:focus { outline: none; }
+.wizard__heading:focus-visible { outline: var(--focus-ring); outline-offset: 4px; }
+
+.wizard__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-9);
+}
+
+.wizard__fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.wizard__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-7);
+}
+
+.wizard__note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* ── Listing type ──────────────────────────────────────────────────────────*/
+
+.wizard__types {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.wizard__type {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+.wizard__type:hover { border-color: var(--accent); background: var(--accent-wash); }
+
+/* The whole card reads as selected, but the radio keeps the semantics — this is
+   a label around a real input, not a div pretending. */
+.wizard__type:has(input:checked) {
+  border-color: var(--accent-border);
+  background: var(--accent-surface);
+}
+
+.wizard__type:has(input:focus-visible) { outline: var(--focus-ring); outline-offset: 2px; }
+
+.wizard__type span { display: flex; flex-direction: column; gap: var(--space-1); }
+.wizard__type small { color: var(--text-secondary); font-size: var(--text-xs); }
+
+/* ── Chips and tags ────────────────────────────────────────────────────────*/
+
+.wizard__chips { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+.wizard__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard__tags li { display: flex; align-items: center; gap: var(--space-1); }
+
+.wizard__tag-entry { display: flex; gap: var(--space-3); align-items: flex-end; }
+.wizard__tag-entry .field__control { flex: 1; }
+
+/* ── Media ─────────────────────────────────────────────────────────────────*/
+
+.wizard__media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard__media img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+/* ── Pin preview ───────────────────────────────────────────────────────────*/
+
+.wizard__pin-preview {
+  display: flex;
+  gap: var(--space-7);
+  padding: var(--space-7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-raised);
+}
+
+.wizard__pin-preview p { margin: var(--space-1) 0 var(--space-3); color: var(--text-secondary); }
+
+.wizard__pin {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-full) var(--radius-full) 2px;
+  transform: rotate(45deg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Review ────────────────────────────────────────────────────────────────*/
+
+.wizard__summary {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: var(--space-3) var(--space-7);
+  margin: 0;
+}
+
+.wizard__summary dt { color: var(--text-secondary); font-size: var(--text-sm); }
+.wizard__summary dd { margin: 0; }
+
+.wizard__error-list { margin: 0; padding-left: var(--space-9); }
+
+/* An error in the review list is a shortcut to the field that caused it, so it
+   is a button — styled as a link, but focusable and announced as an action. */
+.wizard__error-link {
+  font-weight: var(--weight-extrabold);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wizard__error-link:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* ── Actions ───────────────────────────────────────────────────────────────*/
+
+.wizard__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-9);
+}
+
+/* The save state sits between Back and Next, where the eye already is. */
+.wizard__save {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.wizard__save--error { color: var(--danger); }
+
+/* The sign-in gate is a panel, because it is the only thing on the page. */
+.wizard__signin {
+  gap: var(--space-7);
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: var(--space-9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-4xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 30rem) {
+  .wizard__pair { grid-template-columns: 1fr; }
+  .wizard__actions { flex-wrap: wrap; }
+  .wizard__save { order: -1; flex-basis: 100%; text-align: left; }
+}
