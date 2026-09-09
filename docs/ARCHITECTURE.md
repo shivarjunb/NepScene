@@ -163,6 +163,9 @@ POST   /api/author/listings/:id/duplicate  copies into a new, dateless draft
 GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
 POST   /api/author/venues               creates one; 409 names the venue it resembles
 
+GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
+POST   /api/author/venues               creates one; 409 names the venue it resembles
+
 POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
 POST   /api/author/media/sweep         admin; reclaims unreferenced R2 objects
