@@ -123,6 +123,8 @@ export type ListingDetail = ListingSummary & {
   description: string | null
   map_popup_config: unknown | null
   published_at: string | null
+  /** Which room or stage inside the venue (#31). The venue is not duplicated. */
+  venue_room: string | null
   venue: (VenueRef & {
     address: string | null
     district: string | null

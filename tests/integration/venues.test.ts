@@ -298,4 +298,19 @@ describe('a room inside a venue', () => {
     expect(body.error.code).toBe('incomplete_listing')
     expect(body.error.fields.map((f) => f.field)).toContain('venue_room')
   })
+
+  // A room stored and never read is write-only data. It reaches the public
+  // listing beside the venue, not inside it: two listings share one venue and
+  // are in different halls.
+  it('reaches the public listing without becoming part of the venue', async () => {
+    await env.DB.prepare(
+      `UPDATE listings SET venue_room = 'Hall B' WHERE id = 'lst_soon'`,
+    ).run()
+
+    const response = await SELF.fetch('https://nepscene.test/api/catalog/listings/rock-night')
+    const body = await response.json() as
+      { venue_room: string | null; venue: { id: string; name: string } }
+    expect(body.venue_room).toBe('Hall B')
+    expect(body.venue.name).toBe('Purple Haze')
+  })
 })
