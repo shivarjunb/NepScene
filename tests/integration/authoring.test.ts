@@ -184,6 +184,39 @@ describe('a draft saves in whatever state it is in', () => {
     expect(response.status).toBe(201)
   })
 
+  it('does not invent a start date for a draft that has none', async () => {
+    const { cookie } = await signIn('nodate@example.np')
+    const { id } = await (await create(cookie, { title: 'No date yet', listing_type: 'free' }))
+      .json() as { id: string }
+
+    // Stamping the creation time here (which NOT NULL used to force) is worse
+    // than storing nothing: the draft reopens showing a real-looking date the
+    // author never chose, and validation has nothing left to object to.
+    const row = await env.DB.prepare('SELECT starts_at FROM listings WHERE id = ?1')
+      .bind(id).first<{ starts_at: string | null }>()
+    expect(row?.starts_at).toBe(null)
+
+    const body = await (await api(`/listings/${id}`, cookie)).json() as
+      { listing: { starts_at: string } }
+    expect(body.listing.starts_at).toBe('')
+
+    const refused = await api(`/listings/${id}/submit`, cookie, { method: 'POST' })
+    const error = await refused.json() as { error: { fields: { field: string }[] } }
+    expect(error.error.fields.map((f) => f.field)).toContain('starts_at')
+  })
+
+  it('keeps a dateless draft out of every public feed', async () => {
+    const { cookie } = await signIn('hidden@example.np')
+    const { slug } = await (await create(cookie, { title: 'Invisible', listing_type: 'free' }))
+      .json() as { slug: string }
+
+    // COALESCE(ends_at, starts_at) >= now is NULL for a dateless row, which is
+    // not true, so it falls out of every feed without a query changing.
+    const feed = await (await SELF.fetch('https://nepscene.test/api/catalog/listings'))
+      .json() as { data: { slug: string }[] }
+    expect(feed.data.map((l) => l.slug)).not.toContain(slug)
+  })
+
   it('refuses to send that same listing for review, naming each field', async () => {
     const { cookie } = await signIn('incomplete@example.np')
     const { id } = await (await create(cookie, { title: 'Not ready', listing_type: 'free' }))

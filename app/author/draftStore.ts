@@ -140,21 +140,31 @@ function reviveListing(value: unknown): ListingInput | null {
 }
 
 /**
- * Whether a recovered draft is worth interrupting the author about. An
- * untouched form autosaves itself the moment the wizard opens, and offering to
- * recover *that* trains people to dismiss the prompt without reading it.
+ * Whether the author has actually put anything in the form.
+ *
+ * This gates both saving and recovering, and it has to, because an untouched
+ * form is not nothing — it is a full `ListingInput` of defaults. Without this
+ * check, opening the wizard and walking away is enough to POST an empty
+ * listing a second and a half later, and every visit to /submit leaves a
+ * titleless draft behind in the author's own list.
  */
-export function isWorthRecovering(draft: StoredDraft): boolean {
-  const { listing } = draft
+export function hasContent(listing: ListingInput): boolean {
   return Boolean(
     listing.title.trim()
     || listing.summary
     || listing.description
     || listing.venue_id
+    || listing.starts_at
     || listing.category_slugs.length > 0
     || listing.tags.length > 0,
   )
 }
+
+/**
+ * Whether a recovered draft is worth interrupting the author about. Offering to
+ * restore an empty form trains people to dismiss the prompt without reading it.
+ */
+export const isWorthRecovering = (draft: StoredDraft): boolean => hasContent(draft.listing)
 
 /** An in-memory `DraftStorage`, for tests and for when the real one throws. */
 export function memoryStorage(): DraftStorage {
@@ -168,14 +178,20 @@ export function memoryStorage(): DraftStorage {
 
 /**
  * The browser's storage when it works, an in-memory stand-in when it does not.
- * Reaching for `window.localStorage` can itself throw, so even the check is
- * guarded.
+ *
+ * Reached through `globalThis` rather than `window` on purpose: this module is
+ * imported by tests that run in workerd, which has no DOM and no `window` at
+ * all, and naming it would make the file fail to compile there. The probe write
+ * is what actually settles it — Safari in a private window exposes
+ * `localStorage` and then throws on use, so its presence proves nothing.
  */
 export function browserStorage(): DraftStorage {
   return quietly<DraftStorage>(() => {
+    const store = (globalThis as { localStorage?: DraftStorage }).localStorage
+    if (!store) return memoryStorage()
     const probe = `${PREFIX}probe`
-    window.localStorage.setItem(probe, '1')
-    window.localStorage.removeItem(probe)
-    return window.localStorage
+    store.setItem(probe, '1')
+    store.removeItem(probe)
+    return store
   }, memoryStorage())
 }

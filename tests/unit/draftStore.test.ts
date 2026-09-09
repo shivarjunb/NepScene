@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  clearDraft, isWorthRecovering, loadDraft, memoryStorage, saveDraft, type StoredDraft,
+  clearDraft, hasContent, isWorthRecovering, loadDraft, memoryStorage, saveDraft,
+  type StoredDraft,
 } from '../../app/author/draftStore'
 import { emptyListing, type ListingInput } from '../../api/author/validate'
 
@@ -137,6 +138,36 @@ describe('whether a recovered draft is worth interrupting for', () => {
     ['a tag', { tags: ['holi'] }],
   ])('says yes once there is %s', (_label, patch) => {
     expect(isWorthRecovering(draft({ listing: { ...emptyListing(), ...patch } }))).toBe(true)
+  })
+})
+
+describe('whether there is anything to save at all', () => {
+  it('says no to an untouched form', () => {
+    // An untouched form is not nothing — it is a full ListingInput of
+    // defaults. Treating it as content is what made opening /submit and
+    // walking away create an empty listing a second and a half later.
+    expect(hasContent(emptyListing())).toBe(false)
+  })
+
+  it.each([
+    ['a title', { title: 'Something' }],
+    ['a start date', { starts_at: '2027-01-01T00:00:00Z' }],
+    ['a summary', { summary: 'Something' }],
+    ['a description', { description: 'Something' }],
+    ['a venue', { venue_id: 'ven_a' }],
+    ['a category', { category_slugs: ['concerts'] }],
+    ['a tag', { tags: ['holi'] }],
+  ])('says yes once there is %s', (_label, patch) => {
+    expect(hasContent({ ...emptyListing(), ...patch })).toBe(true)
+  })
+
+  it('is not fooled by the defaults a fresh form carries', () => {
+    // listing_type and timezone always have a value; neither means the author
+    // has done anything.
+    expect(hasContent({
+      ...emptyListing(), listing_type: 'announcement', timezone: 'Asia/Kathmandu',
+      is_all_day: true,
+    })).toBe(false)
   })
 })
 

@@ -67,7 +67,7 @@ export function stepsFor(type: ListingType): StepId[] {
     .map((step) => step.id)
 }
 
-/** An external listing points at someone else's checkout; an internal one at ours. */
+/** An external listing links out to whoever sells entry; an internal one to us. */
 export const needsTicketUrl = (type: ListingType) => type === 'ticketed_external'
 export const hasPlace = (type: ListingType) => type !== 'announcement'
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ListingInput } from '../../api/author/validate'
 import { createListing, updateListing, AuthorError } from '../lib/author'
-import { browserStorage, clearDraft, saveDraft, type DraftStorage } from './draftStore'
+import { browserStorage, clearDraft, hasContent, saveDraft, type DraftStorage } from './draftStore'
 
 /**
  * Autosave (#30), and the addition worth making to the ported wizard: losing a
@@ -94,15 +94,22 @@ export function useDraft({ listing, step, listingId, onCreated, enabled, storage
     }
   }, [enabled, onCreated, store])
 
-  // The local write is synchronous and unconditional; the server write waits.
+  // Nothing is saved until there is something to save. An untouched form is a
+  // full object of defaults, not an absence, so without this the wizard creates
+  // an empty listing on every visit to /submit. Once a listing exists the gate
+  // lifts for good: clearing a field is an edit and has to be saved like any
+  // other.
+  const worthSaving = hasContent(listing) || listingId !== null
+
+  // The local write is synchronous; the server write waits for the debounce.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !worthSaving) return
     saveDraft(store, { id: listingId, listing, step, savedAt: new Date().toISOString() })
 
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => void flush(), DEBOUNCE_MS)
     return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [listing, step, listingId, enabled, store, flush])
+  }, [listing, step, listingId, enabled, worthSaving, store, flush])
 
   /**
    * A tab going away is the last chance to save the debounced changes. Both

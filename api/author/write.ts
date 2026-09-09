@@ -231,10 +231,11 @@ authorWriteRoutes.post('/listings', requirePermission('listing:create'), async (
       // not come through here.
       'organizer',
       input.organization_id ?? null, input.venue_id ?? null,
-      // An unset start is stored as the creation time rather than left null:
-      // the column is NOT NULL, and a draft has to be storable before it is
-      // complete. Validation still refuses to submit until it is really set.
-      input.starts_at || now,
+      // An unset start is stored as no start (migration 0008). Stamping the
+      // creation time here — which is what a NOT NULL column forced — meant a
+      // reopened draft read back a real-looking date nobody had chosen, and
+      // validation had nothing left to object to.
+      input.starts_at || null,
       input.ends_at ?? null, input.is_all_day ? 1 : 0, input.timezone ?? 'Asia/Kathmandu',
       input.external_url ?? null, input.offer_url ?? null,
       offerProviderFor(type, input.offer_url ?? null),
