@@ -21,3 +21,6 @@ tsc.log
 
 .katajaam-*
 .taragaon-*
+.khalti-scrape
+--apply
+ticketsanjal-scraper/ticketsanjal-output
