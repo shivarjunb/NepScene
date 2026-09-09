@@ -16,6 +16,13 @@
 
   "observability": { "enabled": true },
 
+  // Auto-archive (#33). 18:15 UTC is midnight in Kathmandu (UTC+5:45) — the
+  // sweep runs at the quietest hour for the audience it serves, not for the
+  // colo it happens to run in. `triggers` is not inherited by environments,
+  // so each one repeats it; an environment that omitted it would silently
+  // never archive anything.
+  "triggers": { "crons": ["15 18 * * *"] },
+
   // D1 read replication is enabled per-database in the Cloudflare dashboard;
   // the Worker opts into replica reads with withSession() (see api/lib/d1.ts).
   "d1_databases": [
@@ -46,6 +53,7 @@
   "env": {
     "preview": {
       "name": "nepscene-preview",
+      "triggers": { "crons": ["15 18 * * *"] },
       "vars": { "ENVIRONMENT": "preview", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-preview", "database_id": "7fdabb69-3ba6-4cf8-b491-c52dca02c881" }
@@ -55,6 +63,7 @@
     },
     "staging": {
       "name": "nepscene-staging",
+      "triggers": { "crons": ["15 18 * * *"] },
       "vars": { "ENVIRONMENT": "staging", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-staging", "database_id": "464a0115-82e2-4c84-9acb-23cbe9fc041c" }
@@ -64,6 +73,7 @@
     },
     "production": {
       "name": "nepscene",
+      "triggers": { "crons": ["15 18 * * *"] },
       "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-production", "database_id": "63c61f55-3138-44d8-8226-05330926231e" }

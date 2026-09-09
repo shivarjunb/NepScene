@@ -205,6 +205,8 @@ export type SavedListing = {
   id: string
   slug: string
   status: 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived'
+  /** Why it came back, verbatim from the editor who sent it (#33). */
+  rejection_reason?: string | null
   listing: ListingInput
   media: { id: string; url: string; alt_text: string | null; width: number | null; height: number | null }[]
   updated_at: string
@@ -232,9 +234,60 @@ export const updateListing = (id: string, input: Partial<ListingInput>) =>
 export const fetchMyListings = () =>
   request<{ data: ListingStub[] }>('/api/author/listings')
 
+export type DuplicateFlag = {
+  id: string; slug: string; title: string; score: number; message: string
+}
+
 export const submitListing = (id: string) =>
-  request<{ id: string; slug: string; status: string }>(
+  request<{ id: string; slug: string; status: string; duplicate: DuplicateFlag | null }>(
     `/api/author/listings/${encodeURIComponent(id)}/submit`, { method: 'POST' },
+  )
+
+// ── Moderation (#33) ────────────────────────────────────────────────────────
+
+export type QueueEntry = {
+  id: string; slug: string; title: string; status: string
+  listing_type: string; source: string
+  starts_at: string | null; updated_at: string
+  venue_name: string | null
+  author: { email: string; name: string | null } | null
+  organization_name: string | null
+  media_count: number
+  category_slugs: string[]
+  duplicate: { id: string; slug: string; title: string; status: string; score: number | null } | null
+}
+
+export type Queue = {
+  data: QueueEntry[]
+  counts: Record<string, number>
+  next: string | null
+}
+
+export const fetchQueue = (status = 'pending_review', after?: string | null) =>
+  request<Queue>(
+    `/api/author/queue?status=${encodeURIComponent(status)}${after ? `&after=${encodeURIComponent(after)}` : ''}`,
+  )
+
+export type BulkResult = {
+  applied: string[]
+  refused: { id: string; reason: string }[]
+  status: string
+}
+
+/**
+ * One decision, many listings. The single-listing buttons go through here too
+ * with an array of one, so there is one code path to the server rather than
+ * two that can drift — the API applies the same per-row checks either way.
+ */
+export const moderate = (action: 'publish' | 'reject' | 'archive', ids: string[], reason?: string) =>
+  request<BulkResult>('/api/author/queue/actions', {
+    method: 'POST', body: JSON.stringify({ action, ids, reason }),
+  })
+
+export const mergeListing = (id: string, into: string) =>
+  request<{ merged: string; into: string; slug: string; inherited: string[] }>(
+    `/api/author/listings/${encodeURIComponent(id)}/merge`,
+    { method: 'POST', body: JSON.stringify({ into }) },
   )
 
 export const publishListing = (id: string) =>

@@ -312,6 +312,9 @@ authorWriteRoutes.get('/listings/:id', requirePermission('listing:edit_own'), as
 
   return withRoundTrips(Response.json({
     id: row.id, slug: row.slug, status: row.status,
+    // Returned on every edit-mode load, not fetched separately: the author
+    // sees why it came back at the moment they open it to fix it (#33).
+    rejection_reason: text(row.rejection_reason),
     listing: {
       title: text(row.title) ?? '',
       summary: text(row.summary),

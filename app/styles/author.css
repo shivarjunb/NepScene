@@ -491,3 +491,178 @@
     align-items: stretch;
   }
 }
+
+/* ── Moderation queue (#33) ────────────────────────────────────────────────
+   A worklist, not a dashboard: rows are dense, the flagged ones are visibly
+   different, and the actions sit at a fixed place on every row so a run of
+   decisions is one repeated movement rather than a hunt. */
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+}
+
+.queue__header h1 { margin: 0; }
+
+.queue__signed-in {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__tabs {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  scrollbar-width: thin;
+}
+
+.queue__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-extrabold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.queue__tab.is-current {
+  border-color: var(--border-strong);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+}
+
+.queue__count {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.queue__tab.is-current .queue__count {
+  background: var(--surface-glass);
+  color: var(--text-primary);
+}
+
+/* The bulk bar sticks: an editor scrolling a page of forty must not lose the
+   actions for the thirty they have already ticked. */
+.queue__bulk {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.queue__select-all {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+/* Flagged rows are marked on the edge as well as by the alert inside them, so
+   a page of forty shows at a glance which two need thought. */
+.queue__row--flagged {
+  border-inline-start: 3px solid var(--warning);
+}
+
+.queue__row-main {
+  display: flex;
+  flex: 1 1 20rem;
+  gap: var(--space-5);
+}
+
+.queue__row-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.queue__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+}
+
+.queue__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.queue__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.queue__pick input { margin-block-start: var(--space-2); }
+
+.queue__reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.queue__reject h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.queue__reject-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.queue__empty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 40rem) {
+  .queue__row,
+  .queue__row-actions { width: 100%; }
+}

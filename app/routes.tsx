@@ -4,6 +4,7 @@ import { NotFound } from './pages/NotFound'
 import { DesignSystem } from './pages/DesignSystem'
 import { Discover } from './pages/Discover'
 import { SubmitPage } from './author/SubmitPage'
+import { QueuePage } from './moderation/QueuePage'
 
 /**
  * Every path the shell links to, in one table.
@@ -47,6 +48,12 @@ export const ROUTES: Route[] = [
     title: 'Submit an event',
     summary: 'The listing wizard: what, where, when, and a picture.',
     element: <SubmitPage listingId={null} />,
+  },
+  {
+    path: '/moderate',
+    title: 'Moderation queue',
+    summary: 'Everything waiting for review, oldest first, with the duplicates already flagged.',
+    element: <QueuePage />,
   },
   {
     path: '/about',

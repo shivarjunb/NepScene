@@ -140,7 +140,12 @@ PATCH  /api/author/listings/:id         the autosave target; partial by construc
 DELETE /api/author/listings/:id
 POST   /api/author/listings/:id/submit  validates; 400 lists the fields still missing
 POST   /api/author/listings/:id/publish editor and above
-POST   /api/author/listings/:id/{reject,archive,unpublish}
+POST   /api/author/listings/:id/reject   body: { reason } — refused without one
+POST   /api/author/listings/:id/{archive,unpublish}
+POST   /api/author/listings/:id/merge   body: { into } — folds this one into that
+
+GET    /api/author/queue?status=        the moderation queue, oldest first
+POST   /api/author/queue/actions        body: { action, ids[], reason? } — max 50
 
 GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
 POST   /api/author/venues               creates one; 409 names the venue it resembles
@@ -274,6 +279,65 @@ uploads no derivatives and its original is served alone.
 
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
+
+## Publication: the path out of a draft
+
+The state machine is migration 0004 and `TRANSITIONS` in `api/author/listings.ts`
+— one table, and every status write goes through it. The queue, the bulk action
+and the merge in `api/author/moderation.ts` add no transition of their own: a
+bulk action that could reach a state the single action cannot would be a hole in
+the state machine with a friendly name on it.
+
+**A rejection is refused without a reason.** The author reads what the editor
+types, verbatim, and "rejected" on its own tells them nothing they can act on.
+The check is in the handler rather than the form, because a reason a client may
+omit is a reason that will be omitted — by the bulk action, by a script, by the
+next client. The reason is denormalised onto `listings.rejection_reason`
+(migration 0010) and cleared by every move that is not a rejection; the history
+stays in the audit log, which is what an audit log is for.
+
+**Trusted authors do not wait, but they do not skip review either.** An editor
+publishing their own listing submits and publishes in one motion — two
+transitions, both audited — rather than moving `draft → published`, which the
+state machine does not have. The distinction matters when someone asks later
+who reviewed a listing: the answer is always a name and a timestamp, even when
+it is the author's own.
+
+**Duplicate detection runs at submission and flags rather than refuses.** The
+asymmetry with the venue check (which refuses) is about who is next. A duplicate
+venue is created by the author, seen by nobody, and merged by nobody. A
+duplicate listing goes straight to a moderator about to look at both, so the
+flag has a reader — and refusing a genuine second event that merely resembles
+the first would be worse than a warning an editor can dismiss. The score is
+stored on the row (`suspected_duplicate_of`, `duplicate_score`) rather than
+recomputed, because recomputing would put a similarity search inside the one
+screen that is worked through in bulk.
+
+Three signals, weighted 0.5 / 0.3 / 0.2 across title, time and place, with a
+threshold of 0.75 — and a *contradicted* place vetoes outright, whatever the
+title says, because the same tribute night in Kathmandu and in Pokhara is two
+gigs. A listing needs three signals where a venue needed two: a venue's name is
+close to an identity, and "Open Mic Night" is the title of fifty-two different
+events a year. The numbers are reasoned rather than measured — there is no
+corpus of known-duplicate Nepali listings yet — so the calibration lives in
+`tests/unit/listingMatch.test.ts` as the cases they must get right.
+
+**Merging: the survivor wins every field it has an answer for, the loser fills
+the blanks.** Not "longest wins", which rewards padding; not "newest wins",
+since the second submission is usually the thinner one, which is why it looked
+like a duplicate. Sets — categories, tags, artists — are unioned. Media *moves*
+rather than being copied, so no R2 object ends up with two owners. The loser is
+archived pointing at the survivor rather than deleted: its slug has to stay
+redirectable (#24), and its author deserves to be shown where it went.
+
+**Auto-archive is the Worker's one cron**, at 18:15 UTC — midnight in Kathmandu.
+It archives published listings whose `COALESCE(ends_at, starts_at)` passed more
+than 24 hours ago, a hundred at a time. The read path already hides finished
+events, so this is not about what the public sees: without it, `published` would
+be the status of every event that ever happened, and the queue counts, the
+dashboard filters and every future report would describe a catalogue that is
+mostly the past. The day of grace is because a gig that ended at 2am is still
+being looked up at 9am.
 
 ## Leaving
 
