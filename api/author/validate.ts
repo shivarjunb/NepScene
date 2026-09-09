@@ -71,7 +71,10 @@ export function stepsFor(type: ListingType): StepId[] {
 export const needsTicketUrl = (type: ListingType) => type === 'ticketed_external'
 export const hasPlace = (type: ListingType) => type !== 'announcement'
 
-const MAX = { title: 200, summary: 300, description: 20_000, url: 2000 } as const
+const MAX = {
+  title: 200, summary: 300, description: 20_000, url: 2000,
+  venueName: 200, address: 300, phone: 40, capacity: 500_000,
+} as const
 
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
 
@@ -194,5 +197,110 @@ export function emptyListing(): ListingInput {
     external_url: null, offer_url: null,
     location_lat: null, location_lng: null, map_popup_config: null,
     category_slugs: [], primary_category_slug: null, tags: [], artist_slugs: [],
+  }
+}
+
+// ─── Venues (#31) ────────────────────────────────────────────────────────────
+
+/**
+ * What an author may write when creating a venue.
+ *
+ * The rules live here rather than in the handler for the same reason the
+ * listing's do: the picker has to be able to say "that pin is in the wrong
+ * hemisphere" before it costs a round trip, and two copies of that rule drift.
+ * Duplicate detection is deliberately *not* here — it needs the catalogue to
+ * compare against, so it lives in `venueMatch.ts` and runs on the server only.
+ */
+export type VenueInput = {
+  name: string
+  description: string | null
+  address: string | null
+  area: string | null
+  city: string | null
+  district: string | null
+  province: string | null
+  country: string
+  latitude: number | null
+  longitude: number | null
+  google_place_id: string | null
+  website_url: string | null
+  phone: string | null
+  capacity: number | null
+}
+
+export type VenueFieldError = { field: keyof VenueInput | 'form'; message: string }
+
+/**
+ * Nepal's bounding box, generously drawn: roughly Kanchanpur to Taplejung, and
+ * the Terai to the northern border.
+ *
+ * It is here to catch one specific, common and otherwise invisible mistake —
+ * latitude and longitude entered the wrong way round. Kathmandu is 27.7N
+ * 85.3E, and the swap gives 85.3N 27.7E, which is a perfectly valid coordinate
+ * pair in the Arctic Ocean. Nothing downstream would object: the pin would
+ * simply draw somewhere nobody looks. A range check is the only thing that
+ * notices.
+ *
+ * Applied only when the country is Nepal, so the day the catalogue crosses a
+ * border this rule stops rather than lies.
+ */
+const NEPAL_BOUNDS = { minLat: 26.0, maxLat: 30.6, minLng: 79.9, maxLng: 88.3 } as const
+
+export function validateVenue(input: Partial<VenueInput>): VenueFieldError[] {
+  const errors: VenueFieldError[] = []
+
+  if (blank(input.name)) {
+    errors.push({ field: 'name', message: 'Give the venue a name — this is what authors will search for' })
+  } else if (input.name!.trim().length > MAX.venueName) {
+    errors.push({ field: 'name', message: `Shorten the name to ${MAX.venueName} characters or fewer` })
+  }
+
+  if (!blank(input.address) && input.address!.trim().length > MAX.address) {
+    errors.push({ field: 'address', message: `Shorten the address to ${MAX.address} characters` })
+  }
+  if (!blank(input.phone) && input.phone!.trim().length > MAX.phone) {
+    errors.push({ field: 'phone', message: 'That phone number is too long to be one' })
+  }
+  if (!blank(input.website_url) && !isHttpUrl(input.website_url!.trim())) {
+    errors.push({ field: 'website_url', message: 'The website must start with http:// or https://' })
+  }
+  if (input.capacity !== null && input.capacity !== undefined) {
+    if (!Number.isInteger(input.capacity) || input.capacity <= 0 || input.capacity > MAX.capacity) {
+      errors.push({ field: 'capacity', message: 'Capacity is a whole number of people, or leave it blank' })
+    }
+  }
+
+  const lat = input.latitude ?? null
+  const lng = input.longitude ?? null
+  if ((lat === null) !== (lng === null)) {
+    errors.push({ field: 'latitude', message: 'A pin needs both a latitude and a longitude' })
+  }
+  if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
+    errors.push({ field: 'latitude', message: 'Latitude must be between -90 and 90' })
+  }
+  if (lng !== null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
+    errors.push({ field: 'longitude', message: 'Longitude must be between -180 and 180' })
+  }
+  const country = (input.country ?? 'NP').toUpperCase()
+  if (country === 'NP' && lat !== null && lng !== null
+      && Number.isFinite(lat) && Number.isFinite(lng)
+      && (lat < NEPAL_BOUNDS.minLat || lat > NEPAL_BOUNDS.maxLat
+          || lng < NEPAL_BOUNDS.minLng || lng > NEPAL_BOUNDS.maxLng)) {
+    errors.push({
+      field: 'latitude',
+      message: 'That pin is outside Nepal — check the latitude and longitude are not swapped',
+    })
+  }
+
+  return errors
+}
+
+/** A blank venue, so the picker and its tests start from the same place. */
+export function emptyVenue(): VenueInput {
+  return {
+    name: '', description: null, address: null, area: null, city: null,
+    district: null, province: null, country: 'NP',
+    latitude: null, longitude: null, google_place_id: null,
+    website_url: null, phone: null, capacity: null,
   }
 }
