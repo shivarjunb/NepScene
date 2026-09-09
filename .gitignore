@@ -24,3 +24,4 @@ tsc.log
 .khalti-scrape
 --apply
 ticketsanjal-scraper/ticketsanjal-output
+scrape-output/
