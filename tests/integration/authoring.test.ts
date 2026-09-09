@@ -480,16 +480,56 @@ describe('the fields that change shape on the way in and out', () => {
     expect(row!.is_all_day).toBe(1)
   })
 
-  it('round-trips the map popup configuration through JSON', async () => {
+  it('stores a popup configuration it recognises and throws away one it does not', async () => {
     const { cookie } = await signIn('popup@example.np')
     const { id } = await (await create(cookie, { ...base, title: 'Popup' }))
       .json() as { id: string }
 
-    await patch(cookie, id, { map_popup_config: { layout: 'wide', show_price: false } })
-    expect((await load(cookie, id)).listing.map_popup_config)
-      .toEqual({ layout: 'wide', show_price: false })
+    // The field set is closed (#32). This used to be a pass-through, which
+    // meant arbitrary JSON was stored and later rendered on a public map.
+    await patch(cookie, id, {
+      map_popup_config: {
+        fields: [
+          { field: 'when', label: 'Doors', visible: true },
+          { field: 'venue', label: 'Where', visible: true },
+          { field: 'made_up', label: 'Nonsense', visible: true },
+        ],
+      },
+    })
+
+    const stored = (await load(cookie, id)).listing.map_popup_config as
+      { fields: { field: string; label: string; visible: boolean }[] }
+
+    // The author's order is kept, the unknown field is gone, and the ones they
+    // never mentioned are appended hidden rather than silently switched on.
+    expect(stored.fields.map((field) => field.field))
+      .toEqual(['when', 'venue', 'summary', 'offer', 'category'])
+    expect(stored.fields[0]).toEqual({ field: 'when', label: 'Doors', visible: true })
+    expect(stored.fields.slice(2).every((field) => field.visible === false)).toBe(true)
 
     await patch(cookie, id, { map_popup_config: null })
+    expect((await load(cookie, id)).listing.map_popup_config).toBeNull()
+  })
+
+  it('stores the default configuration as nothing at all', async () => {
+    const { cookie } = await signIn('popup-default@example.np')
+    const { id } = await (await create(cookie, { ...base, title: 'Default popup' }))
+      .json() as { id: string }
+
+    await patch(cookie, id, {
+      map_popup_config: {
+        fields: [
+          { field: 'venue', label: 'Where', visible: true },
+          { field: 'when', label: 'When', visible: true },
+          { field: 'summary', label: 'About', visible: true },
+          { field: 'offer', label: 'Entry', visible: true },
+          { field: 'category', label: 'Category', visible: false },
+        ],
+      },
+    })
+
+    // Reset is a clearing, not a copy: a listing that never overrode the
+    // defaults must follow them when they change.
     expect((await load(cookie, id)).listing.map_popup_config).toBeNull()
   })
 

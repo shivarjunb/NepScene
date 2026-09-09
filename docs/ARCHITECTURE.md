@@ -352,6 +352,34 @@ dashboard filters and every future report would describe a catalogue that is
 mostly the past. The day of grace is because a gig that ended at 2am is still
 being looked up at 9am.
 
+## The pin and the popup
+
+Pin appearance is a **function of the primary category**, never a stored field
+(`api/catalog/pin.ts`). WaahTickets carried a `map_pin_icon` an author could set
+independently, then needed a separate `pinCategory` concept to reconcile the pin
+with the filter chips, and the two drifted anyway. One value read twice cannot
+disagree with itself, so the wizard's map step shows the pin rather than
+offering to change it, and the way to change it is to change the category.
+
+What *is* customisable is the popup: which of a **closed** set of fields shows,
+in what order, under what label (`api/author/popupConfig.ts`). Closed, because
+the field name was previously rendered as a key lookup — an unknown field was a
+blank row nobody could explain — and because a stored label is arbitrary text
+that ends up on a public page. Labels are capped and the whole config is
+validated at the write boundary rather than wherever it is next read.
+
+**The default config is stored as `NULL`.** Reset is therefore a clearing, and a
+later change to the defaults reaches every listing that never overrode them
+instead of only the ones created after it.
+
+`app/map/` holds the marker SVG and the popup component. They live there rather
+than under `author/` because the wizard's preview has to be accurate against the
+*real* map component, and the only way to make that a fact rather than an
+aspiration is for there to be one component. WaahTickets had two — a preview
+that assembled an HTML string full of Leaflet class names, and a map that drew a
+plain circle — and they had drifted apart before anybody noticed. #36 mounts
+these same two files on the public map.
+
 ## Counting, and what is deliberately not counted
 
 An organizer who can see that 400 people looked at their listing has a reason

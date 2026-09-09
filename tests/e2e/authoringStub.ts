@@ -245,10 +245,16 @@ export async function stubGoogleMaps(page: Page) {
     class FakeMap {
       constructor(container: HTMLElement) { container.dataset.fakeMap = 'ready' }
       addListener = on('map')
+      setCenter() {}
       setZoom() {}
       panTo() {}
       getBounds() { return null }
     }
+
+    // The marker icon in `pinMarker.ts` is sized and anchored with these, so a
+    // stub without them throws inside the effect rather than failing a check.
+    class FakeSize { constructor(readonly width: number, readonly height: number) {} }
+    class FakePoint { constructor(readonly x: number, readonly y: number) {} }
 
     class FakeGeocoder {
       geocode(
@@ -288,6 +294,7 @@ export async function stubGoogleMaps(page: Page) {
     win.google = {
       maps: {
         Map: FakeMap, Marker: FakeMarker, Geocoder: FakeGeocoder,
+        Size: FakeSize, Point: FakePoint,
         places: { AutocompleteService: FakeAutocompleteService },
         // The spec's handle on the map's own click listener.
         __fire: (event: string, payload: unknown) => {
