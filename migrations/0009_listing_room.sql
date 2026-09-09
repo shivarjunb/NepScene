@@ -1,0 +1,29 @@
+-- 0009 — Which room inside the venue (#31)
+--
+-- A listing already knows *where* it is (venue_id) and can already override the
+-- pin (location_lat/lng, migration 0001). What it could not say is which hall,
+-- room or stage inside the place — and that gap is precisely how a canonical
+-- venue table fills up with duplicates.
+--
+-- Without this column the only way to write "Hall B, Bhrikutimandap" is to
+-- create a venue called "Bhrikutimandap Hall B", and then another author writes
+-- "Bhrikuti Mandap - Hall B", and the venue page that #21 exists to give
+-- Bhrikutimandap is split three ways. WaahTickets had exactly this shape: no
+-- canonical venue at all, a fresh event_locations row per event, and a map that
+-- had to group by rounded coordinates because nothing else identified a place.
+--
+-- So the room is an attribute of the *listing*, not a venue of its own. It is
+-- free text rather than a reference table: rooms are named by whoever runs the
+-- building, they change between events ("Main Stage", "Stall 14", "the roof"),
+-- and nothing joins on them or filters by them. A lookup table here would be
+-- ceremony around a label.
+--
+-- ALTER TABLE ADD COLUMN, not a table rebuild: adding a nullable column is the
+-- one schema change SQLite does in place, so unlike 0008 this needs no copy and
+-- no PRAGMA. One statement, which is also what keeps it safe under
+-- `wrangler d1 migrations apply` splitting on semicolons.
+--
+-- No index. Nothing searches or groups by room; it is read alongside the
+-- listing row that already had to be fetched, and written by the same UPDATE.
+
+ALTER TABLE listings ADD COLUMN venue_room TEXT;

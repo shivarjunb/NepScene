@@ -1,4 +1,5 @@
-import type { ListingInput } from '../../api/author/validate'
+import type { ListingInput, VenueInput } from '../../api/author/validate'
+import type { DuplicateWarning, RankedVenue } from '../../api/author/venueMatch'
 
 /**
  * The browser's half of the authoring API.
@@ -107,6 +108,96 @@ export type Lookups = {
  * see api/author/lookups.ts.
  */
 export const fetchLookups = () => request<Lookups>('/api/author/lookups')
+
+// ── Venues ──────────────────────────────────────────────────────────────────
+
+export type VenueMatch = RankedVenue
+
+export type VenueSearch = {
+  query: string
+  normalised_query: string
+  data: VenueMatch[]
+  /**
+   * The server's answer to "should the picker offer to add a new one?". False
+   * means what was typed already exists exactly. Deciding this here rather
+   * than in the component keeps the acceptance criterion in one place with a
+   * test around it (api/author/venueMatch.ts).
+   */
+  suggest_create: boolean
+}
+
+/**
+ * Autocomplete over existing venues, aborted by the caller on the next
+ * keystroke. It takes a signal rather than debouncing internally because the
+ * component owns the timer either way, and a search that keeps running after
+ * its answer stopped mattering is the source of a list that flickers back to a
+ * stale result.
+ */
+export const searchVenues = (query: string, signal?: AbortSignal) =>
+  request<VenueSearch>(`/api/author/venues?q=${encodeURIComponent(query)}`, { signal })
+
+export type CreatedVenue = {
+  id: string; slug: string; name: string
+  city: string | null; latitude: number | null; longitude: number | null
+  duplicates: DuplicateWarning[]
+}
+
+/**
+ * A 409 here is not a failure, it is the duplicate warning (#31), and it
+ * carries the venues it resembles. `AuthorError` only keeps the message and the
+ * field errors, so the warning is unwrapped into its own error type — the
+ * picker has to render the venue it matched, with a button to use that one
+ * instead, and a sentence cannot be turned back into a button.
+ */
+export class DuplicateVenueError extends Error {
+  constructor(
+    message: string,
+    readonly code: 'possible_duplicate' | 'venue_exists',
+    readonly duplicates: DuplicateWarning[],
+    /** Set on `venue_exists`: Google says this *is* that venue. */
+    readonly venue: { id: string; slug: string; name: string } | null,
+  ) {
+    super(message)
+    this.name = 'DuplicateVenueError'
+  }
+}
+
+export async function createVenue(
+  input: Partial<VenueInput>, options: { confirmDuplicate?: boolean } = {},
+): Promise<CreatedVenue> {
+  const response = await fetch('/api/author/venues', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ ...input, confirm_duplicate: options.confirmDuplicate === true }),
+  })
+
+  const body = await response.json().catch(() => null) as Record<string, unknown> | null
+
+  if (response.status === 409) {
+    const error = (body?.error ?? {}) as { code?: string; message?: string }
+    throw new DuplicateVenueError(
+      error.message ?? 'That venue may already be in the catalogue',
+      error.code === 'venue_exists' ? 'venue_exists' : 'possible_duplicate',
+      (body?.duplicates as DuplicateWarning[] | undefined) ?? [],
+      (body?.venue as { id: string; slug: string; name: string } | undefined) ?? null,
+    )
+  }
+
+  if (!response.ok) {
+    const error = (body?.error ?? {}) as {
+      code?: string; message?: string; fields?: { field: string; message: string }[]
+    }
+    throw new AuthorError(
+      response.status,
+      error.code ?? 'request_failed',
+      error.message ?? `Request failed (${response.status})`,
+      error.fields ?? [],
+    )
+  }
+
+  return body as unknown as CreatedVenue
+}
 
 // ── Listings ────────────────────────────────────────────────────────────────
 

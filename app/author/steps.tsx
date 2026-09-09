@@ -4,6 +4,9 @@ import { LISTING_TYPES, needsTicketUrl } from '../../api/author/validate'
 import { Alert, Badge, Button, Checkbox, Chip, Field, Input, Select, Textarea } from '../components/primitives'
 import type { Lookups, SavedListing } from '../lib/author'
 import { uploadMedia } from '../lib/author'
+import { MapLocationPicker } from './MapLocationPicker'
+import { VenuePicker } from './VenuePicker'
+import { formatCoordinates } from './geocode'
 
 /**
  * The wizard's step bodies (#30). Each is a plain function of the listing and a
@@ -310,37 +313,59 @@ export function WhenStep({ listing, set, lookups, errors }: StepProps) {
 // ── Where ───────────────────────────────────────────────────────────────────
 
 /**
- * A select over known venues, plus a coordinate override.
+ * Where it happens: which venue, which room inside it, and — when the thing is
+ * not at the venue's own address — a pin of the listing's own (#31).
  *
- * This is deliberately the small version. Venue search, inline creation,
- * click-to-place, drag and geocoding are #31, which depends on this wizard
- * existing — building half of it here would mean building it twice.
+ * The venue search and the map live in their own components; what is decided
+ * here is the *order*. Venue first, because a venue carries a pin already and
+ * most listings need no further placing. The override below it is for the
+ * cases a venue cannot express: a street festival, a stage in a field, a car
+ * park round the back of the building the venue row names.
  */
-export function WhereStep({ listing, set, lookups, errors }: StepProps) {
-  const venue = lookups.venues.find((v) => v.id === listing.venue_id)
+export function WhereStep({ listing, set, lookups, errors, onVenueCreated }: StepProps & {
+  /**
+   * A venue created inside the picker is not in the lookups the wizard loaded,
+   * so it is handed back up. Without this the Review step and the summary above
+   * would show "Not set" for a venue that was just made — the id is on the
+   * listing, but nothing knows its name.
+   */
+  onVenueCreated: (venue: Lookups['venues'][number]) => void
+}) {
+  const venue = lookups.venues.find((v) => v.id === listing.venue_id) ?? null
   const override = listing.location_lat !== null || listing.location_lng !== null
 
   return (
     <div className="wizard__fields">
-      <Field label="Venue" hint="Where it actually happens"
-             error={errorFor(errors, 'venue_id')}>
-        {({ id, describedBy, invalid }) => (
-          <Select id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined}
-                  value={listing.venue_id ?? ''}
-                  onChange={(e) => set({ venue_id: e.target.value || null })}>
-            <option value="">Choose a venue…</option>
-            {lookups.venues.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.area && v.area !== v.name ? `${v.name}, ${v.area}` : v.name}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
+      <VenuePicker
+        selected={venue ? { id: venue.id, name: venue.name, latitude: venue.latitude, longitude: venue.longitude } : null}
+        error={errorFor(errors, 'venue_id')}
+        onSelect={(picked) => {
+          if (picked && !lookups.venues.some((v) => v.id === picked.id)) {
+            onVenueCreated({
+              id: picked.id, name: picked.name, area: null, city: null,
+              latitude: picked.latitude, longitude: picked.longitude,
+            })
+          }
+          set({ venue_id: picked?.id ?? null })
+        }}
+      />
 
-      {venue && venue.latitude !== null && (
+      {venue && (
+        <Field label="Room, hall or stage"
+               hint="Optional — “Hall B”, “Main stage”. Leave blank if the whole venue is the venue."
+               error={errorFor(errors, 'venue_room')}>
+          {({ id, describedBy, invalid }) => (
+            <Input id={id} aria-describedby={describedBy} aria-invalid={invalid || undefined}
+                   value={listing.venue_room ?? ''}
+                   placeholder="Hall B"
+                   onChange={(e) => set({ venue_room: e.target.value || null })} />
+          )}
+        </Field>
+      )}
+
+      {venue && venue.latitude !== null && venue.longitude !== null && !override && (
         <p className="wizard__note">
-          Pinned at {venue.latitude.toFixed(4)}, {venue.longitude?.toFixed(4)} from the venue record.
+          Pinned at {formatCoordinates(venue.latitude, venue.longitude)} from the venue record.
         </p>
       )}
 
@@ -348,43 +373,26 @@ export function WhereStep({ listing, set, lookups, errors }: StepProps) {
         label="This happens somewhere other than the venue's registered address"
         checked={override}
         onChange={(e) => set(e.target.checked
-          ? { location_lat: venue?.latitude ?? 27.7172, location_lng: venue?.longitude ?? 85.3240 }
+          ? {
+              location_lat: venue?.latitude ?? DEFAULT_PIN.lat,
+              location_lng: venue?.longitude ?? DEFAULT_PIN.lng,
+            }
           : { location_lat: null, location_lng: null })}
       />
 
       {override && (
-        <div className="wizard__pair">
-          <Field label="Latitude" error={errorFor(errors, 'location_lat')}>
-            {({ id, describedBy, invalid }) => (
-              <Input id={id} type="number" step="any" inputMode="decimal"
-                     aria-describedby={describedBy} aria-invalid={invalid || undefined}
-                     value={listing.location_lat ?? ''}
-                     onChange={(e) => set({
-                       location_lat: e.target.value === '' ? null : Number(e.target.value),
-                     })} />
-            )}
-          </Field>
-          <Field label="Longitude" error={errorFor(errors, 'location_lng')}>
-            {({ id, describedBy, invalid }) => (
-              <Input id={id} type="number" step="any" inputMode="decimal"
-                     aria-describedby={describedBy} aria-invalid={invalid || undefined}
-                     value={listing.location_lng ?? ''}
-                     onChange={(e) => set({
-                       location_lng: e.target.value === '' ? null : Number(e.target.value),
-                     })} />
-            )}
-          </Field>
-        </div>
+        <MapLocationPicker
+          label="Where this listing actually happens"
+          lat={listing.location_lat} lng={listing.location_lng}
+          onMove={(lat, lng) => set({ location_lat: lat, location_lng: lng })}
+        />
       )}
-
-      <Alert tone="info" title="Picking a spot on the map">
-        Searching venues, adding a new one and dropping a pin by hand arrive with
-        the venue picker (#31). Until then this list is every venue already in the
-        catalogue.
-      </Alert>
     </div>
   )
 }
+
+/** The centre of Kathmandu — a pin the author will move, not one they will keep. */
+const DEFAULT_PIN = { lat: 27.7172, lng: 85.324 }
 
 // ── Media ───────────────────────────────────────────────────────────────────
 
@@ -539,7 +547,17 @@ export function ReviewStep({ listing, lookups, errors, onJump }: StepProps & {
         <dt>Title</dt><dd>{listing.title || <em>Not set</em>}</dd>
         <dt>Kind</dt><dd>{TYPE_LABELS[listing.listing_type].label}</dd>
         <dt>When</dt><dd>{when}</dd>
-        <dt>Where</dt><dd>{venue?.name ?? <em>Not set</em>}</dd>
+        <dt>Where</dt>
+        <dd>
+          {venue
+            ? [venue.name, listing.venue_room].filter(Boolean).join(' — ')
+            : <em>Not set</em>}
+          {listing.location_lat !== null && listing.location_lng !== null && (
+            <span className="wizard__note">
+              Own pin at {formatCoordinates(listing.location_lat, listing.location_lng)}
+            </span>
+          )}
+        </dd>
         <dt>Categories</dt>
         <dd>
           {listing.category_slugs.length > 0

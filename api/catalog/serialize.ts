@@ -172,6 +172,7 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
     description: (row.description as string | null) ?? null,
     map_popup_config: parseJsonObject(row.map_popup_config),
     published_at: (row.published_at as string | null) ?? null,
+    venue_room: (row.venue_room as string | null) ?? null,
     venue: summary.venue
       ? {
           ...summary.venue,

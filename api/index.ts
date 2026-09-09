@@ -3,6 +3,7 @@ import type { Env } from './env'
 import { authorListingRoutes } from './author/listings'
 import { authorMediaRoutes } from './author/media'
 import { authorLookupRoutes } from './author/lookups'
+import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
@@ -48,6 +49,7 @@ app.route('/api/auth/google', googleRoutes)
 app.route('/api/auth', accountRoutes)
 app.route('/api/auth', identityRoutes)
 app.route('/api/author', authorLookupRoutes)
+app.route('/api/author', authorVenueRoutes)
 app.route('/api/author', authorWriteRoutes)
 app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
