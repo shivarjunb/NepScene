@@ -88,10 +88,24 @@
   --surface-glass: rgb(255 255 255 / 92%);
   --glass-blur: blur(18px);
 
-  /* A pill sitting on top of a photograph, where the ground is unknown. */
+  /* A pill sitting on top of a photograph, where the ground is unknown. These
+     two do NOT flip with the theme, and that is the point: the picture under
+     them is the same picture in either, so a token that flipped would put dark
+     text on a dark poster half the time. */
   --overlay-surface: rgb(255 255 255 / 94%);
   --overlay-text: var(--palette-slate-900);
+  /* This one does flip — it is the faint tint of a chip *inside* a card, where
+     the ground is the theme's own surface. */
   --overlay-veil: rgb(15 23 42 / 6%);
+
+  /* Ink for the surfaces that are dark in both themes: the hero and the poster
+     of a listing with no picture. --text-inverse cannot serve here — it means
+     "readable on the inverse of the current surface", so in dark theme it goes
+     dark, and the hero is not the inverse of anything. */
+  --on-dark-text: var(--palette-white);
+  --on-dark-muted: rgb(255 255 255 / 82%);
+  --on-dark-veil: rgb(255 255 255 / 10%);
+  --on-dark-line: rgb(255 255 255 / 24%);
 
   --text-primary: var(--palette-slate-900);
   --text-secondary: var(--palette-slate-500);
@@ -269,8 +283,6 @@
   --surface-glass: rgb(18 24 52 / 90%);
   --glass-blur: blur(20px);
 
-  --overlay-surface: rgb(20 28 56 / 88%);
-  --overlay-text: var(--palette-white);
   --overlay-veil: rgb(255 255 255 / 6%);
 
   --text-primary: var(--palette-white);
@@ -325,8 +337,6 @@
     --surface-glass: rgb(18 24 52 / 90%);
     --glass-blur: blur(20px);
 
-    --overlay-surface: rgb(20 28 56 / 88%);
-    --overlay-text: var(--palette-white);
     --overlay-veil: rgb(255 255 255 / 6%);
 
     --text-primary: var(--palette-white);

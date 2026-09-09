@@ -113,8 +113,14 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
 }
 .checkbox input { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); }
 
-/* ── Card ───────────────────────────────────────────────────────────────── */
+/* ── Card ─────────────────────────────────────────────────────────────────
+   A panel stacks: heading, prose, controls. The global reset zeroes every
+   margin, so without a gap here a card's contents sit flush against each
+   other and a heading reads as part of the sentence below it. */
 .card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-4xl);
@@ -324,7 +330,7 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   padding: var(--space-10) var(--layout-gutter) var(--space-9);
   overflow: hidden;
   background: var(--hero-ground);
-  color: var(--text-inverse);
+  color: var(--on-dark-text);
 }
 
 /* The veil is a separate layer so a hero image can slide underneath it. */
@@ -343,16 +349,15 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   font-size: var(--text-4xl);
   line-height: var(--leading-tight);
   font-weight: var(--weight-black);
-  color: var(--text-inverse);
+  color: var(--on-dark-text);
   text-shadow: 0 4px 34px var(--scrim);
 }
 
 .hero__lead {
   max-width: 32.5rem;
-  color: var(--text-inverse);
+  color: var(--on-dark-muted);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
-  opacity: 0.94;
 }
 
 .hero__map {
@@ -363,12 +368,12 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   min-height: 12rem;
   margin-top: var(--space-5);
   padding: var(--space-9);
-  border: 1px dashed var(--overlay-veil);
+  border: 1px dashed var(--on-dark-line);
   border-radius: var(--radius-2xl);
-  background: var(--overlay-veil);
+  background: var(--on-dark-veil);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--text-inverse);
+  color: var(--on-dark-muted);
   font-size: var(--text-sm);
 }
 
@@ -597,11 +602,12 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   white-space: nowrap;
 }
 
+/* The poster is the violet night in either theme, so its ink is fixed. */
 .listing-card__date {
   display: grid;
   justify-items: center;
   line-height: 1.05;
-  color: var(--text-inverse);
+  color: var(--on-dark-text);
 }
 
 .listing-card__date-weekday,
@@ -610,7 +616,7 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   font-weight: var(--weight-black);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.82;
+  color: var(--on-dark-muted);
 }
 
 .listing-card__date-day {

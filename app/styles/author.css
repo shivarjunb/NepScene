@@ -269,6 +269,7 @@
 
 /* The sign-in gate is a panel, because it is the only thing on the page. */
 .wizard__signin {
+  gap: var(--space-7);
   max-width: 26rem;
   margin: 0 auto;
   padding: var(--space-9);
