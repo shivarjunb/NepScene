@@ -33,6 +33,34 @@ const PIN = {
   },
 } as const
 
+/**
+ * One image, ready to render. `sources` is ordered best-compression-first, so a
+ * `<picture>` can be built by iterating it; `url` is the original and the last
+ * resort. `aspect_ratio` is sent rather than divided out by the client, because
+ * a card that computes it from a null width reserves nothing.
+ */
+const MEDIA_ITEM = {
+  type: ['object', 'null'],
+  required: ['id', 'url', 'kind', 'alt_text', 'sources'],
+  properties: {
+    id: { type: 'string' },
+    url: { type: 'string' },
+    kind: { enum: ['image', 'video'] },
+    alt_text: { type: ['string', 'null'] },
+    width: { type: ['integer', 'null'] },
+    height: { type: ['integer', 'null'] },
+    aspect_ratio: { type: ['number', 'null'] },
+    sources: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['type', 'srcset'],
+        properties: { type: { type: 'string' }, srcset: { type: 'string' } },
+      },
+    },
+  },
+} as const
+
 const TAG_REF = {
   type: 'object',
   required: ['slug', 'label'],
@@ -75,7 +103,8 @@ const LISTING_SUMMARY = {
   type: 'object',
   required: [
     'id', 'slug', 'title', 'listing_type', 'source', 'starts_at',
-    'is_all_day', 'timezone', 'is_featured', 'venue', 'organizer', 'categories', 'pin', 'offer',
+    'is_all_day', 'timezone', 'is_featured', 'venue', 'organizer', 'categories', 'pin',
+    'cover', 'offer',
   ],
   properties: {
     id: { type: 'string' },
@@ -105,6 +134,7 @@ const LISTING_SUMMARY = {
     },
     categories: { type: 'array', items: CATEGORY_REF },
     pin: PIN,
+    cover: MEDIA_ITEM,
     offer: OFFER,
   },
 } as const
@@ -135,21 +165,7 @@ const LISTING_DETAIL = {
     description: { type: ['string', 'null'] },
     published_at: { type: ['string', 'null'] },
     map_popup_config: {},
-    media: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'url', 'kind', 'alt_text'],
-        properties: {
-          id: { type: 'string' },
-          url: { type: 'string' },
-          kind: { enum: ['image', 'video'] },
-          alt_text: { type: ['string', 'null'] },
-          width: { type: ['integer', 'null'] },
-          height: { type: ['integer', 'null'] },
-        },
-      },
-    },
+    media: { type: 'array', items: { ...MEDIA_ITEM, type: 'object' } },
     artists: {
       type: 'array',
       items: {

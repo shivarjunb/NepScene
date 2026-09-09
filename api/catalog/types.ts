@@ -75,18 +75,42 @@ export type ListingSummary = {
   venue: VenueRef | null
   organizer: OrganizerRef | null
   categories: CategoryRef[]
+  /**
+   * The listing's first image, with its derivatives. `cover_image_url` above is
+   * the authored fallback for listings whose picture never went through the
+   * pipeline — an import, mostly.
+   */
+  cover: MediaItem | null
   offer: Offer | null
   /** Present only on distance-filtered searches. */
   distance_km?: number
 }
 
+/**
+ * One `<source>` in a `<picture>`: every derivative of one image in one format,
+ * narrowest first, as a ready-to-render srcset. The browser chooses; the API
+ * does not guess at a viewport it cannot see.
+ */
+export type MediaSource = {
+  type: string
+  srcset: string
+}
+
 export type MediaItem = {
   id: string
+  /** The original. The `<img>` src, and the last resort in every `<picture>`. */
   url: string
   kind: 'image' | 'video'
   alt_text: string | null
   width: number | null
   height: number | null
+  /**
+   * Present so the page can reserve the box before the bytes arrive. Sent
+   * rather than left to the client to divide, because a card that computes it
+   * from a null width silently reserves nothing.
+   */
+  aspect_ratio: number | null
+  sources: MediaSource[]
 }
 
 export type ArtistRef = {

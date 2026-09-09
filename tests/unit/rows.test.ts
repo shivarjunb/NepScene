@@ -23,6 +23,7 @@ const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Li
   latitude: null,
   longitude: null,
   pin: { icon: 'MapPin', color: '#64748b', category: null },
+  cover: null,
   venue: null,
   organizer: null,
   categories: [],

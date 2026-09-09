@@ -1,7 +1,9 @@
 import type {
-  ArtistRef, CategoryRef, ListingDetail, ListingSummary, MediaItem, Offer, TagRef, VenueSummary,
+  ArtistRef, CategoryRef, ListingDetail, ListingSummary, MediaItem, MediaSource, Offer, TagRef,
+  VenueSummary,
 } from './types'
 import { resolvePin } from './pin'
+import { FORMAT_ORDER, MIME_BY_FORMAT, type Format } from '../media/pipeline'
 
 /** Public URL for an R2 object. Derived, never stored (see migration 0001). */
 export function mediaUrl(r2Key: string): string {
@@ -39,6 +41,71 @@ function toOffer(row: Record<string, unknown>): Offer | null {
     checked_at: (row.offer_checked_at as string | null) ?? null,
   }
 }
+
+type MediaRow = {
+  id: string
+  r2_key: string
+  kind: 'image' | 'video'
+  mime_type?: string | null
+  alt_text: string | null
+  width: number | null
+  height: number | null
+  derivatives?: { r2_key: string; format: Format; width: number }[] | null
+}
+
+/**
+ * The srcset the browser gets. Derivatives are grouped by format and ordered
+ * best-compression-first, so a browser that understands AVIF never downloads
+ * the JPEG — and one that does not falls through to `url`, which is always
+ * there.
+ *
+ * The original joins the srcset of its own format at its own width: on a small
+ * image it may be the only rung, and a `<source>` that omits it would make the
+ * browser pick a *smaller* image than one it already has.
+ */
+function toMediaItem(row: MediaRow): MediaItem {
+  const byFormat = new Map<Format, { key: string; width: number }[]>()
+
+  for (const derivative of row.derivatives ?? []) {
+    const rungs = byFormat.get(derivative.format) ?? []
+    rungs.push({ key: derivative.r2_key, width: derivative.width })
+    byFormat.set(derivative.format, rungs)
+  }
+
+  const originalFormat = FORMAT_ORDER.find((format) => MIME_BY_FORMAT[format] === row.mime_type)
+  if (originalFormat && row.width) {
+    const rungs = byFormat.get(originalFormat) ?? []
+    if (!rungs.some((rung) => rung.width === row.width)) {
+      rungs.push({ key: row.r2_key, width: row.width })
+    }
+    byFormat.set(originalFormat, rungs)
+  }
+
+  const sources = FORMAT_ORDER.flatMap<MediaSource>((format) => {
+    const rungs = byFormat.get(format)
+    if (!rungs || rungs.length === 0) return []
+    return [{
+      type: MIME_BY_FORMAT[format],
+      srcset: rungs
+        .sort((a, b) => a.width - b.width)
+        .map((rung) => `${mediaUrl(rung.key)} ${rung.width}w`)
+        .join(', '),
+    }]
+  })
+
+  return {
+    id: row.id,
+    url: mediaUrl(row.r2_key),
+    kind: row.kind,
+    alt_text: row.alt_text ?? null,
+    width: row.width ?? null,
+    height: row.height ?? null,
+    aspect_ratio: row.width && row.height ? round4(row.width / row.height) : null,
+    sources,
+  }
+}
+
+const round4 = (n: number) => Math.round(n * 10000) / 10000
 
 export function toListingSummary(row: Record<string, unknown>): ListingSummary {
   // Ordered primary-first by the query, so the pin is a read, not a search.
@@ -86,16 +153,19 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
       : null,
     categories,
     pin: resolvePin(categories),
+    cover: parseCover(row.cover_json),
     offer: toOffer(row),
   }
 }
 
+function parseCover(raw: unknown): MediaItem | null {
+  const row = parseJsonObject(raw) as MediaRow | null
+  return row?.r2_key ? toMediaItem(row) : null
+}
+
 export function toListingDetail(row: Record<string, unknown>): ListingDetail {
   const summary = toListingSummary(row)
-  const media = parseJsonArray<{
-    id: string; r2_key: string; kind: 'image' | 'video'
-    alt_text: string | null; width: number | null; height: number | null
-  }>(row.media_json)
+  const media = parseJsonArray<MediaRow>(row.media_json)
 
   return {
     ...summary,
@@ -112,14 +182,7 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
           longitude: (row.venue_longitude as number | null) ?? null,
         }
       : null,
-    media: media.map<MediaItem>((m) => ({
-      id: m.id,
-      url: mediaUrl(m.r2_key),
-      kind: m.kind,
-      alt_text: m.alt_text ?? null,
-      width: m.width ?? null,
-      height: m.height ?? null,
-    })),
+    media: media.map(toMediaItem),
     artists: parseJsonArray<ArtistRef>(row.artists_json),
     tags: parseJsonArray<TagRef>(row.tags_json),
   }

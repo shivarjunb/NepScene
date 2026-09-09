@@ -130,15 +130,23 @@ describe('deleting a listing', () => {
   it('removes its R2 objects rather than orphaning them', async () => {
     const { cookie } = await signIn('editor7@example.np', 'editor')
 
+    const png = new Uint8Array(33)
+    png.set([137, 80, 78, 71, 13, 10, 26, 10], 0)
+    png.set([0, 0, 0, 13], 8)
+    png.set([...'IHDR'].map((c) => c.charCodeAt(0)), 12)
+    new DataView(png.buffer).setUint32(16, 1200)
+    new DataView(png.buffer).setUint32(20, 630)
+
     const form = new FormData()
-    form.set('file', new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'a.png',
-                              { type: 'image/png' }))
+    form.set('file', new File([png], 'a.png', { type: 'image/png' }))
     form.set('alt_text', 'Poster')
     const uploaded = await (await SELF.fetch(
       'https://nepscene.test/api/author/listings/lst_soon/media',
       { method: 'POST', headers: { cookie }, body: form })).json() as any
 
-    const key = `listings/lst_soon/${uploaded.id}.png`
+    // The key is content-addressed now, so it comes back rather than being
+    // reconstructed from an id (#25).
+    const key = uploaded.url.replace('/api/media/', '')
     expect(await env.MEDIA.head(key)).not.toBeNull()
 
     const response = await SELF.fetch('https://nepscene.test/api/author/listings/lst_soon', {
