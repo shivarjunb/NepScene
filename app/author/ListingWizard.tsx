@@ -37,9 +37,27 @@ const STEP_FOR_FIELD: Record<string, StepId> = {
 }
 
 export function ListingWizard({ account, listingId: initialId }: Props) {
+  /**
+   * The id this wizard opened with, frozen.
+   *
+   * Autosave rewrites the URL the moment the draft first saves, which sends a
+   * new `listingId` prop down from the route. Treating that as "open a
+   * different listing" would re-run the load below against the listing we just
+   * created — refetching the lookups, and offering to recover the local draft
+   * the author is still typing into. The wizard owns its id from here on;
+   * `listingId` state is the live one.
+   */
+  const [bootId] = useState(initialId)
   const [listingId, setListingId] = useState<string | null>(initialId)
   const [listing, setListing] = useState<ListingInput>(emptyListing)
   const [step, setStep] = useState<StepId>('details')
+  /**
+   * How far the author has got, which is what the rail lets them jump back to.
+   * A listing loaded from the server starts fully unlocked: its steps have all
+   * been filled in already, and making someone press Next five times to reach
+   * Review in order to change one word is not editing, it is re-entry.
+   */
+  const [furthest, setFurthest] = useState(0)
   const [lookups, setLookups] = useState<Lookups | null>(null)
   const [media, setMedia] = useState<SavedListing['media']>([])
   const [status, setStatus] = useState<SavedListing['status']>('draft')
@@ -67,7 +85,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
       try {
         const [lookupData, saved] = await Promise.all([
           fetchLookups(),
-          initialId ? fetchListing(initialId) : Promise.resolve(null),
+          bootId ? fetchListing(bootId) : Promise.resolve(null),
         ])
         if (cancelled) return
 
@@ -76,12 +94,13 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
           setListing(saved.listing)
           setMedia(saved.media)
           setStatus(saved.status)
+          setFurthest(stepsFor(saved.listing.listing_type).length - 1)
         }
 
         // A local draft newer than what the server holds means the last tab
         // closed before its save landed. Offer it rather than restoring it
         // silently: the author is the only one who knows which is right.
-        const local = loadDraft(storage, initialId)
+        const local = loadDraft(storage, bootId)
         if (local && isWorthRecovering(local)
             && (!saved || local.savedAt > saved.updated_at)) {
           setRecoverable(local)
@@ -94,7 +113,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
 
     void load()
     return () => { cancelled = true }
-  }, [initialId, storage])
+  }, [bootId, storage])
 
   // ── Autosave ──────────────────────────────────────────────────────────────
   const onCreated = useCallback((id: string) => {
@@ -126,11 +145,12 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
 
   const goTo = useCallback((next: StepId) => {
     setStep(next)
+    setFurthest((reached) => Math.max(reached, stepsFor(listing.listing_type).indexOf(next)))
     setShowErrors(false)
     // A client-side step change moves nothing for a screen reader unless focus
     // moves with it, the same reason the router moves focus on navigation.
     requestAnimationFrame(() => headingRef.current?.focus())
-  }, [])
+  }, [listing.listing_type])
 
   function next() {
     if (stepErrors.length > 0) {
@@ -242,7 +262,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
             setRecoverable(null)
           }}
           onDiscard={() => {
-            clearDraft(storage, initialId)
+            clearDraft(storage, bootId)
             setRecoverable(null)
           }}
         />
@@ -252,6 +272,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
         {steps.map((id, position) => {
           const title = WIZARD_STEPS.find((s) => s.id === id)?.title ?? id
           const state = position === index ? 'current' : position < index ? 'done' : 'todo'
+          const reachable = position <= Math.max(index, furthest)
           return (
             <li key={id} className={`wizard__step wizard__step--${state}`}>
               {/*
@@ -260,7 +281,7 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
               */}
               <button type="button" onClick={() => goTo(id)}
                       aria-current={position === index ? 'step' : undefined}
-                      disabled={position > index}>
+                      disabled={!reachable}>
                 <span className="wizard__step-number" aria-hidden="true">{position + 1}</span>
                 {title}
               </button>

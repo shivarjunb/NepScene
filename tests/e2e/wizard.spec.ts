@@ -346,6 +346,53 @@ test('the first real keystroke is what starts the draft', async ({ page }) => {
   expect(api.store().title).toBe('Now there is something')
 })
 
+test('autosave does not offer to recover the draft you are still typing', async ({ page }) => {
+  await serveAuthoring(page)
+  await page.goto('/submit')
+
+  await page.getByLabel('Title').fill('Being typed right now')
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+
+  // The first save rewrites the URL to the draft's own address, which sends a
+  // new listingId down from the route. If the wizard treated that as "open a
+  // different listing" it would reload and offer back the local copy of what
+  // is on screen — a recovery prompt in the middle of writing.
+  await expect(page).toHaveURL(/\/submit\/lst_new$/)
+  await expect(page.getByText('You have unsaved work on this device')).toBeHidden()
+  await expect(page.getByLabel('Title')).toHaveValue('Being typed right now')
+})
+
+test('editing an existing listing does not make you walk the wizard again', async ({ page }) => {
+  await serveAuthoring(page)
+  await page.route('**/api/author/listings/lst_new', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    return route.fulfill({
+      json: {
+        id: 'lst_new', slug: 'a-draft', status: 'draft', media: [],
+        updated_at: new Date().toISOString(),
+        listing: {
+          title: 'Finished already', summary: null, description: null,
+          listing_type: 'free', organization_id: null, venue_id: 'ven_purple',
+          starts_at: '2027-04-01T12:00:00Z', ends_at: null, is_all_day: false,
+          timezone: 'Asia/Kathmandu', external_url: null, offer_url: null,
+          location_lat: null, location_lng: null, map_popup_config: null,
+          category_slugs: ['film'], primary_category_slug: 'film',
+          tags: [], artist_slugs: [],
+        },
+      },
+    })
+  })
+
+  await page.goto('/submit/lst_new')
+  await expect(page.getByLabel('Title')).toHaveValue('Finished already')
+
+  // Its steps were all filled in before it was saved. Making someone press Next
+  // five times to change one word is re-entry, not editing.
+  await page.getByRole('button', { name: /Review/ }).click()
+  await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(page.getByText('Finished already')).toBeVisible()
+})
+
 test('an edit-mode load fills the form from the server', async ({ page }) => {
   await serveAuthoring(page)
   await page.route('**/api/author/listings/lst_new', (route) => {
