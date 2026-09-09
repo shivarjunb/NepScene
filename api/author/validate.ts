@@ -26,6 +26,19 @@ export type ListingInput = {
   listing_type: ListingType
   organization_id: string | null
   venue_id: string | null
+  /**
+   * Which room, hall or stage inside the venue (#31). Optional on the type and
+   * absent from `emptyListing()` on purpose: the wizard's local draft store
+   * revives a stored draft field by field, and a field the server knows about
+   * and that store does not must be missing rather than defaulted, or a saved
+   * draft and its revival stop comparing equal.
+   *
+   * The point of the column is that "Hall B, Bhrikutimandap" is not a venue.
+   * WaahTickets had no canonical venue at all, so the only way to say which
+   * room was to write a whole new location row — which is how a catalogue ends
+   * up with nine Bhrikutimandaps and a map that groups by rounded coordinates.
+   */
+  venue_room?: string | null
   starts_at: string
   ends_at: string | null
   is_all_day: boolean
@@ -73,7 +86,7 @@ export const hasPlace = (type: ListingType) => type !== 'announcement'
 
 const MAX = {
   title: 200, summary: 300, description: 20_000, url: 2000,
-  venueName: 200, address: 300, phone: 40, capacity: 500_000,
+  room: 120, venueName: 200, address: 300, phone: 40, capacity: 500_000,
 } as const
 
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
@@ -166,6 +179,17 @@ export function validateStep(step: StepId, input: Partial<ListingInput>): FieldE
     }
     if (lng !== null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
       errors.push({ field: 'location_lng', message: 'Longitude must be between -180 and 180' })
+    }
+    // A room belongs to a venue, so naming one without picking a venue first is
+    // the beginning of the duplicate this whole feature exists to prevent —
+    // somebody about to type the building's name into the room box.
+    if (!blank(input.venue_room)) {
+      if (blank(input.venue_id)) {
+        errors.push({ field: 'venue_room', message: 'Pick the venue first, then say which room inside it' })
+      }
+      if (input.venue_room!.trim().length > MAX.room) {
+        errors.push({ field: 'venue_room', message: `Shorten the room or stage name to ${MAX.room} characters` })
+      }
     }
   }
 

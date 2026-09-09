@@ -232,3 +232,70 @@ describe('POST /api/author/venues', () => {
     expect((await response.json() as CreateBody).error?.fields[0]?.field).toBe('name')
   })
 })
+
+describe('a room inside a venue', () => {
+  const listing = (cookie: string, body: Record<string, unknown>) =>
+    api('/listings', cookie, { method: 'POST', body: JSON.stringify(body) })
+
+  it('is stored on the listing and read back, without a venue of its own', async () => {
+    const cookie = await signIn('room@example.np')
+    const created = await (await listing(cookie, {
+      title: 'Handicraft Fair', listing_type: 'free',
+      venue_id: 'ven_thamel', venue_room: 'Hall B',
+    })).json() as { id: string }
+
+    const loaded = await (await api(`/listings/${created.id}`, cookie)).json() as
+      { listing: { venue_id: string; venue_room: string | null } }
+    expect(loaded.listing.venue_id).toBe('ven_thamel')
+    expect(loaded.listing.venue_room).toBe('Hall B')
+
+    // The point of the column: one venue, two listings, two rooms.
+    const second = await (await listing(cookie, {
+      title: 'Book Fair', listing_type: 'free',
+      venue_id: 'ven_thamel', venue_room: 'Hall A',
+    })).json() as { id: string }
+    const { count } = (await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM venues WHERE id = ?1',
+    ).bind('ven_thamel').first<{ count: number }>())!
+    expect(count).toBe(1)
+    expect(second.id).not.toBe(created.id)
+  })
+
+  it('is cleared by sending null and left alone by a patch that omits it', async () => {
+    const cookie = await signIn('room-patch@example.np')
+    const created = await (await listing(cookie, {
+      title: 'Craft Market', listing_type: 'free',
+      venue_id: 'ven_thamel', venue_room: 'Stall 14',
+    })).json() as { id: string }
+
+    await api(`/listings/${created.id}`, cookie, {
+      method: 'PATCH', body: JSON.stringify({ summary: 'Now with more stalls' }),
+    })
+    let loaded = await (await api(`/listings/${created.id}`, cookie)).json() as
+      { listing: { venue_room: string | null } }
+    expect(loaded.listing.venue_room).toBe('Stall 14')
+
+    await api(`/listings/${created.id}`, cookie, {
+      method: 'PATCH', body: JSON.stringify({ venue_room: null }),
+    })
+    loaded = await (await api(`/listings/${created.id}`, cookie)).json() as
+      { listing: { venue_room: string | null } }
+    expect(loaded.listing.venue_room).toBeNull()
+  })
+
+  it('is refused at submission when no venue was ever picked', async () => {
+    const cookie = await signIn('room-orphan@example.np')
+    const created = await (await listing(cookie, {
+      title: 'Somewhere Unnamed', listing_type: 'free',
+      venue_room: 'Hall B', starts_at: '2027-01-01T12:00:00Z',
+      category_slugs: ['concerts'],
+    })).json() as { id: string }
+
+    const response = await api(`/listings/${created.id}/submit`, cookie, { method: 'POST' })
+    expect(response.status).toBe(400)
+    const body = await response.json() as
+      { error: { code: string; fields: { field: string }[] } }
+    expect(body.error.code).toBe('incomplete_listing')
+    expect(body.error.fields.map((f) => f.field)).toContain('venue_room')
+  })
+})
