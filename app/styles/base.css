@@ -8,6 +8,11 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* WaahTickets scrolls smoothly and clips sideways at the root. The clip is
+     load-bearing: without it a wide child stretches the document instead of
+     scrolling inside itself. */
+  scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
@@ -16,7 +21,11 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--text-primary);
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: var(--page-glow);
+  background-attachment: fixed;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   /*
    * `clip`, not `hidden`. Both stop a stray horizontal scrollbar, but `hidden`
@@ -34,24 +43,48 @@ img, picture, svg, video {
 
 input, button, textarea, select { font: inherit; color: inherit; }
 
+button, a { -webkit-tap-highlight-color: transparent; }
+
+/*
+ * Headings are the sans face at 700, not a second display family. WaahTickets
+ * has no display face — it pairs one stack with heavy weights, and the weight
+ * is what does the work a display face would otherwise do.
+ */
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  line-height: var(--leading-tight);
+  line-height: var(--leading-snug);
   font-weight: var(--weight-bold);
+  letter-spacing: 0;
   text-wrap: balance;
 }
 
-h1 { font-size: var(--text-3xl); }
-h2 { font-size: var(--text-2xl); }
-h3 { font-size: var(--text-xl); }
-h4 { font-size: var(--text-lg); }
+h1 {
+  font-size: var(--text-4xl);
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-black);
+}
+h2 { font-size: var(--text-2xl); font-weight: var(--weight-extrabold); }
+h3 { font-size: var(--text-xl); font-weight: var(--weight-bold); }
+h4 { font-size: var(--text-lg); font-weight: var(--weight-bold); }
 
 p { text-wrap: pretty; }
 
+/*
+ * A link inherits its colour and carries no underline. That is WaahTickets'
+ * rule and it only works because every link there is inside something that
+ * already reads as a control — a card, a pill, a heavy accent-coloured word.
+ * `.link` is for the ones that are not.
+ */
 a {
-  color: var(--accent);
-  text-underline-offset: 0.2em;
+  color: inherit;
+  text-decoration: none;
 }
+
+.link {
+  color: var(--accent);
+  font-weight: var(--weight-extrabold);
+}
+.link:hover { color: var(--accent-hover); }
 
 code, pre { font-family: var(--font-mono); font-size: 0.9em; }
 
@@ -63,22 +96,23 @@ code, pre { font-family: var(--font-mono); font-size: 0.9em; }
 :focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 /* Skip link (#18): off-screen until focused, then unmissable. */
 .skip-link {
   position: absolute;
-  left: var(--space-3);
-  top: var(--space-3);
+  left: var(--space-5);
+  top: var(--space-5);
   z-index: var(--z-toast);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-7);
   background: var(--surface-overlay);
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  transform: translateY(calc(-100% - var(--space-6)));
+  font-weight: var(--weight-extrabold);
+  transform: translateY(calc(-100% - var(--space-11)));
   transition: transform var(--duration-fast) var(--ease-out);
 }
 
@@ -95,11 +129,16 @@ code, pre { font-family: var(--font-mono); font-size: 0.9em; }
   border: 0;
 }
 
+/*
+ * The marketplace is full-bleed: `max-width: none` and a 16px gutter, rather
+ * than a centred column. --layout-max is still the one place to change that
+ * if the width ever wants bounding.
+ */
 .layout {
   width: 100%;
   max-width: var(--layout-max);
   margin-inline: auto;
-  padding-inline: var(--space-4);
+  padding-inline: var(--layout-gutter);
 }
 
 /*
@@ -112,6 +151,8 @@ code, pre { font-family: var(--font-mono); font-size: 0.9em; }
     --duration-base: 1ms;
     --duration-slow: 1ms;
   }
+
+  html { scroll-behavior: auto; }
 
   *,
   *::before,

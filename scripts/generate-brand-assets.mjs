@@ -20,12 +20,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const out = join(root, 'public', 'brand')
 mkdirSync(out, { recursive: true })
 
-const CRIMSON = '#c1121f'
-const INK = '#0f172a'
+const ACCENT = '#7c3aed'
+const ACCENT_TINT = '#c4b5fd'
+const INK = '#141c38'
 
 const mark = (size, radius) => `
   <svg width="${size}" height="${size}" viewBox="0 0 32 32">
-    <rect width="32" height="32" rx="${radius}" fill="${CRIMSON}"/>
+    <rect width="32" height="32" rx="${radius}" fill="${ACCENT}"/>
     <path d="M6.4 22.6 12.4 12l3.9 6 3-4.2 6.3 8.8H6.4Z" fill="#ffffff"/>
     <circle cx="10.6" cy="8.9" r="2.1" fill="#ffffff"/>
   </svg>`
@@ -33,10 +34,10 @@ const mark = (size, radius) => `
 const page = (body, extra = '') => `<!doctype html>
 <html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Manrope:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{font-family:'Roboto',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
   ${extra}
 </style></head><body>${body}</body></html>`
 
@@ -49,15 +50,15 @@ const OG_CARD = page(`
   </div>`, `
   body{width:1200px;height:630px;background:${INK};color:#f8fafc}
   .card{height:100%;padding:80px;display:flex;flex-direction:column;justify-content:center;gap:28px;position:relative;overflow:hidden}
-  .card::after{content:'';position:absolute;right:-160px;top:-160px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(193,18,31,.42),transparent 68%)}
+  .card::after{content:'';position:absolute;right:-160px;top:-160px;width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.42),transparent 68%)}
   .brand{display:flex;align-items:center;gap:22px;position:relative;z-index:1}
-  .word{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:56px;letter-spacing:-.02em}
-  .accent{color:#f0808a}
-  h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:82px;line-height:1.08;letter-spacing:-.03em;position:relative;z-index:1}
+  .word{font-weight:900;font-size:56px;letter-spacing:0}
+  .accent{color:${ACCENT_TINT}}
+  h1{font-weight:900;font-size:82px;line-height:1.02;letter-spacing:0;position:relative;z-index:1}
   p{font-size:27px;color:#cbd5e1;position:relative;z-index:1}
-  .rule{width:132px;height:8px;border-radius:99px;background:${CRIMSON};position:relative;z-index:1}`)
+  .rule{width:132px;height:8px;border-radius:99px;background:${ACCENT};position:relative;z-index:1}`)
 
-const ICON = (size) => page(`<div class="wrap">${mark(size, 7)}</div>`,
+const ICON = (size) => page(`<div class="wrap">${mark(size, 8)}</div>`,
   `body{width:${size}px;height:${size}px}.wrap{width:${size}px;height:${size}px}`)
 
 const browser = await chromium.launch()

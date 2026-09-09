@@ -1,22 +1,34 @@
 /*
- * The token layer (#15).
+ * The token layer (#15), retuned to WaahTickets (#77).
  *
- * Extracted from WaahTickets rather than invented: its palette is the slate
- * neutral ramp plus a violet accent, but it exists there as raw hex repeated
- * through 13,569 lines — #ffffff 172 times, #0f172a 111 times, #7c3aed 80
- * times — with only 20 custom properties and more than twenty ad-hoc z-index
- * values. The values carry over; the repetition does not.
+ * The brief was an exact match, so the values below are WaahTickets' own,
+ * read out of apps/web/src/styles.css. What is *not* carried over is the
+ * shape: there the same values appear as raw hex 13,569 lines deep — #ffffff
+ * 172 times, #0f172a 111, #7c3aed 80 — with 20 custom properties and twenty
+ * competing z-index numbers. The look survives that translation intact; the
+ * repetition does not.
+ *
+ * Which of WaahTickets' several looks: the **public marketplace**, the newest
+ * and most coherent surface there (`.marketplace-*`), because that is the one
+ * NepScene is the same kind of thing as. The older `.topbar`/`.hero` landing
+ * has a bronze CTA and a floating pill header; the admin app has a blue one.
+ * Matching all three at once is not possible — they do not match each other.
  *
  * Two rules this file exists to enforce:
  *
  *   1. Names describe purpose, not appearance. `--surface-raised`, never
- *      `--grey-100`. A card that is grey today and cream tomorrow should not
- *      need every component touched.
+ *      `--grey-100`.
  *   2. Nothing below :root uses a literal colour. Component CSS reads tokens
- *      only, which is what makes a second theme possible at all.
+ *      only, which is what makes the second theme free.
+ *
+ * Keep every declaration on ONE line. tests/unit/contrast.test.ts parses this
+ * file line by line, and a value wrapped across two lines is a token it cannot
+ * see.
  *
  * Contrast pairs are asserted in tests/unit/contrast.test.ts against WCAG 2.1
- * AA. Change a colour here and the test tells you what it broke.
+ * AA. Four of WaahTickets' colours do not reach it and are noted where they
+ * are replaced — see `--danger`, `--warning`, `--border-strong`, and the dark
+ * accent. Everything else is theirs to the digit.
  */
 
 :root {
@@ -36,18 +48,31 @@
   --palette-slate-900: #0f172a;
   --palette-slate-950: #020617;
 
-  /* NepScene's accent is Nepal's flag crimson — deliberately not WaahTickets'
-     violet (#7c3aed). Related products, distinct identities (#19). */
-  --palette-crimson-500: #c1121f;
-  --palette-crimson-600: #a30e19;
-  --palette-crimson-300: #f0808a;
-  --palette-crimson-200: #f8b4ba;
+  /* WaahTickets' interaction accent, the third most common colour in its
+     stylesheet after white and near-black. */
+  --palette-violet-700: #6d28d9;
+  --palette-violet-600: #7c3aed;
+  --palette-violet-400: #a78bfa;
+  --palette-violet-300: #c4b5fd;
+  --palette-violet-50: #f5f0fe;
 
-  --palette-green-600: #15803d;
-  --palette-green-300: #86efac;
-  --palette-amber-600: #b45309;
+  /* The dark theme's second accent. WaahTickets calls its dark mode "vibrant
+     lifestyle" and reaches for pink there for edges and hovers. */
+  --palette-pink-500: #e91e63;
+
+  /* The dark ground is not slate but the midnight blue of the hero map, so
+     the map and the page around it are the same night. */
+  --palette-midnight-900: #141c38;
+  --palette-midnight-800: #181f3c;
+  --palette-midnight-700: #1d2540;
+  --palette-midnight-950: #0f1630;
+  --palette-midnight-accent: #212159;
+
+  --palette-teal-700: #0f766e;
+  --palette-green-400: #10b981;
+  --palette-amber-700: #b45309;
   --palette-amber-300: #fcd34d;
-  --palette-red-600: #b91c1c;
+  --palette-red-700: #b91c1c;
   --palette-red-300: #fca5a5;
 
   /* ── Surfaces and text — light theme ─────────────────────────────────── */
@@ -56,82 +81,144 @@
   --surface-sunken: var(--palette-slate-100);
   --surface-overlay: var(--palette-white);
   --surface-inverse: var(--palette-slate-900);
-  --scrim: rgb(15 23 42 / 55%);
+  --scrim: rgb(15 23 42 / 46%);
+
+  /* The header is glass over the page rather than a solid bar — the single
+     most recognisable thing about the WaahTickets chrome. */
+  --surface-glass: rgb(255 255 255 / 92%);
+  --glass-blur: blur(18px);
+
+  /* A pill sitting on top of a photograph, where the ground is unknown. */
+  --overlay-surface: rgb(255 255 255 / 94%);
+  --overlay-text: var(--palette-slate-900);
+  --overlay-veil: rgb(15 23 42 / 6%);
 
   --text-primary: var(--palette-slate-900);
-  --text-secondary: var(--palette-slate-600);
-  --text-muted: var(--palette-slate-500);
+  --text-secondary: var(--palette-slate-500);
+  --text-muted: var(--palette-slate-600);
   --text-inverse: var(--palette-white);
   --text-on-accent: var(--palette-white);
 
   /* --border is decorative: dividers and card outlines, which WCAG does not
-     hold to a contrast ratio. --border-strong is the boundary of an
-     interactive control, which 1.4.11 requires to reach 3:1, so it is darker
-     than it would be if it were only a line. */
-  --border: var(--palette-slate-200);
+     hold to a contrast ratio, and WaahTickets draws them as a tenth of an
+     alpha rather than a grey. --border-strong is the boundary of an
+     interactive control, which 1.4.11 requires to reach 3:1. WaahTickets
+     draws those at the same rgba(15,23,42,0.12) — about 1.7:1 — so this is
+     the first of the four places the match is deliberately broken. */
+  --border: rgb(15 23 42 / 10%);
+  --border-hairline: rgb(15 23 42 / 8%);
   --border-strong: var(--palette-slate-500);
 
-  --accent: var(--palette-crimson-500);
-  --accent-hover: var(--palette-crimson-600);
-  --accent-surface: #fdf2f3;
-  --accent-border: var(--palette-crimson-200);
+  --accent: var(--palette-violet-600);
+  --accent-hover: var(--palette-violet-700);
+  --accent-surface: var(--palette-violet-50);
+  --accent-border: var(--palette-violet-300);
+  /* The hover wash under a nav pill, and the edge a card takes when pointed
+     at. Both are the accent at an alpha, so both sit on any ground. */
+  --accent-wash: rgb(124 58 237 / 8%);
+  --accent-edge: rgb(124 58 237 / 50%);
 
-  --success: var(--palette-green-600);
-  --success-surface: #f0fdf4;
-  --warning: var(--palette-amber-600);
+  --success: var(--palette-teal-700);
+  --success-surface: #ecfdf5;
+  --warning: var(--palette-amber-700);
   --warning-surface: #fffbeb;
-  --danger: var(--palette-red-600);
+  --danger: var(--palette-red-700);
   --danger-surface: #fef2f2;
 
   --focus-ring: var(--accent);
 
-  /* ── Spacing — a 4px base, so half-steps never appear ────────────────── */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
-  --space-8: 4rem;
+  /* ── Grounds ───────────────────────────────────────────────────────────
+     Whole backgrounds, kept here because they are multi-stop gradients and a
+     gradient is as much a colour as a hex is.
+
+     --page-glow is an image laid over --surface rather than a background in
+     its own right. A body whose background-color is transparent has no ground
+     at all when the image does not paint, and "what colour is the page" stops
+     being a question anything can answer — getComputedStyle included. */
+  --page-glow: none;
+  --hero-ground: radial-gradient(circle at 18% 22%, rgb(168 85 247 / 55%), transparent 26%), radial-gradient(circle at 78% 24%, rgb(14 165 233 / 38%), transparent 22%), linear-gradient(135deg, #080a18 0%, #1e103f 48%, #111827 100%);
+  --hero-veil: linear-gradient(90deg, rgb(4 8 20 / 94%) 0%, rgb(12 8 35 / 74%) 48%, rgb(8 13 27 / 34%) 100%), linear-gradient(0deg, rgb(4 8 20 / 62%), rgb(4 8 20 / 8%));
+  /* What fills a card that has no picture yet. WaahTickets calls it the safe
+     image and it is the same violet night in both themes. */
+  --poster-ground: radial-gradient(circle at 22% 18%, rgb(250 204 21 / 46%), transparent 18%), radial-gradient(circle at 78% 22%, rgb(236 72 153 / 40%), transparent 18%), linear-gradient(135deg, #2e1065 0%, #581c87 44%, #111827 100%);
+  /* A category chip is lit from its top-right corner rather than outlined. */
+  --chip-ground: radial-gradient(circle at 100% 0%, rgb(168 85 247 / 14%), transparent 34%), linear-gradient(135deg, #ffffff, #f8fafc);
+
+  /* ── Spacing ───────────────────────────────────────────────────────────
+     Not a 4px base. WaahTickets steps in twos through the small end — 6, 10,
+     14, 18 all appear more often than 24 does — because its cards are dense
+     and its gaps are tight. A 4px ladder cannot express that, so this is its
+     ladder, and the steps are the ones it actually uses. */
+  --space-1: 0.25rem;    /* 4  */
+  --space-2: 0.375rem;   /* 6  */
+  --space-3: 0.5rem;     /* 8  */
+  --space-4: 0.625rem;   /* 10 */
+  --space-5: 0.75rem;    /* 12 */
+  --space-6: 0.875rem;   /* 14 */
+  --space-7: 1rem;       /* 16 */
+  --space-8: 1.125rem;   /* 18 */
+  --space-9: 1.625rem;   /* 26 */
+  --space-10: 2.625rem;  /* 42 */
+  --space-11: 3rem;      /* 48 */
 
   /* ── Typography ──────────────────────────────────────────────────────── */
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-    Roboto, 'Noto Sans Devanagari', sans-serif;
-  --font-display: 'Space Grotesk', var(--font-sans);
+  /* WaahTickets loads Manrope and Space Grotesk and then asks for neither:
+     its :root names Google Sans Text, which is not a webfont anyone can
+     serve, so in practice the stack resolves to Roboto or the system face.
+     Copied verbatim, degrading identically, and loading nothing. */
+  --font-sans: 'Google Sans Text', 'Google Sans', Roboto, Arial, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Devanagari', sans-serif;
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
+  --text-3xs: 0.68rem;
+  --text-2xs: 0.74rem;
+  --text-xs: 0.78rem;
+  --text-sm: 0.84rem;
+  --text-md: 0.9rem;
   --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.25rem;
-  --text-4xl: 3rem;
+  --text-lg: 1.02rem;
+  --text-xl: 1.2rem;
+  --text-2xl: 1.55rem;
+  --text-3xl: 2.1rem;
+  --text-4xl: clamp(2.3rem, 4.6vw, 3.5rem);
 
-  --leading-tight: 1.2;
-  --leading-normal: 1.55;
+  --leading-tight: 1.02;
+  --leading-snug: 1.3;
+  --leading-normal: 1.42;
+  --leading-relaxed: 1.65;
+
+  /* WaahTickets is a bold interface and this is where that lives: 700, 800
+     and 900 account for 152 of its 178 weight declarations, and 500 appears
+     six times in thirteen thousand lines. */
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --weight-extrabold: 800;
+  --weight-black: 900;
 
   /* ── Radii and elevation ─────────────────────────────────────────────── */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 1rem;
-  --radius-full: 9999px;
+  --radius-xs: 0.5rem;      /* 8  — buttons */
+  --radius-sm: 0.5625rem;   /* 9  — the brand mark */
+  --radius-md: 0.625rem;    /* 10 — inputs */
+  --radius-lg: 0.75rem;     /* 12 — search fields */
+  --radius-xl: 0.875rem;    /* 14 */
+  --radius-2xl: 1.125rem;   /* 18 */
+  --radius-3xl: 1.25rem;    /* 20 — cards */
+  --radius-4xl: 1.5rem;     /* 24 — panels */
+  --radius-full: 999px;
 
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 8%);
-  --shadow-md: 0 4px 12px rgb(15 23 42 / 10%);
-  --shadow-lg: 0 16px 40px rgb(15 23 42 / 14%);
+  --shadow-sm: 0 10px 26px rgb(15 23 42 / 6%);
+  --shadow-md: 0 14px 36px rgb(15 23 42 / 7%);
+  --shadow-lg: 0 22px 50px rgb(15 23 42 / 12%);
+  --shadow-badge: 0 10px 24px rgb(15 23 42 / 18%);
+  --shadow-overlay: 0 24px 58px rgb(15 23 42 / 18%);
 
   /* ── z-index ──────────────────────────────────────────────────────────
      A named scale, because WaahTickets accumulated 0, 1, 2, 3, 8, 20, 25, 45,
-     55, 70, 79, 80, 100, 200, 210, 220, 300, 400, 430 and 1200 with nothing
-     saying which should win. Component CSS uses these names and never a
-     number. */
+     55, 70, 79, 80, 100, 200, 210, 220, 300, 400, 430, 1200 and 9999 with
+     nothing saying which should win. Component CSS uses these names and never
+     a number. */
   --z-base: 0;
   --z-raised: 10;
   --z-sticky: 100;
@@ -142,54 +229,85 @@
   --z-toast: 600;
 
   /* ── Motion ───────────────────────────────────────────────────────────
-     Durations are tokens so that reduced-motion can zero them in one place. */
-  --duration-fast: 120ms;
-  --duration-base: 200ms;
-  --duration-slow: 320ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+     180ms ease on transform, border and background, everywhere, with 260ms
+     reserved for an image growing inside its frame. That uniformity is most
+     of why the interface feels of a piece. Durations are tokens so that
+     reduced-motion can zero them in one place. */
+  --duration-fast: 180ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+  --ease-out: ease;
 
-  --layout-max: 76rem;
-  --header-height: 3.5rem;
+  /* The marketplace is full-bleed — it sets max-width: none deliberately and
+     pads the gutters instead. */
+  --layout-max: none;
+  --layout-gutter: var(--space-7);
+  --header-height: 4.25rem;   /* 68 */
 }
+
+/* The gutter widens on a desktop and closes right up on a foldable cover
+   screen. It lives here rather than in a component file because it is the one
+   dimension every section reads. */
+@media (min-width: 68.8125rem) { :root { --layout-gutter: 1.75rem; } }
+@media (max-width: 25rem) { :root { --layout-gutter: 0.625rem; } }
 
 /*
  * Dark theme. Only the semantic layer is redefined — the palette and every
  * dimension stay put, which is why toggling cannot shift layout (#17).
+ *
+ * WaahTickets' own dark mode is a named variation: midnight blue rather than
+ * black, with violet and pink held vibrant through the switch.
  */
 :root[data-theme='dark'] {
-  --surface: var(--palette-slate-900);
-  --surface-raised: var(--palette-slate-800);
-  --surface-sunken: var(--palette-slate-950);
-  --surface-overlay: var(--palette-slate-800);
+  --surface: var(--palette-midnight-900);
+  --surface-raised: var(--palette-midnight-700);
+  --surface-sunken: var(--palette-midnight-950);
+  --surface-overlay: var(--palette-midnight-800);
   --surface-inverse: var(--palette-white);
-  --scrim: rgb(2 6 23 / 70%);
+  --scrim: rgb(4 8 20 / 70%);
 
-  --text-primary: var(--palette-slate-50);
+  --surface-glass: rgb(18 24 52 / 90%);
+  --glass-blur: blur(20px);
+
+  --overlay-surface: rgb(20 28 56 / 88%);
+  --overlay-text: var(--palette-white);
+  --overlay-veil: rgb(255 255 255 / 6%);
+
+  --text-primary: var(--palette-white);
   --text-secondary: var(--palette-slate-300);
   --text-muted: var(--palette-slate-400);
-  --text-inverse: var(--palette-slate-900);
-  --text-on-accent: var(--palette-slate-900);
+  --text-inverse: var(--palette-midnight-900);
+  --text-on-accent: var(--palette-midnight-900);
 
-  --border: var(--palette-slate-700);
+  --border: rgb(255 255 255 / 8%);
+  --border-hairline: rgb(255 255 255 / 7%);
   --border-strong: var(--palette-slate-400);
 
-  /* The light accent is too dark to read on a slate ground, so dark theme
-     takes a tint of the same hue. Both are asserted against AA. */
-  --accent: var(--palette-crimson-300);
-  --accent-hover: var(--palette-crimson-200);
-  --accent-surface: #3b1013;
-  --accent-border: #7e1f27;
+  /* WaahTickets tints its dark accent up to violet-400 for icons and
+     violet-300 for the date line, and saves pink for edges — which is lucky,
+     because pink on midnight is 3.9:1 and would not have passed as text. */
+  --accent: var(--palette-violet-400);
+  --accent-hover: var(--palette-violet-300);
+  --accent-surface: var(--palette-midnight-accent);
+  --accent-border: rgb(167 139 250 / 35%);
+  --accent-wash: rgb(124 58 237 / 18%);
+  --accent-edge: rgb(233 30 99 / 45%);
 
-  --success: var(--palette-green-300);
-  --success-surface: #052e16;
+  --success: var(--palette-green-400);
+  --success-surface: #06251d;
   --warning: var(--palette-amber-300);
   --warning-surface: #3a2606;
   --danger: var(--palette-red-300);
   --danger-surface: #3f1414;
 
-  --shadow-sm: 0 1px 2px rgb(2 6 23 / 40%);
-  --shadow-md: 0 4px 12px rgb(2 6 23 / 50%);
-  --shadow-lg: 0 16px 40px rgb(2 6 23 / 60%);
+  --page-glow: radial-gradient(1200px 600px at 80% -5%, rgb(124 58 237 / 12%), transparent 55%), radial-gradient(800px 480px at 5% 20%, rgb(233 30 99 / 7%), transparent 58%), linear-gradient(180deg, rgb(20 28 56 / 0%), rgb(24 31 60 / 100%));
+  --chip-ground: radial-gradient(circle at 100% 0%, rgb(168 85 247 / 14%), transparent 34%), linear-gradient(135deg, rgb(255 255 255 / 5%), rgb(255 255 255 / 3%));
+
+  --shadow-sm: 0 10px 26px rgb(0 0 0 / 22%);
+  --shadow-md: 0 14px 36px rgb(0 0 0 / 32%);
+  --shadow-lg: 0 22px 50px rgb(233 30 99 / 12%);
+  --shadow-badge: 0 10px 24px rgb(0 0 0 / 38%);
+  --shadow-overlay: 0 24px 58px rgb(0 0 0 / 46%);
 }
 
 /* Honour the OS when the visitor has expressed no preference. The inline
@@ -197,36 +315,52 @@
    window before hydration and any client where the script does not run. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --surface: var(--palette-slate-900);
-    --surface-raised: var(--palette-slate-800);
-    --surface-sunken: var(--palette-slate-950);
-    --surface-overlay: var(--palette-slate-800);
+    --surface: var(--palette-midnight-900);
+    --surface-raised: var(--palette-midnight-700);
+    --surface-sunken: var(--palette-midnight-950);
+    --surface-overlay: var(--palette-midnight-800);
     --surface-inverse: var(--palette-white);
-    --scrim: rgb(2 6 23 / 70%);
+    --scrim: rgb(4 8 20 / 70%);
 
-    --text-primary: var(--palette-slate-50);
+    --surface-glass: rgb(18 24 52 / 90%);
+    --glass-blur: blur(20px);
+
+    --overlay-surface: rgb(20 28 56 / 88%);
+    --overlay-text: var(--palette-white);
+    --overlay-veil: rgb(255 255 255 / 6%);
+
+    --text-primary: var(--palette-white);
     --text-secondary: var(--palette-slate-300);
     --text-muted: var(--palette-slate-400);
-    --text-inverse: var(--palette-slate-900);
-    --text-on-accent: var(--palette-slate-900);
+    --text-inverse: var(--palette-midnight-900);
+    --text-on-accent: var(--palette-midnight-900);
 
-    --border: var(--palette-slate-700);
+    --border: rgb(255 255 255 / 8%);
+    --border-hairline: rgb(255 255 255 / 7%);
     --border-strong: var(--palette-slate-400);
 
-    --accent: var(--palette-crimson-300);
-    --accent-hover: var(--palette-crimson-200);
-    --accent-surface: #3b1013;
-    --accent-border: #7e1f27;
+    --accent: var(--palette-violet-400);
+    --accent-hover: var(--palette-violet-300);
+    --accent-surface: var(--palette-midnight-accent);
+    --accent-border: rgb(167 139 250 / 35%);
+    --accent-wash: rgb(124 58 237 / 18%);
+    --accent-edge: rgb(233 30 99 / 45%);
 
-    --success: var(--palette-green-300);
-    --success-surface: #052e16;
+    --success: var(--palette-green-400);
+    --success-surface: #06251d;
     --warning: var(--palette-amber-300);
     --warning-surface: #3a2606;
     --danger: var(--palette-red-300);
     --danger-surface: #3f1414;
 
-    --shadow-sm: 0 1px 2px rgb(2 6 23 / 40%);
-    --shadow-md: 0 4px 12px rgb(2 6 23 / 50%);
-    --shadow-lg: 0 16px 40px rgb(2 6 23 / 60%);
+    --page-glow: radial-gradient(1200px 600px at 80% -5%, rgb(124 58 237 / 12%), transparent 55%), radial-gradient(800px 480px at 5% 20%, rgb(233 30 99 / 7%), transparent 58%), linear-gradient(180deg, rgb(20 28 56 / 0%), rgb(24 31 60 / 100%));
+    --chip-ground: radial-gradient(circle at 100% 0%, rgb(168 85 247 / 14%), transparent 34%), linear-gradient(135deg, rgb(255 255 255 / 5%), rgb(255 255 255 / 3%));
+  --chip-ground: radial-gradient(circle at 100% 0%, rgb(168 85 247 / 14%), transparent 34%), linear-gradient(135deg, rgb(255 255 255 / 5%), rgb(255 255 255 / 3%));
+
+    --shadow-sm: 0 10px 26px rgb(0 0 0 / 22%);
+    --shadow-md: 0 14px 36px rgb(0 0 0 / 32%);
+    --shadow-lg: 0 22px 50px rgb(233 30 99 / 12%);
+    --shadow-badge: 0 10px 24px rgb(0 0 0 / 38%);
+    --shadow-overlay: 0 24px 58px rgb(0 0 0 / 46%);
   }
 }
