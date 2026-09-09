@@ -411,3 +411,156 @@ describe('the author’s own listings', () => {
     expect(titles).not.toContain('Not mine')
   })
 })
+
+/**
+ * The fields the wizard writes but the tests above never exercise, because the
+ * happy path through the form does not touch them: the ones that go in as one
+ * shape and come back as another.
+ */
+describe('the fields that change shape on the way in and out', () => {
+  const base = {
+    listing_type: 'free' as const, starts_at: '2027-07-01T12:00:00Z',
+    category_slugs: ['concerts'], primary_category_slug: 'concerts', venue_id: 'ven_thamel',
+  }
+
+  const load = async (cookie: string, id: string) =>
+    await (await api(`/listings/${id}`, cookie)).json() as
+      { listing: Record<string, unknown>; media: Record<string, unknown>[] }
+
+  it('keeps coordinates as numbers and ignores ones that are not', async () => {
+    const { cookie } = await signIn('coords@example.np')
+    const { id } = await (await create(cookie, {
+      ...base, title: 'Pinned', location_lat: 27.7154, location_lng: 85.3105,
+    })).json() as { id: string }
+
+    expect((await load(cookie, id)).listing).toMatchObject({
+      location_lat: 27.7154, location_lng: 85.3105,
+    })
+
+    // Explicit null is the author clearing the override, which is different
+    // from not sending it, and must actually clear.
+    await patch(cookie, id, { location_lat: null, location_lng: null })
+    expect((await load(cookie, id)).listing).toMatchObject({
+      location_lat: null, location_lng: null,
+    })
+  })
+
+  it('treats a coordinate sent as text as a cleared one, not an ignored one', async () => {
+    const { cookie } = await signIn('coordtext@example.np')
+    const { id } = await (await create(cookie, {
+      ...base, title: 'Pinned', location_lat: 27.7154, location_lng: 85.3105,
+    })).json() as { id: string }
+
+    // Surprising enough to pin down. The key being present at all is the
+    // author's client saying something about this field, so an unreadable
+    // value clears it rather than being skipped — the same rule the string
+    // fields follow. The alternative, silently keeping the old pin, hides the
+    // client bug behind a coordinate nobody chose; a pin that visibly
+    // disappears gets reported.
+    await patch(cookie, id, { location_lat: '27.7', location_lng: '85.3' })
+    expect((await load(cookie, id)).listing).toMatchObject({
+      location_lat: null, location_lng: null,
+    })
+  })
+
+  it('stores an all-day flag as a flag and gives it back as a boolean', async () => {
+    const { cookie } = await signIn('allday@example.np')
+    const { id } = await (await create(cookie, { ...base, title: 'All day long' }))
+      .json() as { id: string }
+
+    expect((await load(cookie, id)).listing.is_all_day).toBe(false)
+
+    await patch(cookie, id, { is_all_day: true })
+    expect((await load(cookie, id)).listing.is_all_day).toBe(true)
+
+    // SQLite has no boolean, so this round-trips through 1 and 0. A test that
+    // only ever sets it true would not notice the column coming back as 1.
+    const row = await env.DB.prepare('SELECT is_all_day FROM listings WHERE id = ?1')
+      .bind(id).first<{ is_all_day: number }>()
+    expect(row!.is_all_day).toBe(1)
+  })
+
+  it('round-trips the map popup configuration through JSON', async () => {
+    const { cookie } = await signIn('popup@example.np')
+    const { id } = await (await create(cookie, { ...base, title: 'Popup' }))
+      .json() as { id: string }
+
+    await patch(cookie, id, { map_popup_config: { layout: 'wide', show_price: false } })
+    expect((await load(cookie, id)).listing.map_popup_config)
+      .toEqual({ layout: 'wide', show_price: false })
+
+    await patch(cookie, id, { map_popup_config: null })
+    expect((await load(cookie, id)).listing.map_popup_config).toBeNull()
+  })
+
+  it('links the artists it is given and skips the ones it does not know', async () => {
+    const { cookie } = await signIn('artists@example.np')
+    const { id } = await (await create(cookie, {
+      ...base, title: 'With a band', artist_slugs: ['kutumba', 'nobody-by-that-name'],
+    })).json() as { id: string }
+
+    // An unknown slug is a stale tab, not a typo worth losing a save over, so
+    // it is dropped rather than rejected — and the real one still lands.
+    expect((await load(cookie, id)).listing.artist_slugs).toEqual(['kutumba'])
+
+    await patch(cookie, id, { artist_slugs: [] })
+    expect((await load(cookie, id)).listing.artist_slugs).toEqual([])
+  })
+
+  it('returns uploaded pictures with a URL the browser can use', async () => {
+    const { cookie, id: userId } = await signIn('media@example.np')
+    const { id } = await (await create(cookie, { ...base, title: 'Illustrated' }))
+      .json() as { id: string }
+
+    await env.DB.prepare(
+      `INSERT INTO listing_media
+         (id, listing_id, r2_key, mime_type, alt_text, width, height, sort_order,
+          created_by, created_at)
+       VALUES ('med_a', ?1, 'media/med_a/original.jpg', 'image/jpeg',
+               'The band on stage', 1600, 900, 0, ?2, ?3)`,
+    ).bind(id, userId, new Date().toISOString()).run()
+
+    const { media } = await load(cookie, id)
+    expect(media).toHaveLength(1)
+    expect(media[0]).toMatchObject({
+      id: 'med_a', alt_text: 'The band on stage', width: 1600, height: 900,
+    })
+    // The r2 key is storage's business; what the wizard needs is a URL.
+    expect(String(media[0]!.url)).not.toBe('media/med_a/original.jpg')
+    expect(String(media[0]!.url)).toContain('med_a')
+  })
+
+  it('recomputes the offer provider from the stored type when only the link moves',
+    async () => {
+      const { cookie } = await signIn('provider@example.np')
+      const { id } = await (await create(cookie, {
+        ...base, title: 'Sold elsewhere', listing_type: 'ticketed_external',
+        offer_url: 'https://tickets.example.np/a',
+      })).json() as { id: string }
+
+      const providerOf = async () =>
+        (await env.DB.prepare('SELECT offer_provider FROM listings WHERE id = ?1')
+          .bind(id).first<{ offer_provider: string | null }>())!.offer_provider
+
+      expect(await providerOf()).not.toBeNull()
+
+      // The type is not in this PATCH, so the provider has to be derived from
+      // what is already stored. Reading the old type back is the step that
+      // stops a listing keeping a provider that no longer means anything.
+      await patch(cookie, id, { offer_url: null })
+      expect(await providerOf()).toBeNull()
+    })
+
+  it('refuses a body that is not JSON, on the way in and on the way back', async () => {
+    const { cookie } = await signIn('garbage@example.np')
+    const { id } = await (await create(cookie, { ...base, title: 'Fine so far' }))
+      .json() as { id: string }
+
+    for (const [method, path] of [['POST', '/listings'], ['PATCH', `/listings/${id}`]] as const) {
+      const response = await api(path, cookie, { method, body: 'not json at all' })
+      expect(response.status, `${method} ${path}`).toBe(400)
+      expect((await response.json() as { error: { code: string } }).error.code)
+        .toBe('invalid_body')
+    }
+  })
+})
