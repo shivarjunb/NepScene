@@ -6,7 +6,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["vite/client"],
+    // `google.maps` is types only — the SDK itself arrives as a script tag at
+    // runtime (app/lib/googleMaps.ts), so nothing is bundled from it.
+    "types": ["vite/client", "google.maps"],
     "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,

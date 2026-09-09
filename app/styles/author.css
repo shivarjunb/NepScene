@@ -284,3 +284,210 @@
   .wizard__actions { flex-wrap: wrap; }
   .wizard__save { order: -1; flex-basis: 100%; text-align: left; }
 }
+
+/* ── The venue picker and the map (#31) ────────────────────────────────────
+   Search-before-create is a layout decision as much as a code one: the results
+   list is the prominent thing, and "add a new venue" is a secondary button
+   below it rather than a peer of the search box. */
+
+.venue-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.venue-picker--creating {
+  padding: var(--space-7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-3xl);
+  background: var(--surface-raised);
+}
+
+.venue-picker__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.venue-picker__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+}
+
+.venue-picker__chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface-raised);
+}
+
+.venue-picker__chosen-name {
+  display: block;
+  font-weight: var(--weight-bold);
+}
+
+.venue-picker__chosen-detail,
+.venue-picker__result-where {
+  display: block;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.venue-picker__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.venue-picker__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.venue-picker__result:hover,
+.venue-picker__result:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+
+.venue-picker__result-name {
+  font-weight: var(--weight-bold);
+}
+
+.venue-picker__duplicates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.venue-picker__duplicates li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── Map location picker ───────────────────────────────────────────────── */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+}
+
+.picker__legend {
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-extrabold);
+}
+
+.picker__combobox {
+  position: relative;
+}
+
+/* The suggestion list overlays whatever is under it, which is the map. */
+.picker__suggestions {
+  position: absolute;
+  z-index: var(--z-dropdown);
+  inset-inline: 0;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  max-height: 15rem;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+.picker__suggestion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.picker__suggestion.is-highlighted,
+.picker__suggestion:focus-visible {
+  background: var(--surface-raised);
+}
+
+.picker__suggestion-name { font-weight: var(--weight-semibold); }
+
+.picker__suggestion-detail,
+.picker__searching,
+.picker__status,
+.picker__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.picker__map-wrap {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Tall enough to judge a street by, short enough that the fields under it are
+   still on screen on a phone. */
+.picker__map {
+  height: 18rem;
+  background: var(--surface-sunken);
+}
+
+.picker__map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 30rem) {
+  .picker__map { height: 14rem; }
+
+  .venue-picker__chosen,
+  .venue-picker__heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

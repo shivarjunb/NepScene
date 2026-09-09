@@ -33,7 +33,7 @@ const STEP_FOR_FIELD: Record<string, StepId> = {
   external_url: 'details', offer_url: 'details', category_slugs: 'details',
   primary_category_slug: 'details', tags: 'details', organization_id: 'details',
   starts_at: 'when', ends_at: 'when', timezone: 'when', is_all_day: 'when',
-  venue_id: 'where', location_lat: 'where', location_lng: 'where',
+  venue_id: 'where', venue_room: 'where', location_lat: 'where', location_lng: 'where',
 }
 
 export function ListingWizard({ account, listingId: initialId }: Props) {
@@ -323,7 +323,10 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
           <WhenStep listing={listing} set={set} lookups={lookups} errors={visibleErrors} />
         )}
         {step === 'where' && (
-          <WhereStep listing={listing} set={set} lookups={lookups} errors={visibleErrors} />
+          <WhereStep listing={listing} set={set} lookups={lookups} errors={visibleErrors}
+                     onVenueCreated={(venue) => setLookups((current) => current && {
+                       ...current, venues: [venue, ...current.venues],
+                     })} />
         )}
         {step === 'media' && (
           <MediaStep listingId={listingId} media={media} onUploaded={() => {

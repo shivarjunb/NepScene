@@ -268,7 +268,20 @@ export type VenueFieldError = { field: keyof VenueInput | 'form'; message: strin
  * Applied only when the country is Nepal, so the day the catalogue crosses a
  * border this rule stops rather than lies.
  */
-const NEPAL_BOUNDS = { minLat: 26.0, maxLat: 30.6, minLng: 79.9, maxLng: 88.3 } as const
+export const NEPAL_BOUNDS = { minLat: 26.0, maxLat: 30.6, minLng: 79.9, maxLng: 88.3 } as const
+
+/**
+ * Exported because the browser asks the same question before the Worker does
+ * (#31): the picker warns on a pin dropped outside Nepal while the author can
+ * still see the map, rather than letting them reach Submit and be refused by
+ * `validateVenue` below. Two copies of the box would eventually disagree, and
+ * the one that disagreed would be the one nobody was looking at.
+ */
+export function insideNepal(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng)
+    && lat >= NEPAL_BOUNDS.minLat && lat <= NEPAL_BOUNDS.maxLat
+    && lng >= NEPAL_BOUNDS.minLng && lng <= NEPAL_BOUNDS.maxLng
+}
 
 export function validateVenue(input: Partial<VenueInput>): VenueFieldError[] {
   const errors: VenueFieldError[] = []
@@ -307,9 +320,7 @@ export function validateVenue(input: Partial<VenueInput>): VenueFieldError[] {
   }
   const country = (input.country ?? 'NP').toUpperCase()
   if (country === 'NP' && lat !== null && lng !== null
-      && Number.isFinite(lat) && Number.isFinite(lng)
-      && (lat < NEPAL_BOUNDS.minLat || lat > NEPAL_BOUNDS.maxLat
-          || lng < NEPAL_BOUNDS.minLng || lng > NEPAL_BOUNDS.maxLng)) {
+      && Number.isFinite(lat) && Number.isFinite(lng) && !insideNepal(lat, lng)) {
     errors.push({
       field: 'latitude',
       message: 'That pin is outside Nepal — check the latitude and longitude are not swapped',

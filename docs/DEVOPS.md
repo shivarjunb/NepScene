@@ -243,11 +243,12 @@ un-leak it — the value is in the reflog, in any fork, and in whatever scraped 
 
 ### Google Maps keys
 
-**Not provisioned yet — that is #36, with the map port in M3.** No key exists because
-nothing reads one: `VITE_GOOGLE_MAPS_API_KEY` is commented out in `.dev.vars.example`
-and no code references it. Creating four keys now would mean four unused credentials
-ageing in a console. The requirements below are settled; the provisioning happens the
-day the map lands.
+**Read since #31; still to be provisioned.** The wizard's venue picker loads the Maps
+JavaScript API with `VITE_GOOGLE_MAPS_API_KEY` (`app/lib/googleMaps.ts`), and the four
+build workflows already pass it through. No key exists yet, and that is survivable
+rather than broken: a build without one shows the picker's typed-coordinate fallback
+instead of a map, so preview deployments and the Playwright server work as they are.
+Provision before the public map lands (#36), which cannot degrade the same way.
 
 One key per environment, each restricted by HTTP referrer, each with a quota alert.
 The key is a build-time public value baked into the bundle — an unrestricted key
