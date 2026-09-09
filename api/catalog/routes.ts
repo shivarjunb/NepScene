@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import { eventRoutes } from './events'
 import { listingRoutes } from './listings'
 import { placeRoutes } from './places'
 import { referenceRoutes } from './reference'
@@ -11,6 +12,7 @@ import { referenceRoutes } from './reference'
 export const catalogRoutes = new Hono<{ Bindings: Env }>()
 
 catalogRoutes.route('/', referenceRoutes)
+catalogRoutes.route('/', eventRoutes)
 catalogRoutes.route('/', placeRoutes)
 // Last: `/listings/:slug` must not shadow the more specific routes above.
 catalogRoutes.route('/', listingRoutes)

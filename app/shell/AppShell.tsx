@@ -118,6 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ul className="site-footer__list">
               <li><Link href="/about">About</Link></li>
               <li><Link href="/submit">Submit an event</Link></li>
+              <li><Link href="/dashboard">Your listings</Link></li>
               <li><Link href="/privacy">Privacy</Link></li>
               <li><Link href="/design-system">Design system</Link></li>
             </ul>
