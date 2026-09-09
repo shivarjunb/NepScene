@@ -344,14 +344,20 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
 
 .hero > * { position: relative; z-index: var(--z-raised); }
 
+/*
+ * The colour is inherited, not stated. This heading is reused outside .hero —
+ * the loading and error states keep it so a screen reader is not left on a
+ * page with no identity — and stating the hero's ink here made it white on
+ * white the moment the catalogue failed to load.
+ */
 .hero__title {
   max-width: 38rem;
   font-size: var(--text-4xl);
   line-height: var(--leading-tight);
   font-weight: var(--weight-black);
-  color: var(--on-dark-text);
-  text-shadow: 0 4px 34px var(--scrim);
 }
+
+.hero .hero__title { text-shadow: 0 4px 34px var(--scrim); }
 
 .hero__lead {
   max-width: 32.5rem;
