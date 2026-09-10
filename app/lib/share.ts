@@ -10,6 +10,21 @@
  * opens the app when it is installed and WhatsApp Web when it is not, where
  * the scheme fails silently on a desktop with nothing registered for it.
  */
+/**
+ * The origin to build absolute links against.
+ *
+ * Absolute because a share URL and a calendar entry leave the page — a relative
+ * one is meaningless in WhatsApp. Read off `globalThis` rather than `window`
+ * because this file is compiled by the Worker's config too, which has no DOM
+ * lib on purpose; and empty on the server (#45), where there is no location to
+ * ask. That placeholder is never what a reader gets: the markup is hydrated in
+ * a browser, which fills in the real origin before anything can be clicked.
+ */
+export function siteOrigin(): string {
+  const location = (globalThis as { location?: { origin?: string } }).location
+  return location?.origin ?? ''
+}
+
 export type ShareTarget = {
   id: 'whatsapp' | 'facebook' | 'x' | 'copy'
   href?: string

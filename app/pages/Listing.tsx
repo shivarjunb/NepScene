@@ -8,7 +8,7 @@ import {
   startTime, summaryOf, titleOf, venueLine,
 } from '../lib/format'
 import { calendarEventFor, googleCalendarUrl, toICal } from '../lib/calendar'
-import { directionsUrl, shareTargets } from '../lib/share'
+import { directionsUrl, shareTargets, siteOrigin } from '../lib/share'
 import { useLanguage, useT } from '../i18n'
 import { Alert, Badge, Button, Card, Skeleton } from '../components/primitives'
 import { ResponsiveImage } from '../components/ResponsiveImage'
@@ -36,7 +36,7 @@ const HERO_SIZES = '(max-width: 60rem) 100vw, 60rem'
 export function ListingPage({ slug }: { slug: string }) {
   const t = useT()
   const { data, loading, missing, error } = useResource(
-    (signal) => fetchListing(slug, signal), [slug],
+    (signal) => fetchListing(slug, signal), [slug], `/listings/${slug}`,
   )
 
   // Counted once the listing is known to exist (#34). Firing on a 404 would
@@ -305,7 +305,7 @@ function WhenPanel({ listing }: { listing: ListingDetail }) {
         </Button>
         <a
           className="btn btn--ghost btn--sm"
-          href={googleCalendarUrl(calendarEventFor(listing, window.location.origin))}
+          href={googleCalendarUrl(calendarEventFor(listing, siteOrigin()))}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -322,7 +322,7 @@ function WhenPanel({ listing }: { listing: ListingDetail }) {
 }
 
 function downloadICal(listing: ListingDetail) {
-  const event = calendarEventFor(listing, window.location.origin)
+  const event = calendarEventFor(listing, siteOrigin())
   const blob = new Blob([toICal(event)], { type: 'text/calendar;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -368,9 +368,7 @@ function WherePanel({ listing }: { listing: ListingDetail }) {
 function SharePanel({ listing, title }: { listing: ListingDetail; title: string }) {
   const t = useT()
   const [copied, setCopied] = useState(false)
-  const url = typeof window === 'undefined'
-    ? `/listings/${listing.slug}`
-    : `${window.location.origin}/listings/${listing.slug}`
+  const url = `${siteOrigin()}/listings/${listing.slug}`
 
   const labels = {
     whatsapp: t('listing.shareWhatsApp'),

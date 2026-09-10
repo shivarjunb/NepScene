@@ -32,25 +32,62 @@ type LanguageState = {
 
 const LanguageContext = createContext<LanguageState>({ language: 'en', setLanguage: () => {} })
 
-const read = (): Language => {
+export const readStoredLanguage = (): Language | null => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'en' || stored === 'ne') return stored
   } catch {
     // Storage can be unavailable — a private window, or storage disabled.
-    // English is the fallback because it is the language every listing has.
   }
+  return null
+}
+
+const read = (): Language => {
+  const stored = readStoredLanguage()
+  if (stored) return stored
   // An explicit choice wins, but a browser that asks for Nepali gets it
   // without having to ask twice.
   if (typeof navigator !== 'undefined'
       && navigator.languages?.some((tag) => tag.toLowerCase().startsWith('ne'))) {
     return 'ne'
   }
+  // English is the fallback because it is the language every listing has.
   return 'en'
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(read)
+/**
+ * `initial` is the language the server rendered in (#45). Reading storage
+ * during the first client render instead would be a hydration mismatch on
+ * every visit by somebody who has chosen Nepali — React would discard the
+ * server's markup and rebuild the page, which is the one thing server
+ * rendering exists to avoid. Anything stronger than the server's guess is
+ * applied in an effect, just after.
+ *
+ * The order of precedence, and why:
+ *
+ *   1. **A stored choice.** The reader has said, on this device, in words.
+ *   2. **`?lang=` in the URL.** Explicit, and the only signal the server has —
+ *      so it is what a shared Nepali link carries. `explicit` says whether the
+ *      server was given one, because "en" as a default and "en" as a request
+ *      are the same value and mean different things.
+ *   3. **The browser's own languages.** A guess, and the weakest: it must not
+ *      override a link that asked for Nepali, which is precisely the bug this
+ *      ordering exists to prevent.
+ */
+export function LanguageProvider({ initial, explicit = false, children }: {
+  initial?: Language
+  explicit?: boolean
+  children: ReactNode
+}) {
+  const [language, setLanguageState] = useState<Language>(() => initial ?? read())
+
+  useEffect(() => {
+    // A client-only render already applied the full order in `read()`.
+    if (initial === undefined) return
+    const stored = readStoredLanguage()
+    const preferred = stored ?? (explicit ? initial : read())
+    if (preferred !== initial) setLanguageState(preferred)
+  }, [initial, explicit])
 
   useEffect(() => {
     document.documentElement.lang = language

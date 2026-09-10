@@ -5,13 +5,40 @@
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
 
-  // The SPA is served straight from the edge; only /api/* wakes the Worker.
-  // Everything else that does not match a file falls back to index.html.
+  // `#ssr` is the seam between the Worker and the browser components it
+  // server-renders (#45). Three resolvers point at it and none of them can be
+  // the same thing:
+  //   - TypeScript      → api/render/ssr.d.ts, so the app's DOM types never
+  //                       reach the Worker's config
+  //   - wrangler (here) → the *built* renderer, because wrangler forces
+  //                       esbuild's classic JSX factory and the components
+  //                       have no `React` binding for it to call
+  //   - vitest          → app/server.tsx directly, since Vite compiles JSX
+  // `npm run build` produces dist/ssr/server.js; a deploy without it renders
+  // nothing and falls back to the plain shell.
+  "alias": { "#ssr": "./dist/ssr/server.js" },
+
+  // The Worker answers /api/* and the pages it server-renders (#45);
+  // everything else is served straight from the edge, and anything that
+  // matches no file falls back to index.html.
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": [
+      "/api/*",
+      "/",
+      "/listings/*",
+      "/venues",
+      "/venues/*",
+      "/organizers",
+      "/organizers/*",
+      "/artists/*",
+      "/search",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/sitemaps/*"
+    ]
   },
 
   "observability": { "enabled": true },

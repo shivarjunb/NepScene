@@ -29,9 +29,23 @@ export function readStoredPreference(): ThemePreference {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
-    // Private browsing, or storage disabled. The OS preference still applies.
+    // Private browsing, storage disabled — or a server, which has no storage
+    // at all (#45). The OS preference still applies in the first two, and the
+    // third has no reader to have a preference.
   }
   return 'system'
+}
+
+/**
+ * Whether the OS asks for dark. False where there is nothing to ask: the
+ * server renders the light theme, and the inline script in index.html has
+ * already set the real one on `<html>` before React runs, so nothing flashes
+ * and nothing in the tree depends on the answer being right at render time.
+ */
+export function prefersDarkNow(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
 export function resolveTheme(preference: ThemePreference, prefersDark: boolean): ResolvedTheme {
@@ -41,9 +55,7 @@ export function resolveTheme(preference: ThemePreference, prefersDark: boolean):
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference)
-  const [prefersDark, setPrefersDark] = useState(
-    () => window.matchMedia('(prefers-color-scheme: dark)').matches,
-  )
+  const [prefersDark, setPrefersDark] = useState(prefersDarkNow)
 
   // Follow the OS while the preference is `system`, including a change made
   // while the page is open.

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ApiError } from './client'
+import { usePreloaded } from './preloadContext'
 
 /**
  * One fetch, tied to the life of the component (#43, #44).
@@ -14,6 +15,11 @@ import { ApiError } from './client'
  * Deliberately not a cache. Every page here is already served from the edge
  * cache with a short TTL, so a client-side one would add a second staleness
  * story on top of a solved problem.
+ *
+ * `preloadKey` is the exception, and it is not a cache either: it is the data
+ * the server rendered this very page from (#45), taken once so the first paint
+ * needs no request. Without it a server-rendered page would replace itself
+ * with a spinner the moment React woke up.
  */
 export type Resource<T> = {
   data: T | null
@@ -27,12 +33,32 @@ export type Resource<T> = {
 export function useResource<T>(
   load: (signal: AbortSignal) => Promise<T>,
   deps: unknown[],
+  /** The API path the server may already have loaded this from. */
+  preloadKey?: string,
 ): Resource<T> {
-  const [state, setState] = useState<Resource<T>>({
-    data: null, error: null, loading: true, missing: false,
-  })
+  // Read before the state, because it is a hook: the server has this request's
+  // data in context, and the browser takes it from the injected payload once.
+  const preloaded = usePreloaded<T>(preloadKey)
+
+  const [state, setState] = useState<Resource<T>>(() =>
+    preloaded
+      ? { data: preloaded, error: null, loading: false, missing: false }
+      : { data: null, error: null, loading: true, missing: false })
+
+  /**
+   * Exactly one effect run is skipped: the first, and only when the server
+   * supplied the data for it. Anything later — a filter changed, the reader
+   * navigated back — has to fetch, so this is a one-shot flag rather than a
+   * check on whether data happens to be present.
+   */
+  const servedByTheServer = useRef(state.data !== null)
 
   useEffect(() => {
+    if (servedByTheServer.current) {
+      servedByTheServer.current = false
+      return
+    }
+
     const controller = new AbortController()
     setState({ data: null, error: null, loading: true, missing: false })
 

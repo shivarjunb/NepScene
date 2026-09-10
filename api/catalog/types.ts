@@ -230,6 +230,21 @@ export type VenueSummary = {
   past_listing_count: number
 }
 
+/**
+ * The taxonomy as `/api/catalog/categories` returns it. `is_primary` belongs to
+ * a listing's *use* of a category, not to the category, so it is not here.
+ */
+export type Category = Omit<CategoryRef, 'is_primary'> & {
+  upcoming_listing_count: number
+}
+
+/** Everything the homepage's first paint needs, in one response. */
+export type Bootstrap = {
+  categories: Category[]
+  upcoming: ListingSummary[]
+  featured: ListingSummary[]
+}
+
 export type Page<T> = {
   data: T[]
   page: { limit: number; has_more: boolean; next_cursor: string | null }

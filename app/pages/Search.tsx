@@ -45,6 +45,7 @@ export function SearchPage() {
   const { data, loading, error } = useResource(
     (signal) => fetchSearch(Object.fromEntries(new URLSearchParams(search)), signal),
     [search],
+    `/search${search ? `?${search}` : ''}`,
   )
 
   const active = activeFilters(params)

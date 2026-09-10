@@ -17,9 +17,9 @@ import { createContext, useContext, useEffect, useRef, useState,
  * because the SPA fallback serves index.html for every path and index.html
  * rendered the gallery unconditionally.
  *
- * Server rendering (#45) is the change that will reopen this, since it needs
- * the route table on both sides — which is why `routes.tsx` is a table rather
- * than a switch.
+ * Server rendering (#45) did reopen it, and the table held: the router now
+ * takes its opening location as a prop instead of reading `window`, which is
+ * the whole of what it needed to run in a Worker.
  */
 
 /** Trailing slashes are not a different page. `/` itself keeps its slash. */
@@ -27,10 +27,20 @@ const normalise = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') 
 
 type Location = { path: string; search: string }
 
+/**
+ * Where the browser currently is. Only ever called in a browser — the server
+ * passes its location in, because there is no `window` to ask.
+ */
 const read = (): Location => ({
   path: normalise(window.location.pathname),
   search: window.location.search,
 })
+
+/** Splits a URL the server has into the shape the context holds. */
+export function locationOf(url: string): Location {
+  const parsed = new URL(url)
+  return { path: normalise(parsed.pathname), search: parsed.search }
+}
 
 const RouteContext = createContext<Location>({ path: '/', search: '' })
 
@@ -60,12 +70,21 @@ export function navigate(to: string, { replace = false } = {}) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
-export function Router({ children }: { children: ReactNode }) {
-  const [location, setLocation] = useState(read)
+export function Router({ initial, children }: { initial?: Location; children: ReactNode }) {
+  /**
+   * The opening location is given, not read, when there is one. On the server
+   * there is no `window`; in the browser the value handed in is the one the
+   * server rendered, and reading `window` again during hydration would be the
+   * same answer arrived at less reliably.
+   */
+  const [location, setLocation] = useState<Location>(() => initial ?? read())
 
   useEffect(() => {
     const onPopState = () => setLocation(read())
     window.addEventListener('popstate', onPopState)
+    // Catches the case where the browser is already somewhere else by the time
+    // the bundle runs — a link followed during the download.
+    setLocation(read())
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 

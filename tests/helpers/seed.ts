@@ -154,7 +154,9 @@ export async function seedPublicSite(): Promise<void> {
       `INSERT INTO listings
         (id, slug, title, summary, listing_type, source, status, organization_id, venue_id,
          starts_at, ends_at, is_featured, published_at, created_at, updated_at)
-       VALUES ('lst_quiet', 'quiet-recital', 'Quiet Recital', 'A recital', 'free', 'editorial',
+       -- No summary, deliberately: it is the fixture for a listing whose
+       -- description has to be generated from the facts instead (#45).
+       VALUES ('lst_quiet', 'quiet-recital', 'Quiet Recital', NULL, 'free', 'editorial',
                'published', NULL, 'ven_quiet', ?1, NULL, 0, ?2, ?2, ?2)`,
     ).bind(fixtures.past, now),
     // The artist's second listing, which is what takes Kutumba over the

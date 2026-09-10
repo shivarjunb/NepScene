@@ -84,7 +84,7 @@ npm install
 
 npm run db:migrate     # apply migrations to the local D1
 npm run db:seed        # load the demo catalogue
-npm run build          # build the SPA the Worker serves
+npm run build          # build the client bundle and the server renderer
 npm run dev            # http://localhost:8787
 ```
 
