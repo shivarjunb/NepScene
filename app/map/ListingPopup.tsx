@@ -1,5 +1,4 @@
 import type { PopupConfig, PopupFieldKey } from '../../api/author/popupConfig'
-import type { PinAppearance } from '../../api/catalog/types'
 
 /**
  * The card that opens when somebody taps a pin (#32, and #36 mounts this on
@@ -18,17 +17,14 @@ import type { PinAppearance } from '../../api/catalog/types'
  * if the resolver gave one, a "from" price it treats as a string it was told.
  */
 
-export type PopupListing = {
-  slug: string
-  title: string
-  pin: PinAppearance
-  venue: string | null
-  when: string | null
-  category: string | null
-  summary: string | null
-  /** Already formatted by whoever knows the currency; never computed here. */
-  offer: { label: string; url: string | null } | null
-}
+/**
+ * Declared in `markers.ts` and re-exported here for the callers that only know
+ * about the component. The shape belongs with the code that builds it, and a
+ * plain `.ts` module cannot import from a `.tsx` one under the Worker's
+ * tsconfig — which has no `jsx` set, because the Worker has no JSX in it.
+ */
+export type { PopupListing } from './markers'
+import type { PopupListing } from './markers'
 
 const VALUE: Record<PopupFieldKey, (listing: PopupListing) => string | null> = {
   venue: (listing) => listing.venue,

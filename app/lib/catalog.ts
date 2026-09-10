@@ -92,6 +92,8 @@ export type Listing = {
   cover_image_url: string | null
   external_url: string | null
   is_featured: boolean
+  /** The author's popup customisation (#32), or null where they kept the default. */
+  map_popup_config: unknown | null
   latitude: number | null
   longitude: number | null
   pin: PinAppearance

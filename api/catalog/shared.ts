@@ -3,7 +3,7 @@ import type { Env } from '../env'
 import type { ReadSession } from '../lib/d1'
 import { withRoundTrips } from '../lib/d1'
 import { decodeCursor, encodeCursor } from '../lib/cursor'
-import { boundingBox, haversineKm } from '../lib/geo'
+import { boundingBox, haversineKm, type BoundingBox } from '../lib/geo'
 import { badRequest, boolParam, dateParam, floatParam, intParam } from '../lib/http'
 import { normaliseTag } from './tags'
 import { buildFeedQuery, type FeedFilters } from './queries'
@@ -21,7 +21,7 @@ export const FEED_PARAMS = [
   'from', 'to', 'include_past', 'cursor', 'limit',
 ] as const
 
-export const SEARCH_PARAMS = [...FEED_PARAMS, 'q', 'lat', 'lng', 'radius_km'] as const
+export const SEARCH_PARAMS = [...FEED_PARAMS, 'q', 'lat', 'lng', 'radius_km', 'bbox'] as const
 
 export type CatalogContext = Context<{ Bindings: Env }>
 
@@ -69,8 +69,18 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
   if (withSearch) {
     const query = (q.get('q') ?? '').trim()
     if (query) filters.query = query
+
+    // A viewport and a radius are two answers to the same question, and the
+    // SQL has one box to put an answer in. Silently letting one win would make
+    // a map that pans inside a distance filter show the wrong thing without
+    // ever saying so.
     const centre = parseCentre(url)
+    const viewport = parseViewport(url)
+    if (centre && viewport) {
+      throw badRequest('invalid_parameter', 'give either bbox or lat/lng, not both')
+    }
     if (centre) filters.box = boundingBox(centre.lat, centre.lng, centre.radiusKm)
+    if (viewport) filters.box = viewport
   }
 
   return filters
@@ -103,6 +113,50 @@ export function parseCentre(url: URL): Centre | undefined {
     throw badRequest('invalid_parameter', 'radius_km must be between 0 and 500')
   }
   return { lat, lng, radiusKm: radius }
+}
+
+/**
+ * The map's viewport (#36), as `bbox=west,south,east,north` — OGC/GeoJSON
+ * order, which is what every mapping library already hands out and therefore
+ * the order nobody has to look up.
+ *
+ * Unlike `lat`/`lng`/`radius_km`, this box is the filter rather than a
+ * prefilter for it: a rectangle is exactly what the SQL can express, so
+ * nothing further is applied in the Worker and every row that comes back is
+ * genuinely inside the viewport.
+ */
+export function parseViewport(url: URL): BoundingBox | undefined {
+  const raw = url.searchParams.get('bbox')
+  if (!raw) return undefined
+
+  const parts = raw.split(',')
+  if (parts.length !== 4) {
+    throw badRequest('invalid_parameter', 'bbox must be west,south,east,north')
+  }
+  const [west, south, east, north] = parts.map((part, i) =>
+    floatParam(part.trim(), `bbox[${i}]`),
+  )
+  if (west === undefined || south === undefined || east === undefined || north === undefined) {
+    throw badRequest('invalid_parameter', 'bbox must be west,south,east,north')
+  }
+
+  if (Math.abs(south) > 90 || Math.abs(north) > 90) {
+    throw badRequest('invalid_parameter', 'bbox latitudes are out of range')
+  }
+  if (Math.abs(west) > 180 || Math.abs(east) > 180) {
+    throw badRequest('invalid_parameter', 'bbox longitudes are out of range')
+  }
+  if (south > north) {
+    throw badRequest('invalid_parameter', 'bbox south must be below north')
+  }
+  // A box with west > east wraps the antimeridian, which needs two SQL ranges
+  // OR'd together rather than one BETWEEN. Nepal is nowhere near it, so this
+  // rejects rather than quietly returning the inverse of what was asked for.
+  if (west > east) {
+    throw badRequest('invalid_parameter', 'bbox crossing the antimeridian is not supported')
+  }
+
+  return { minLat: south, maxLat: north, minLng: west, maxLng: east }
 }
 
 export async function fetchFeed(

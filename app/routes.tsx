@@ -7,6 +7,7 @@ import { SubmitPage } from './author/SubmitPage'
 import { QueuePage } from './moderation/QueuePage'
 import { DashboardPage } from './author/DashboardPage'
 import { ListingRoute } from './pages/ListingRoute'
+import { MapPage } from './pages/MapPage'
 
 /**
  * Every path the shell links to, in one table.
@@ -28,8 +29,7 @@ export const ROUTES: Route[] = [
     path: '/map',
     title: 'Map',
     summary: 'Every listing on one map, grouped by venue, filtered by distance and date.',
-    issue: 37,
-    milestone: 'M3 — Map discovery',
+    element: <MapPage />,
   },
   {
     path: '/venues',

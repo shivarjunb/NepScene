@@ -41,3 +41,21 @@ export function fetchListings(
   const suffix = query.size > 0 ? `?${query}` : ''
   return get<Page<Listing>>(`/listings${suffix}`, signal)
 }
+
+/**
+ * The map's data source (#36): `/search`, which is the endpoint that accepts a
+ * viewport. `/listings` deliberately does not — its cache key is the feed's
+ * parameter list, and a bbox on it would fragment the feed cache with keys
+ * only the map ever asks for.
+ */
+export function fetchSearch(
+  params: Record<string, string | undefined>,
+  signal?: AbortSignal,
+): Promise<Page<Listing>> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value)
+  }
+  const suffix = query.size > 0 ? `?${query}` : ''
+  return get<Page<Listing>>(`/search${suffix}`, signal)
+}

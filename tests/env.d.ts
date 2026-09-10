@@ -15,6 +15,7 @@ declare global {
       BASE_CSS: string
       SHELL_CSS: string
       AUTHOR_CSS: string
+      MAP_CSS: string
     }
   }
 }

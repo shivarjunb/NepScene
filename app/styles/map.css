@@ -1,0 +1,129 @@
+/* The public map (#36).
+ *
+ * A separate sheet rather than a section of author.css: the map is a public
+ * discovery surface, and the authoring sheet is only loaded by people who are
+ * signed in and making something.
+ *
+ * There is nothing here from `heroMapStyles.css`, which is the 3,587-line
+ * sheet this replaces on the WaahTickets side. Sixteen of its rules were
+ * Leaflet class names still being styled a whole renderer later — the map had
+ * moved to Google and nothing had told the stylesheet. Carrying it across
+ * would have carried two mental models of how the map draws; what the map
+ * actually needs is below, and it is a page and a half. */
+
+.nepal-map {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: clamp(24rem, 65vh, 44rem);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.nepal-map__canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* Fullscreen without the native API: the browser's fullscreen layer renders
+ * portalled modals *behind* the element, so a listing sheet opened from a pin
+ * would vanish. A fixed position keeps the map in the page's own stacking
+ * context, where everything above it still works. */
+.nepal-map--fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  border-radius: 0;
+  border: 0;
+  z-index: var(--z-modal);
+}
+
+.nepal-map__veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--surface-overlay);
+  color: var(--text-muted);
+  z-index: var(--z-raised);
+}
+
+.nepal-map__controls {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: var(--z-raised);
+}
+
+.nepal-map__status {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-raised);
+  max-width: calc(100% - var(--space-9));
+}
+
+.nepal-map__hint {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.nepal-map__hint--error {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Anchored to the pin's own pixel position, so the card points at the thing it
+ * describes. Translated up and centred: the pin's tip is its position, and a
+ * card drawn from that point downwards covers the pin it belongs to. */
+.nepal-map__popup {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - var(--space-9)));
+  z-index: var(--z-dropdown);
+  width: min(20rem, calc(100vw - var(--space-8)));
+}
+
+.nepal-map__popup-close {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.nepal-map__popup-close:hover {
+  color: var(--text-primary);
+}
+
+/* The page behind a fullscreen map must not scroll: a drag that reaches the
+ * map's edge would otherwise move the document underneath it. */
+body.map-is-fullscreen {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nepal-map__popup {
+    animation: nepal-map-popup-in 120ms ease-out;
+  }
+}
+
+@keyframes nepal-map-popup-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - var(--space-5))); }
+  to   { opacity: 1; transform: translate(-50%, calc(-100% - var(--space-9))); }
+}

@@ -9,6 +9,7 @@ import './styles/base.css'
 import './styles/components.css'
 import './styles/shell.css'
 import './styles/author.css'
+import './styles/map.css'
 
 function App() {
   const path = useRoute()
