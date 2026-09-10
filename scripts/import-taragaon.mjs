@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* global AbortSignal */
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'

@@ -3,7 +3,7 @@
 Run from the NepScene checkout with Node 22+ and dependencies installed.
 The separate WaahTickets importer remains available through `npm run db:import`.
 
-Apply migrations through `0009_katajaam_import.sql` to the target database first.
+Apply migrations through `0012_katajaam_import.sql` to the target database first.
 For staging:
 
 ```sh

@@ -58,11 +58,34 @@ export default tseslint.config(
     rules: { 'no-restricted-imports': 'off' },
   },
 
-  // Build and seed scripts run in Node, not in the Worker runtime.
+  // Build, seed and scraper scripts run in Node, not in the Worker runtime.
   {
     files: ['scripts/**/*.mjs'],
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly' },
+      globals: {
+        console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly',
+        // The scrapers bound every outbound request rather than hanging forever.
+        AbortSignal: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly',
+      },
+    },
+    rules: { 'no-restricted-imports': 'off' },
+  },
+
+  /* `ticketsanjal-scraper/` is a separate Node package with its own
+     package.json and lockfile, so it needs its own globals rather than
+     inheriting the ones above.
+
+     `document` is in the list because `directory.mjs` passes a callback to
+     Playwright's `waitForFunction`, which serialises it and runs it *inside the
+     page*. The browser's globals are the ones that exist there, however much
+     the surrounding file looks like Node. */
+  {
+    files: ['ticketsanjal-scraper/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly',
+        setTimeout: 'readonly', clearTimeout: 'readonly', document: 'readonly',
+      },
     },
     rules: { 'no-restricted-imports': 'off' },
   },
