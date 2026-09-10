@@ -5,6 +5,7 @@ import { buildRows, entryCategories } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from '../components/ListingCard'
 import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
 import { Alert } from '../components/primitives'
+import { NepalMap } from '../map/NepalMap'
 import { Link, navigate, useSearch } from '../router'
 
 /**
@@ -100,10 +101,14 @@ export function Discover() {
 }
 
 /**
- * The hero map is #41's first scope item and it depends on the map core (#36),
- * which is M3 and not built. The slot is held open and labelled rather than
- * filled with a picture of a map: a screenshot here would be indistinguishable
- * from a broken map for everyone who has not read the milestone plan.
+ * The hero map — #41's first scope item, unblocked now the map core (#36) is
+ * in. The slot held a labelled placeholder while that was outstanding.
+ *
+ * It mounts the same `NepalMap` the /map page does rather than a cut-down
+ * copy for the hero. The map owns its viewport fetching, its empty states and
+ * its own failure, so what is left for the hero is the frame around it and
+ * where a popup sends the reader — which is the whole reason that component
+ * takes `onOpen` instead of routing itself.
  */
 function Hero() {
   return (
@@ -113,14 +118,8 @@ function Hero() {
         Concerts, festivals, sport, comedy and community events — bounded and
         upcoming by default.
       </p>
-      <div className="hero__map" role="note">
-        <span className="hero__map-label">Map</span>
-        <p>
-          The hero map arrives with{' '}
-          <a href="https://github.com/shivarjunb/NepScene/issues/36"
-             target="_blank" rel="noreferrer">issue #36</a>.
-          Until then, browse by category below.
-        </p>
+      <div className="hero__map">
+        <NepalMap onOpen={(slug) => navigate(`/listings/${slug}`)} />
       </div>
     </section>
   )
