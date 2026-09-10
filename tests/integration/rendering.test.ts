@@ -37,6 +37,20 @@ const tagText = (body: string, tag: string) =>
   new RegExp(`<${tag}[^>]*>(.*?)</${tag}>`, 's').exec(body)?.[1]
 
 beforeAll(async () => {
+  // These rewrite the *built* `index.html` — it is the shell, and it carries
+  // Vite's hashed asset names. Without a build there is no shell, `renderPage`
+  // returns early by design (a render that cannot find the shell serves the
+  // asset rather than erroring), and every assertion below fails on markup
+  // that was never generated. Say so once, in the words that fix it, rather
+  // than twenty-seven times in the words of whatever was asserted.
+  const shell = await get('/index.html')
+  if (!shell.ok) {
+    throw new Error(
+      `No built shell: /index.html answered ${shell.status}. Run \`npm run build\` `
+      + 'before this suite — server rendering has the build as a fixture.',
+    )
+  }
+
   await seedCatalogue()
   await seedPublicSite()
 })
