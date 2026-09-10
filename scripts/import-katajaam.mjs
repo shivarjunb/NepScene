@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { crawl, transform, plan, buildSql, ORIGIN } from './lib/katajaam.mjs'
+// Shared with scripts/check-schema-drift.mjs; re-exported because the tests
+// and the runbook both reach for them through this module.
+import { runWrangler, parseD1Output } from './lib/d1.mjs'
+export { runWrangler, parseD1Output }
 
 export function options(args) {
   const o = { env: null, apply: false, publish: false, scrapeOnly: false, repo: process.cwd(), out: null, input: null, overrides: null }
@@ -41,29 +44,6 @@ async function readPublic(url) {
     return body
   }
   throw Error(`Could not read ${url}`)
-}
-export function runWrangler(args, config, execute = execFileSync) {
-  try {
-    return execute(process.execPath, args, config)
-  } catch (error) {
-    const details = [error.stdout, error.stderr]
-      .map((value) => value?.toString().trim()).filter(Boolean).join('\n')
-    throw new Error(`Wrangler D1 command failed (exit ${error.status ?? 'unknown'}).${details ? `\n${details}` : `\n${error.message}`}`, { cause: error })
-  }
-}
-
-export function parseD1Output(output) {
-  // Remote file imports can print progress lines even with --json.
-  const text = output.trim()
-  let result
-  for (const match of text.matchAll(/^[\t ]*(?=[[{])/gm)) {
-    try { result = JSON.parse(text.slice(match.index)); break } catch { /* Try the next JSON boundary. */ }
-  }
-  if (result === undefined) throw Error('Wrangler did not return a valid D1 JSON result')
-  if (!Array.isArray(result) || !result.length || result.some((x) => !x || x.success !== true || x.error)) {
-    throw Error(`D1 reported an unsuccessful statement: ${JSON.stringify(result)}`)
-  }
-  return result.flatMap((x) => x.results ?? [])
 }
 
 function database(o) {

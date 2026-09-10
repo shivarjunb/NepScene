@@ -301,6 +301,128 @@ Rules, informed by WaahTickets carrying duplicate migration numbers (`0009`, `00
   gap for that reason, not for tidiness.
 - **Every migration is rehearsed against a production-shaped staging database**
   before promotion.
+- **`wrangler d1 migrations apply` is the only thing that applies a migration.**
+  Never `d1 execute --file=migrations/….sql`, not even to unblock an importer.
+  The ledger records only what `apply` itself ran, so a hand-applied file leaves
+  the schema ahead of its own bookkeeping and the next deploy replays it.
+- **A table rebuild stashes its children first.** `PRAGMA foreign_keys = OFF` does
+  nothing on D1 — see below — and `DROP TABLE` fires every `ON DELETE CASCADE`
+  that points at it.
+
+### `PRAGMA foreign_keys = OFF` does not work on D1
+
+SQLite ignores that pragma inside a transaction, and D1 runs statements inside
+one. It is accepted silently and changes nothing.
+
+This is not theoretical. 0008 rebuilds `listings` the standard way — new table,
+copy, drop, rename — and disables foreign keys around it, or believes it does.
+`DROP TABLE listings` performs an implicit `DELETE FROM` with foreign keys live,
+so every child with `ON DELETE CASCADE` went with it: `listing_categories`,
+`listing_artists`, `listing_media`, and later `listing_tags` and `listing_stats`.
+The rows copied into the new `listings` survived; everything hanging off them did
+not. On staging, all 66 listings that predate 0008 lost their categories and
+every listing created since has kept them — the break is exactly at the
+migration. Reproduced against a local D1: one listing, one category link, no link
+afterwards.
+
+A rebuild on D1 therefore looks like this, and `defer_foreign_keys` is not a
+substitute — it defers *enforcement* to commit, while cascade *actions* still
+fire:
+
+```sql
+CREATE TABLE _stash_children AS SELECT * FROM listing_categories;
+-- … new table, copy, DROP TABLE, RENAME, recreate indexes …
+INSERT INTO listing_categories (listing_id, category_id, is_primary)
+  SELECT listing_id, category_id, is_primary FROM _stash_children;
+DROP TABLE _stash_children;
+```
+
+Scratch tables carry no foreign keys, so neither the rebuild nor the cascade
+touches them.
+
+### Drift, and why the ledger is the only truth
+
+`apply` reads `d1_migrations` to decide what is pending. It does not look at the
+schema. So a file applied any other way produces a database that *has* the
+objects and a ledger that does not know it, and the next deploy fails partway
+through the replay:
+
+```
+✘ [ERROR] duplicate column name: import_source_id [code: 7500]
+```
+
+Partway is the sharp part. There is no transaction spanning the statements in a
+migration file, so a replay that dies on statement three has already committed
+one and two.
+
+`scripts/check-schema-drift.mjs` runs ahead of every `apply` in all three deploy
+workflows and turns that into a sentence naming the file and the objects. Run it
+by hand the same way:
+
+```bash
+node scripts/check-schema-drift.mjs --env staging
+node scripts/check-schema-drift.mjs --local
+```
+
+It compares the pending files against the live schema, and knows that a table
+rebuild (0008) legitimately recreates what it drops.
+
+### Repairing a drifted ledger
+
+Two shapes, and they are not repaired the same way.
+
+**The schema is already exactly what the pending migrations would produce.** Then
+nothing needs to run and only the bookkeeping is missing. Prove it first — build
+a reference database from the migration files and diff it against the live one —
+then record the rows by hand:
+
+```bash
+# Reference schema from the files alone.
+for f in migrations/0*.sql; do sqlite3 /tmp/expected.db < "$f"; done
+
+# Both sides, in the same shape, and diff them. Nothing should come back.
+sqlite3 /tmp/expected.db "SELECT m.name||'.'||p.name FROM sqlite_master m
+  JOIN pragma_table_info(m.name) p WHERE m.type='table'
+  AND m.name NOT LIKE 'sqlite_%' ORDER BY 1" | sort > /tmp/expected.txt
+
+npx wrangler d1 execute nepscene-staging --env staging --remote --json --command \
+  "SELECT m.name||'.'||p.name AS c FROM sqlite_master m JOIN pragma_table_info(m.name) p
+   WHERE m.type='table' AND m.name NOT LIKE 'sqlite\_%' ESCAPE '\'
+   AND m.name NOT LIKE 'd1\_%' ESCAPE '\' ORDER BY 1" |
+  grep '"c"' | sed 's/.*: "//; s/"$//' | sort > /tmp/live.txt
+
+diff /tmp/expected.txt /tmp/live.txt
+
+# Only once that diff is empty:
+npx wrangler d1 execute nepscene-staging --env staging --remote --command \
+  "INSERT INTO d1_migrations (name) VALUES ('0012_katajaam_import.sql')"
+```
+
+Stamping a migration that did *not* fully apply is how a database ends up
+permanently wrong, so the diff is not optional.
+
+**The schema is a mixture — some later migration applied, earlier ones not.**
+Then the ledger cannot be stamped, because the missing migrations really do have
+work to do. Put the database back to the state its ledger claims, stashing any
+data that lives in the out-of-band objects, and let `apply` run the sequence
+properly:
+
+```bash
+# 1. A backup that does not depend on Time Travel.
+npx wrangler d1 export nepscene-production --remote --output /tmp/prod-backup.sql
+
+# 2. Stash the data, drop the out-of-band objects (see the repair SQL in the
+#    incident notes), leaving the schema at the ledger's high-water mark.
+# 3. Apply the sequence the normal way.
+npx wrangler d1 migrations apply nepscene-production --env production --remote
+# 4. Restore the stashed rows into the objects the migration recreated.
+# 5. Re-check.
+node scripts/check-schema-drift.mjs --env production
+npm run db:verify -- --env production
+```
+
+D1 Time Travel keeps 30 days, so note the bookmark before step 2 as the second
+net: `npx wrangler d1 time-travel info nepscene-production --env production`.
 
 ### Rehearsing a migration
 
@@ -310,6 +432,7 @@ production's — not to an empty database, where every migration passes.
 ```bash
 # 1. Refresh staging from a production export, so the rehearsal is honest.
 npx wrangler d1 export nepscene-production --remote --output /tmp/prod.sql
+# A data dump, not a migration — this is the one --file that is legitimate.
 npx wrangler d1 execute nepscene-staging --remote --file=/tmp/prod.sql
 
 # 2. Apply, and watch it against real row counts.

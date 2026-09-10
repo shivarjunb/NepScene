@@ -25,6 +25,18 @@
 -- around it because the child tables reference listings(id) and would otherwise
 -- see the rows vanish with the old table.
 --
+-- CORRECTION, added later: the paragraph above is wrong, and this file is left
+-- unedited only because it has already been applied everywhere. `PRAGMA
+-- foreign_keys = OFF` does nothing on D1 — SQLite ignores it inside a
+-- transaction and D1 runs statements inside one. The DROP TABLE below performed
+-- its implicit DELETE with foreign keys live and took every ON DELETE CASCADE
+-- child with it: on staging, all 66 listings older than this migration lost
+-- their listing_categories rows, and every listing created since has kept them.
+--
+-- Do not copy this file as the template for a rebuild. Stash the child tables
+-- into scratch tables first and re-insert them afterwards — docs/DEVOPS.md
+-- § `PRAGMA foreign_keys = OFF` does not work on D1.
+--
 -- No trigger bodies here: `wrangler d1 migrations apply` splits on semicolons,
 -- so a statement with inner semicolons never survives the pipeline (see 0004).
 

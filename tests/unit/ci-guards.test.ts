@@ -4,6 +4,8 @@ import {
   missingMigrationNumbers,
   commerceHits,
   credentialHits,
+  migrationCreates,
+  schemaDrift,
 } from '../../scripts/lib/guards.mjs'
 import {
   parseTscErrors,
@@ -164,5 +166,101 @@ describe('committed credential guard', () => {
 
   it('honours the opt-out marker, which is how the patterns avoid matching themselves', () => {
     expect(credentialHits(`key = ${googleKey} // secret-guard:allow`, 'f')).toEqual([])
+  })
+})
+
+/**
+ * The drift guard exists because of a real incident: 0012 was applied to
+ * staging and to production with `d1 execute --file`, which leaves the objects
+ * in place and the `d1_migrations` ledger none the wiser. The next deploy
+ * replayed the file and died on statement one — `duplicate column name:
+ * import_source_id` — after which production carried 0012's columns on a ledger
+ * that still read 0004. The fixtures below are the two migrations involved.
+ */
+const M0012 = `
+-- Stable source identity and content identity protect repeated/concurrent imports.
+ALTER TABLE listings ADD COLUMN import_source_id TEXT;
+ALTER TABLE listings ADD COLUMN import_fingerprint TEXT;
+CREATE UNIQUE INDEX idx_listing_import_source ON listings(import_source_id)
+  WHERE import_source_id IS NOT NULL;
+CREATE TABLE import_sources (
+  source_id TEXT PRIMARY KEY,
+  listing_id TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_import_sources_listing ON import_sources(listing_id);
+`
+
+/** The 0008 shape: SQLite cannot drop NOT NULL in place, so the table is rebuilt. */
+const M0008 = `
+PRAGMA foreign_keys = OFF;
+CREATE TABLE listings_new (id TEXT PRIMARY KEY, starts_at TEXT);
+INSERT INTO listings_new SELECT id, starts_at FROM listings;
+DROP TABLE listings;
+ALTER TABLE listings_new RENAME TO listings;
+CREATE INDEX idx_listings_feed ON listings(status, starts_at, id);
+PRAGMA foreign_keys = ON;
+`
+
+describe('schema drift guard', () => {
+  it('reads every kind of object a migration brings into being', () => {
+    expect(migrationCreates(M0012)).toEqual([
+      { kind: 'table', name: 'import_sources', table: 'import_sources' },
+      { kind: 'index', name: 'idx_listing_import_source', table: 'listings' },
+      { kind: 'index', name: 'idx_import_sources_listing', table: 'import_sources' },
+      { kind: 'column', name: 'import_source_id', table: 'listings' },
+      { kind: 'column', name: 'import_fingerprint', table: 'listings' },
+    ])
+  })
+
+  it('does not count what a table rebuild drops on its way past', () => {
+    // `listings` and its indexes are expected to exist before 0008 runs; saying
+    // so would make every rebuild migration look like drift forever.
+    expect(migrationCreates(M0008)).toEqual([
+      { kind: 'table', name: 'listings_new', table: 'listings_new' },
+    ])
+  })
+
+  it('ignores DDL that only appears in a comment', () => {
+    const sql = '-- CREATE TABLE ghosts (id TEXT);\n/* ALTER TABLE listings ADD COLUMN ghost TEXT; */\nCREATE TABLE real_one (id TEXT);'
+    expect(migrationCreates(sql)).toEqual([
+      { kind: 'table', name: 'real_one', table: 'real_one' },
+    ])
+  })
+
+  it('reads quoted identifiers, and is not fooled by ADD CONSTRAINT', () => {
+    const sql = 'CREATE TABLE "odd name" (id TEXT);\nALTER TABLE `listings` ADD CONSTRAINT c CHECK (id IS NOT NULL);\nALTER TABLE [listings] ADD venue_room TEXT;'
+    expect(migrationCreates(sql)).toEqual([
+      { kind: 'table', name: 'odd name', table: 'odd name' },
+      { kind: 'column', name: 'venue_room', table: 'listings' },
+    ])
+  })
+
+  it('is silent when the ledger and the schema agree', () => {
+    const live = { tables: ['listings'], indexes: [], columns: { listings: ['id'] } }
+    expect(schemaDrift([{ name: '0012_katajaam_import.sql', sql: M0012 }], live)).toEqual([])
+  })
+
+  it('names the incident: objects present, ledger unaware', () => {
+    const live = {
+      tables: ['listings', 'import_sources'],
+      indexes: ['idx_listing_import_source', 'idx_import_sources_listing'],
+      columns: { listings: ['id', 'import_source_id', 'import_fingerprint'] },
+    }
+    const conflicts = schemaDrift([{ name: '0012_katajaam_import.sql', sql: M0012 }], live)
+    expect(conflicts).toHaveLength(5)
+    expect(conflicts.every((c) => c.migration === '0012_katajaam_import.sql')).toBe(true)
+    expect(conflicts).toContainEqual({
+      migration: '0012_katajaam_import.sql',
+      kind: 'column', name: 'import_source_id', table: 'listings',
+    })
+  })
+
+  it('lets a rebuild migration through against the table it is about to rebuild', () => {
+    const live = {
+      tables: ['listings'],
+      indexes: ['idx_listings_feed'],
+      columns: { listings: ['id', 'starts_at'] },
+    }
+    expect(schemaDrift([{ name: '0008_draft_start_optional.sql', sql: M0008 }], live)).toEqual([])
   })
 })
