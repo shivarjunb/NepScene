@@ -18,7 +18,7 @@ export function VenuePage({ slug }: { slug: string }) {
   const t = useT()
   const { language } = useLanguage()
   const { data, loading, missing, error } = useResource(
-    (signal) => fetchVenue(slug, signal), [slug],
+    (signal) => fetchVenue(slug, signal), [slug], `/venues/${slug}`,
   )
 
   if (loading) return <PlaceSkeleton />

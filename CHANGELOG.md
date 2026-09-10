@@ -7,6 +7,69 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **The public site is server-rendered (#45).** Every page a reader or a crawler
+  can land on now arrives as a document with its content already in it — the
+  homepage, listing pages, venue, organizer and artist pages, and the two index
+  pages. With JavaScript switched off, a listing still names its date, its venue
+  and its price.
+  - **One React tree, two runtimes.** `app/Root.tsx` is rendered by
+    `renderToString` in the Worker and hydrated by the same components in the
+    browser. A second, simpler server template is the obvious shortcut and the
+    one that goes wrong quietly: two renderers that agree today and diverge on
+    the next change, with the divergence visible only to crawlers. What the
+    router needed in order to run in a Worker was to take its opening location
+    as a prop instead of reading `window` — that was the whole of it.
+  - **The shell is the built `index.html`, rewritten — not a template in the
+    Worker.** Vite writes the hashed asset names into that document, along with
+    the theme script that has to run before first paint (#17); a hand-built copy
+    in the Worker would be a second copy of all of it, going stale on every
+    build. `HTMLRewriter` streams over the asset and replaces exactly what is
+    per-page: title, description, social card, canonical, `hreflang`, structured
+    data and the contents of `#root`.
+  - **The rows the server rendered from reach the client, so nothing is fetched
+    twice.** They are inlined into the document and read by the same
+    `useResource` hook that would otherwise request them, skipping exactly one
+    effect run. A page that renders with data and then immediately refetches it
+    has paid for server rendering and kept the SPA's latency. They travel in
+    React context rather than a module global, because one isolate serves
+    concurrent requests and "the current page's data" in a variable is a
+    cross-request leak waiting for traffic.
+  - **A rendering failure serves the SPA rather than an error.** A transient D1
+    problem then costs one round trip and the crawler's copy of that page, and
+    the shell still boots and paints. The alternative turns a database blip into
+    a blank 500 on every public page.
+  - **Only the pages a crawler should land on are rendered.** The wizard, the
+    dashboard and the moderation queue need a session, are `noindex` by nature,
+    and gain nothing for the round trip — they fall through to the SPA exactly
+    as before. `/search` is rendered for people without JavaScript but served
+    `noindex`, so no crawler makes the Worker run a ranked search per URL it
+    invents.
+  - **Schema.org `Event`, `Place`, `Organization`, `BreadcrumbList` and
+    `WebSite`**, built from the same rows the page renders. Empty fields are
+    dropped rather than emitted as null: an `Event` with no `offers` is better
+    than one asserting a price it does not have.
+  - **Sitemaps are generated, not stored.** A stored sitemap goes stale
+    silently, and the failure mode is that newly published listings are simply
+    never crawled — so `/sitemap.xml` is a read like any other. It is an index
+    over segments capped at the protocol's 50,000 URLs, each entry declaring its
+    Nepali alternate. `robots.txt` disallows everything outside production,
+    because a staging deployment that gets indexed is a duplicate-content
+    problem that outlives the branch.
+  - **Nepali became addressable.** `?lang=ne` renders the document in Nepali
+    with `lang="ne"` and `hreflang` alternates in both directions, which is what
+    makes the translated content in #46 visible to a crawler at all. It does not
+    override a reader's stored choice — precedence is stored, then URL, then
+    browser — so a link shared in Nepali does not permanently switch somebody
+    who had chosen English.
+  - **The SSR bundle is prebuilt by Vite**; `npm run build` now emits
+    `dist/ssr/server.js` beside the client. `wrangler dev` passes esbuild its own
+    JSX factory unconditionally, which forces the classic transform and makes
+    every component throw `React is not defined` at runtime — silently, because
+    a rendering failure falls back to the shell, leaving a site that looks
+    exactly like the one before #45. Prebuilding is what avoids it, and
+    `tests/e2e/rendering.spec.ts` runs against a real `wrangler dev` for the same
+    reason: Vite's preview server renders nothing, so a test of rendering there
+    would pass while proving nothing.
 - **Server-side search (#42).** A rebuild rather than a port: WaahTickets
   filtered an already-downloaded array in the browser, which is why its search
   only ever worked at fifty events. `GET /api/catalog/search` now returns ranked
@@ -67,9 +130,11 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     wizard and the moderation queue are *not* translated — they are tools for
     people who chose to list events here, not the audience #46 exists for — and
     that is stated in the file rather than discovered later.
-  - Language is state, not a route: no `/ne/` prefix and no `?lang=`, so
-    switching keeps the page, the filters and the scroll position. The cost is
-    that language is invisible to a crawler, which is #45's to solve.
+  - Language is state rather than a route: switching keeps the page, the
+    filters and the scroll position, with no `/ne/` prefix to lose them. #45
+    then added `?lang=ne` on top as a crawlable entry point — the document a
+    crawler is handed, not the state a reader is put into, which is why a
+    stored choice still outranks it.
   - `title_ne`, `summary_ne` and `description_ne` on listings (migration 0013),
     authored behind a disclosure in the wizard, matched by search beside their
     English counterparts, and rendered with a `lang` attribute where the

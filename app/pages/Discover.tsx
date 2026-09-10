@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Bootstrap, Listing } from '../lib/catalog'
+import type { Listing } from '../lib/catalog'
 import { fetchBootstrap, fetchListings } from '../lib/client'
+import { useResource } from '../lib/useResource'
 import { buildRows, entryCategories } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from '../components/ListingCard'
 import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
@@ -32,17 +33,17 @@ export function Discover() {
   const city = search.get('city') ?? undefined
   const filtered = Boolean(category || city)
 
-  const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null)
+  // The homepage's first screen, which the server has usually already loaded
+  // (#45) — so this seeds from the document rather than fetching again.
+  const { data: bootstrap, error: bootstrapError } =
+    useResource(fetchBootstrap, [], '/bootstrap')
+
   const [results, setResults] = useState<Listing[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(bootstrapError?.message ?? null)
 
   useEffect(() => {
-    const controller = new AbortController()
-    fetchBootstrap(controller.signal)
-      .then(setBootstrap)
-      .catch((cause: Error) => { if (!controller.signal.aborted) setError(cause.message) })
-    return () => controller.abort()
-  }, [])
+    if (bootstrapError) setError(bootstrapError.message)
+  }, [bootstrapError])
 
   useEffect(() => {
     if (!filtered) { setResults(null); return }

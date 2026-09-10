@@ -31,7 +31,11 @@ const LIBRARIES = ['places', 'geometry'] as const
 let pending: Promise<typeof google.maps> | null = null
 
 export function mapsApiKey(): string | null {
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
+  // `import.meta.env` is Vite's, and the server bundle is built by wrangler's
+  // esbuild, where it does not exist. Reaching for it unguarded turns every
+  // server-rendered page carrying a map into a 500 (#45).
+  const env = (import.meta as { env?: Record<string, unknown> }).env
+  const key = env?.VITE_GOOGLE_MAPS_API_KEY
   return typeof key === 'string' && key.trim() !== '' ? key.trim() : null
 }
 

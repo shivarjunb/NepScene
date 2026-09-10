@@ -23,6 +23,13 @@ const authorCss = sheet('author.css')
 const mapCss = sheet('map.css')
 
 export default defineConfig({
+  // The same seam wrangler declares (wrangler.jsonc `alias`) and TypeScript
+  // declares (api/render/ssr.d.ts): three resolvers, one target. Without this
+  // the integration tests exercise the fallback path — a page that failed to
+  // render and served the plain shell — while reporting success.
+  resolve: {
+    alias: { '#ssr': path.join(import.meta.dirname, 'app/server.tsx') },
+  },
   plugins: [
     cloudflareTest({
       wrangler: { configPath: './wrangler.jsonc' },

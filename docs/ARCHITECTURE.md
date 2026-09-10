@@ -2,7 +2,8 @@
 
 ## Shape
 
-A single Cloudflare Worker serving a React SPA and a Hono API, backed by D1 and R2.
+A single Cloudflare Worker serving a React front end — server-rendered for the
+public pages, hydrated in the browser — and a Hono API, backed by D1 and R2.
 One deployable, three internal modules with enforced boundaries.
 
 ```
@@ -516,6 +517,95 @@ the fallback in `url`. Every listing summary carries a `cover` of the same
 shape: without derivatives on the *summary*, a card on a phone downloads the
 full-size banner, which is exactly the WaahTickets behaviour the pipeline exists
 to replace.
+
+## Rendering: one tree, two runtimes
+
+The public pages are rendered in the Worker and hydrated in the browser (#45).
+The alternative — a shell that paints a skeleton and then fetches — is what
+shipped through #44, and it has two costs that no amount of tuning removes: a
+crawler sees an empty `<div id="root">`, and a reader on a slow connection waits
+for a bundle before they see a date.
+
+**The tree is shared, not duplicated.** `app/Root.tsx` is the same component
+tree in both runtimes; the server calls `renderToString` on it and the browser
+calls `hydrateRoot` on what comes back. A separate, simpler server template is
+the shortcut that goes wrong quietly — two renderers that agree today, diverge
+on the next change, and diverge only where crawlers can see it.
+
+Three things had to move for one tree to run in workerd:
+
+- **The router takes its opening location as a prop** instead of reading
+  `window` (app/router.tsx). That was the whole of what routing needed.
+- **Preloaded data travels in React context, not a module global.** One isolate
+  serves concurrent requests, and a variable holding "the current page's data"
+  is a cross-request leak waiting for traffic. In the browser the same hook
+  reads the global the document inlined, because there only one page exists.
+- **Everything that touches `window` is guarded** — the theme's
+  `prefers-color-scheme` probe and the share links' origin both answer sensibly
+  with no `window` at all.
+
+### The shell is the built `index.html`
+
+Vite writes the hashed script and stylesheet names into that document, along
+with the theme script that must run before first paint (#17). A shell rebuilt in
+the Worker would be a second copy of all of it, going stale on every build. So
+the asset is fetched and `HTMLRewriter` streams over it, replacing only what is
+per-page: title, description, social card, canonical, `hreflang`, structured
+data, and the contents of `#root`. `#root` also gains `data-rendered="server"`,
+which is what tells the client to hydrate rather than mount.
+
+The rows the render used are inlined beside it and read by the same
+`useResource` hook that would otherwise fetch them. Without that, a page renders
+with data on the server and then refetches it on hydration — server rendering
+paid for, SPA latency kept.
+
+### A rendering failure serves the SPA
+
+A render needs D1. When it fails, the Worker hands back the static asset and the
+shell boots, fetches and paints as it did before #45; what is lost is one round
+trip and the crawler's copy of that page. A 500 instead would turn a transient
+database problem into a blank public site, which is worse by a wide margin.
+
+### What is rendered, and what is not
+
+Only the pages a search engine should land on: `/`, `/listings/:slug`,
+`/venues/:slug`, `/organizers/:slug`, `/artists/:slug`, and the venue and
+organizer indexes. The wizard, the dashboard and the moderation queue need a
+session and are `noindex` by nature — they would cost a D1 round trip and CPU
+per request and gain nothing — so they fall through to the SPA. `/search` is
+rendered for people without JavaScript but served `noindex`, so no crawler makes
+this Worker run a ranked search per URL it invents.
+
+Page rendering sits outside the Hono app rather than inside it, because it is
+not an API: it answers with a document, it falls through to the static asset for
+anything it does not own, and it must not inherit the API's error shape. A
+reader who asks for a listing that has been taken down should get a page, not
+`{"error":{...}}`.
+
+### `#ssr`, and the JSX transform
+
+The renderer is imported through one specifier, `#ssr`, which resolves three
+ways: to a `.d.ts` for TypeScript, to `app/server.tsx` for Vitest, and to a
+prebuilt `dist/ssr/server.js` for wrangler. The last is not tidiness. `wrangler
+dev` passes esbuild its own `--jsx-factory` unconditionally, forcing the classic
+transform, under which every component throws `React is not defined` at runtime
+— and because a rendering failure falls back to the shell, it fails *silently*,
+as a site that looks exactly like the one before #45. Prebuilding the SSR bundle
+with Vite is what keeps the automatic transform. `tests/e2e/rendering.spec.ts`
+runs against a real `wrangler dev` for the same reason: Vite's preview server
+renders nothing, so a test of rendering there would pass while proving nothing.
+
+### Sitemaps are generated, not stored
+
+A stored sitemap is a file rewritten on every publish, and its failure mode is
+silent — it goes stale and the new listings are never crawled. The catalogue can
+answer "every published slug, newest first" in one indexed query, so the sitemap
+is a read like any other and cannot disagree with the site. `/sitemap.xml` is an
+index over segments capped at the protocol's 50,000 URLs (a sitemap over the
+limit is rejected whole, not truncated), and every entry declares its Nepali
+alternate. `robots.txt` disallows everything outside production: a staging
+deployment that gets indexed is a duplicate-content problem that outlives the
+branch.
 
 ## The read path: edge-first, no external hops
 

@@ -60,6 +60,17 @@ jobs:
       - name: Kata Jaam importer tests
         run: node scripts/tests/katajaam.test.mjs
 
+      # Before the tests, not after. The server-rendering tests (#45) rewrite the
+      # *built* `index.html` — that document is the shell, with Vite's hashed
+      # asset names in it — so with no `dist/` the render finds no shell, returns
+      # early, and 27 of them fail. Ordering it this way also means a broken
+      # build is reported as a broken build rather than as a wall of failed
+      # assertions.
+      - name: Build
+        run: npm run build
+        env:
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+
       - name: Test with coverage
         # Thresholds live in vitest.config.ts and are set at the measured floor,
         # so a coverage drop fails here rather than being noticed later.
@@ -68,11 +79,6 @@ jobs:
       - name: Coverage summary
         if: always()
         run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Build
-        run: npm run build
-        env:
-          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
       - name: Comment coverage on the PR
         if: always() && github.event_name == 'pull_request'

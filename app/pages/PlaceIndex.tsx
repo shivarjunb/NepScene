@@ -20,7 +20,7 @@ import { Link } from '../router'
 export function VenuesIndex() {
   const t = useT()
   const { data, loading, error } = useResource(
-    (signal) => fetchVenues({ limit: '50' }, signal), [],
+    (signal) => fetchVenues({ limit: '50' }, signal), [], '/venues?limit=50',
   )
   return (
     <Index
@@ -37,7 +37,7 @@ export function VenuesIndex() {
 export function OrganizersIndex() {
   const t = useT()
   const { data, loading, error } = useResource(
-    (signal) => fetchOrganizers({ limit: '50' }, signal), [],
+    (signal) => fetchOrganizers({ limit: '50' }, signal), [], '/organizers?limit=50',
   )
   return (
     <Index

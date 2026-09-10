@@ -1,10 +1,7 @@
-import { StrictMode, useEffect } from 'react'
-import { createRoot } from 'react-dom/client'
-import { AppShell } from './shell/AppShell'
-import { ThemeProvider } from './theme'
-import { LanguageProvider } from './i18n'
-import { Router, useRoute, useRouteFocus } from './router'
-import { renderRoute, titleFor } from './routes'
+import { StrictMode } from 'react'
+import { createRoot, hydrateRoot } from 'react-dom/client'
+import { Root } from './Root'
+import { locationOf } from './router'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/components.css'
@@ -13,25 +10,42 @@ import './styles/author.css'
 import './styles/map.css'
 import './styles/public.css'
 
-function App() {
-  const path = useRoute()
-  useRouteFocus(path)
+const container = document.getElementById('root')!
 
-  useEffect(() => { document.title = titleFor(path) }, [path])
+/**
+ * Hydrate what the server rendered, or mount from nothing.
+ *
+ * The Worker server-renders the public pages (#45) and leaves the rest to the
+ * SPA fallback, so both cases are normal and the marker on the container is
+ * what says which this is. Calling `hydrateRoot` on an empty container would
+ * warn and rebuild; calling `createRoot` on server markup would throw it away
+ * and rebuild, which is the same waste with an extra flash.
+ */
+const serverRendered = container.dataset.rendered === 'server'
 
-  return <AppShell>{renderRoute(path)}</AppShell>
-}
+/**
+ * The language the server chose, so the first client render matches it exactly.
+ * The reader's stored preference is applied immediately afterwards, in an
+ * effect — see `LanguageProvider`.
+ */
+const language = container.dataset.language === 'ne' ? 'ne' : 'en'
 
-createRoot(document.getElementById('root')!).render(
+/**
+ * Whether that language was asked for or merely defaulted to. A link shared
+ * with `?lang=ne` has to survive the browser's own preferences; a page that
+ * simply defaulted to English must not.
+ */
+const languageExplicit = new URLSearchParams(window.location.search).has('lang')
+
+const tree = (
   <StrictMode>
-    <ThemeProvider>
-      {/* Language wraps the router rather than the other way round: the shell
-          and every page read it, and it is state rather than a route (#46). */}
-      <LanguageProvider>
-        <Router>
-          <App />
-        </Router>
-      </LanguageProvider>
-    </ThemeProvider>
-  </StrictMode>,
+    <Root
+      location={serverRendered ? locationOf(window.location.href) : undefined}
+      language={serverRendered ? language : undefined}
+      languageExplicit={serverRendered ? languageExplicit : undefined}
+    />
+  </StrictMode>
 )
+
+if (serverRendered) hydrateRoot(container, tree)
+else createRoot(container).render(tree)

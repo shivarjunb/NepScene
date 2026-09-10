@@ -8,7 +8,7 @@ import { PlaceHeader, PlacePage, PlaceMissing, PlaceSkeleton } from './PlaceLayo
 export function OrganizerPage({ slug }: { slug: string }) {
   const t = useT()
   const { data, loading, missing, error } = useResource(
-    (signal) => fetchOrganizer(slug, signal), [slug],
+    (signal) => fetchOrganizer(slug, signal), [slug], `/organizers/${slug}`,
   )
 
   if (loading) return <PlaceSkeleton />

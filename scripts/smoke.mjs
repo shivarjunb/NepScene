@@ -2,9 +2,16 @@
 /**
  * Post-deploy smoke test (#11).
  *
- * Four things, in the order they break: the Worker is alive and is the
+ * Six things, in the order they break: the Worker is alive and is the
  * environment we think it is, the catalog read path answers and respects its
- * bound, the SPA shell serves, and its social card is absolute and resolves.
+ * bound, the shell serves, its social card is absolute and resolves, the public
+ * pages are actually server-rendered, and the crawl surface answers.
+ *
+ * The rendering check earns its place because that failure is silent by design
+ * (#45): when a render throws, the Worker serves the static shell, so the site
+ * still works and only the crawler's copy is gone. A build that lost server
+ * rendering — a JSX transform mismatch, a missing `dist/ssr/server.js` — would
+ * deploy green and stay that way until someone thought to look at a rank.
  *
  * The environment assertion matters more than it looks. Assets are served from
  * the edge with an SPA fallback, so a request for an unmatched path returns
@@ -87,6 +94,60 @@ if (ogImage && /^https:\/\//.test(ogImage)) {
     'social card is an image',
     (card.headers.get('content-type') ?? '').startsWith('image/'),
     `content-type was "${card.headers.get('content-type')}"`,
+  )
+}
+
+// 5. The public pages are server-rendered, not merely served (#45).
+const rendered = /<div id="root"[^>]*data-rendered="server"[^>]*>([\s\S]*?)<\/div>/.exec(shell.body)
+check(
+  'home is marked server-rendered',
+  /data-rendered="server"/.test(shell.body),
+  'no data-rendered marker — the render threw and the static shell was served',
+)
+check(
+  'home has rendered content',
+  (rendered?.[1]?.length ?? 0) > 500,
+  `#root held ${rendered?.[1]?.length ?? 0} characters — the marker is there but nothing rendered`,
+)
+
+const listingHref = /href="(\/listings\/[a-z0-9-]+)"/.exec(shell.body)?.[1] ?? null
+if (listingHref) {
+  const listing = await get(listingHref, 'text/html')
+  check(`${listingHref} responds 200`, listing.status === 200, `got ${listing.status}`)
+  check(
+    'a listing page is server-rendered',
+    /data-rendered="server"/.test(listing.body),
+    'the homepage rendered but a listing page did not',
+  )
+  check(
+    'a listing page carries structured data',
+    listing.body.includes('application/ld+json') && listing.body.includes('"@type":"Event"'),
+    'no Event JSON-LD on the listing page',
+  )
+}
+
+// 6. The crawl surface. On anything but production this asserts the *opposite*:
+// a staging host that invites crawlers is the duplicate-content problem.
+const robots = await get('/robots.txt', 'text/plain')
+check('robots.txt responds 200', robots.status === 200, `got ${robots.status}`)
+if (expectedEnv === 'production') {
+  check(
+    'robots.txt allows crawling and names the sitemap',
+    robots.body.includes('Allow: /') && robots.body.includes('/sitemap.xml'),
+    `body was: ${robots.body.slice(0, 80)}`,
+  )
+  const sitemap = await get('/sitemap.xml', 'application/xml')
+  check('sitemap.xml responds 200', sitemap.status === 200, `got ${sitemap.status}`)
+  check(
+    'sitemap.xml is an index',
+    sitemap.body.includes('<sitemapindex'),
+    `body starts: ${sitemap.body.slice(0, 80)}`,
+  )
+} else {
+  check(
+    'robots.txt keeps this deployment out of the index',
+    /Disallow: \/\s*$/m.test(robots.body) && !robots.body.includes('Allow: /'),
+    `body was: ${robots.body.slice(0, 80)} — a non-production host must not invite crawlers`,
   )
 }
 

@@ -15,7 +15,7 @@ import { PlaceHeader, PlacePage, PlaceMissing, PlaceSkeleton } from './PlaceLayo
 export function ArtistPage({ slug }: { slug: string }) {
   const t = useT()
   const { data, loading, missing, error } = useResource(
-    (signal) => fetchArtist(slug, signal), [slug],
+    (signal) => fetchArtist(slug, signal), [slug], `/artists/${slug}`,
   )
 
   if (loading) return <PlaceSkeleton />

@@ -4,8 +4,20 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
+    // The Worker server-renders the same React components the browser does
+    // (#45), so it compiles JSX — but still without the DOM lib, which is what
+    // keeps a component that reaches for `window` from compiling here.
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // The server renderer is browser code — React components that reach for
+    // `document` inside effects — and typechecking it here would need the DOM
+    // lib, which conflicts with the Workers types (see below). So the Worker
+    // imports it through a declared boundary instead: TypeScript resolves
+    // `#ssr` to a hand-written contract, and wrangler's esbuild resolves it to
+    // the real module (wrangler.jsonc `alias`). The components stay typechecked
+    // by tsconfig.app.json, where the DOM lib belongs.
+    "paths": { "#ssr": ["./api/render/ssr.d.ts"] },
     "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers/types"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -21,5 +33,7 @@
   },
   "include": ["api", "tests"],
   // Browser specs have their own config; they need DOM types this one forbids.
+  // The server renderer is the other exception: it imports browser components
+  // (#45) and is typechecked by tsconfig.ssr.json, which has both libraries.
   "exclude": ["tests/e2e"]
 }
