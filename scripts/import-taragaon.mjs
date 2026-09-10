@@ -104,7 +104,7 @@ Existing listings are never overwritten, republished, or deleted.`)
   }
   const db = database(o)
   const columns = db.query('PRAGMA table_info(listings)').map((x) => x.name)
-  if (!columns.includes('import_source_id') || !columns.includes('import_fingerprint')) throw Error('Apply migrations through 0009_katajaam_import.sql to this database first; see README.md.')
+  if (!columns.includes('import_source_id') || !columns.includes('import_fingerprint')) throw Error('Apply migrations through 0012_katajaam_import.sql to this database first; see docs/KATAJAAM_IMPORT.md.')
   const existing = db.query(`SELECT l.id,l.title,l.starts_at,l.external_url AS url,l.import_source_id,l.import_fingerprint AS fingerprint,
     v.name AS venue_name,v.city,COALESCE(l.location_lat,v.latitude) AS latitude,COALESCE(l.location_lng,v.longitude) AS longitude
     FROM listings l LEFT JOIN venues v ON v.id=l.venue_id`).map((r) => ({...r,venue:r.venue_name?{name:r.venue_name,city:r.city,latitude:r.latitude,longitude:r.longitude}:null}))

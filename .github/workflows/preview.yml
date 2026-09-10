@@ -53,6 +53,18 @@ jobs:
           # /brand/og-card.png 404s into the SPA fallback and returns HTML with a
           # 200. Staging is the nearest origin that is always current.
           VITE_PUBLIC_ORIGIN: https://nepscene-staging.bhattarai-shiva.workers.dev
+
+      # The ledger, not the schema, is what `migrations apply` trusts. When a
+      # migration file has been applied any other way the two disagree, and the
+      # replay dies partway through a file that has no transaction around it.
+      # This says so in a sentence, before wrangler writes anything.
+      - name: Check schema drift on preview
+        if: steps.guard.outputs.ready == 'true'
+        run: node scripts/check-schema-drift.mjs --env preview --database nepscene-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # A preview deploys code against a *shared, persistent* database, so it
       # has to migrate the same way staging does. Without this the preview D1
       # sat at 0004 while the repo reached 0008, and every preview since then

@@ -3,7 +3,13 @@
 Run from the NepScene checkout with Node 22+ and dependencies installed.
 The separate WaahTickets importer remains available through `npm run db:import`.
 
-Apply migrations through `0012_katajaam_import.sql` to the target database first.
+The target database has to be migrated through `0012_katajaam_import.sql` first —
+and only ever by `migrations apply`. Running a migration file directly
+(`d1 execute --file=migrations/0012_….sql`) leaves the objects in place and the
+`d1_migrations` ledger unaware of them, and the next deploy then replays the file
+and fails on `duplicate column name`. `scripts/check-schema-drift.mjs` catches that
+before a deploy does; see docs/DEVOPS.md § Repairing a drifted ledger for the cure.
+
 For staging:
 
 ```sh

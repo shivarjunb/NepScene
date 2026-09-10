@@ -183,3 +183,157 @@ export function credentialHits(text, file) {
   }
   return hits
 }
+
+/**
+ * Schema drift: what a migration would create, versus what is already there.
+ *
+ * `wrangler d1 migrations apply` trusts one thing — the `d1_migrations` ledger
+ * — and the ledger only records what wrangler itself applied. Run a migration
+ * file by hand (`d1 execute --file=migrations/0012_….sql`, which the Kata Jaam
+ * runbook used to invite) and the objects exist while the ledger does not know
+ * it, so the next deploy replays the file and dies mid-way on `duplicate column
+ * name`. That is how staging stalled on 0012 and how production ended up
+ * carrying 0012's columns on a ledger that stopped at 0004.
+ *
+ * The failure is worse than a stalled deploy: `apply` is not transactional
+ * across statements, so a replay that dies on statement three has already run
+ * statements one and two. Catching it before wrangler starts is the whole point.
+ */
+
+/** @typedef {{ kind: 'table'|'index'|'column', name: string, table: string }} SchemaObject */
+
+/** Identifiers may arrive quoted three different ways; the name is what matters. */
+const bare = (identifier) => identifier.replace(/^["`[]|["`\]]$/g, '')
+
+/** SQL comments hold example DDL — 0005 discusses the column it drops. */
+const stripComments = (sql) =>
+  sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ')
+
+const IDENT = '(?:"[^"]+"|`[^`]+`|\\[[^\\]]+\\]|[A-Za-z_][\\w$]*)'
+const IF_NOT_EXISTS = '(?:IF\\s+NOT\\s+EXISTS\\s+)?'
+
+/**
+ * The objects a migration would collide with if it ran against a database that
+ * already had them — everything it creates and does not itself first remove.
+ *
+ * The subtraction is what makes this usable on a table rebuild. 0008 drops
+ * `listings` and renames a new table over it; finding `listings` already there
+ * is the precondition, not drift, and the five indexes it recreates went down
+ * with the table. Replaying it would succeed. Replaying 0012 would not, and
+ * that is the difference this guard exists to draw.
+ *
+ * @param {string} sql the migration file's contents
+ * @returns {SchemaObject[]}
+ */
+export function migrationCreates(sql) {
+  const text = stripComments(sql)
+  /** @type {SchemaObject[]} */
+  const objects = []
+
+  const tables = new RegExp(`CREATE\\s+TABLE\\s+${IF_NOT_EXISTS}(${IDENT})`, 'gi')
+  for (const m of text.matchAll(tables)) {
+    objects.push({ kind: 'table', name: bare(m[1]), table: bare(m[1]) })
+  }
+
+  const indexes = new RegExp(
+    `CREATE\\s+(?:UNIQUE\\s+)?INDEX\\s+${IF_NOT_EXISTS}(${IDENT})\\s+ON\\s+(${IDENT})`, 'gi')
+  for (const m of text.matchAll(indexes)) {
+    objects.push({ kind: 'index', name: bare(m[1]), table: bare(m[2]) })
+  }
+
+  // COLUMN is optional in SQLite's grammar, and `ADD CONSTRAINT` is not a column.
+  const columns = new RegExp(
+    `ALTER\\s+TABLE\\s+(${IDENT})\\s+ADD\\s+(?:COLUMN\\s+)?(${IDENT})`, 'gi')
+  for (const m of text.matchAll(columns)) {
+    const name = bare(m[2])
+    if (/^(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN)$/i.test(name)) continue
+    objects.push({ kind: 'column', name, table: bare(m[1]) })
+  }
+
+  // A table created and then renamed over another (the 0008 rebuild) leaves the
+  // renamed-to name, not the scratch one. Report both: either colliding stops it.
+  const renames = new RegExp(`ALTER\\s+TABLE\\s+${IDENT}\\s+RENAME\\s+TO\\s+(${IDENT})`, 'gi')
+  for (const m of text.matchAll(renames)) {
+    const name = bare(m[1])
+    if (!objects.some((o) => o.kind === 'table' && o.name === name)) {
+      objects.push({ kind: 'table', name, table: name })
+    }
+  }
+
+  // An object the migration removes on its way past cannot collide with itself.
+  const dropped = migrationDrops(text)
+  return objects.filter((o) =>
+    o.kind === 'column'
+      ? !dropped.columns.has(`${o.table}.${o.name}`)
+      : !dropped[o.kind === 'table' ? 'tables' : 'indexes'].has(o.name)
+        // An index goes down with the table it is on, named or not.
+        && !(o.kind === 'index' && dropped.tables.has(o.table)))
+}
+
+/**
+ * What a migration removes. Not exported: it exists to be subtracted from what
+ * the same file creates.
+ *
+ * @param {string} sql
+ * @returns {{ tables: Set<string>, indexes: Set<string>, columns: Set<string> }}
+ */
+function migrationDrops(sql) {
+  const text = stripComments(sql)
+  const drops = { tables: new Set(), indexes: new Set(), columns: new Set() }
+
+  for (const m of text.matchAll(new RegExp(`DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(${IDENT})`, 'gi'))) {
+    drops.tables.add(bare(m[1]))
+  }
+  for (const m of text.matchAll(new RegExp(`DROP\\s+INDEX\\s+(?:IF\\s+EXISTS\\s+)?(${IDENT})`, 'gi'))) {
+    drops.indexes.add(bare(m[1]))
+  }
+  for (const m of text.matchAll(new RegExp(
+    `ALTER\\s+TABLE\\s+(${IDENT})\\s+DROP\\s+(?:COLUMN\\s+)?(${IDENT})`, 'gi'))) {
+    drops.columns.add(`${bare(m[1])}.${bare(m[2])}`)
+  }
+  return drops
+}
+
+/**
+ * @typedef {object} LiveSchema
+ * @property {string[]} tables
+ * @property {string[]} indexes
+ * @property {Record<string, string[]>} columns table name → column names
+ */
+
+/**
+ * @typedef {object} DriftConflict
+ * @property {string} migration the pending file
+ * @property {'table'|'index'|'column'} kind
+ * @property {string} name
+ * @property {string} table
+ */
+
+/**
+ * Pending migrations whose objects the database already has.
+ *
+ * A conflict means the schema moved without the ledger — the database is ahead
+ * of its own bookkeeping, and `apply` is about to replay work already done.
+ *
+ * @param {{ name: string, sql: string }[]} pending files not in `d1_migrations`
+ * @param {LiveSchema} live
+ * @returns {DriftConflict[]}
+ */
+export function schemaDrift(pending, live) {
+  const tables = new Set(live.tables)
+  const indexes = new Set(live.indexes)
+  const columns = new Map(
+    Object.entries(live.columns).map(([table, names]) => [table, new Set(names)]))
+
+  /** @type {DriftConflict[]} */
+  const conflicts = []
+  for (const { name: migration, sql } of pending) {
+    for (const object of migrationCreates(sql)) {
+      const present = object.kind === 'table' ? tables.has(object.name)
+        : object.kind === 'index' ? indexes.has(object.name)
+        : (columns.get(object.table)?.has(object.name) ?? false)
+      if (present) conflicts.push({ migration, ...object })
+    }
+  }
+  return conflicts
+}
