@@ -351,6 +351,7 @@ export const openApiDocument = {
     '/api/catalog/artists/{slug}': { get: { summary: 'An artist with enough listings to warrant a page', responses: { '200': { description: 'Artist with upcoming and past listings' }, '404': { description: 'Unknown, or below the threshold for a page' } } } },
     '/api/catalog/categories': { get: { summary: 'Reference categories with upcoming counts', responses: { '200': { description: 'All active categories' } } } },
     '/api/catalog/tags': { get: { summary: 'Tags in use on upcoming listings, most used first', responses: { '200': { description: 'Up to 40 tags with upcoming counts' } } } },
+    '/api/catalog/here': { get: { summary: 'Which of twenty Nepali cities the request appears to come from, for the opening map view (#38)', responses: { '200': { description: 'A city, its centroid, and whether it was guessed from the IP or defaulted' } } } },
     '/api/catalog/bootstrap': { get: { summary: 'Everything the homepage needs, in one request', responses: { '200': { description: 'Categories, upcoming and featured listings' } } } },
     '/api/health': { get: { summary: 'Liveness and version. Touches no dependency.', responses: { '200': { description: 'ok' } } } },
     '/api/cache/status': { get: { summary: 'Live read/write probes of the cache, KV and D1 with measured latency', responses: { '200': { description: 'ok or degraded' }, '503': { description: 'D1 unreachable' } } } },

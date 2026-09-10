@@ -41,7 +41,11 @@ test.describe('with JavaScript disabled', () => {
 
   test('the homepage shows the feed', async ({ page }) => {
     await page.goto(worker('/'))
-    await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Nepal/ }))
+    // The server renders the default city, not the requester's (#38). The
+    // rendered page is cached at the edge, so a headline that varied by IP
+    // would hand one visitor's city to the next; the client refines it after
+    // hydration, from its own `/here` call.
+    await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Kathmandu/ }))
       .toBeVisible()
     // A rail with cards in it, not an empty shell.
     await expect(page.locator('.listing-card').first()).toBeVisible()

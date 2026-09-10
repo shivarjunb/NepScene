@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadGoogleMaps, MapsUnavailableError } from '../lib/googleMaps'
 import { Alert, Button, Spinner } from '../components/primitives'
+import { useT } from '../i18n'
 import { parsePopupConfig } from '../../api/author/popupConfig'
 import { ListingPopup } from './ListingPopup'
-import { pinDataUri, PIN_SIZE } from './pinMarker'
+import { meDataUri, ME_SIZE, pinDataUri, PIN_SIZE } from './pinMarker'
 import type { MapPin } from './markers'
 import { groupByVenue, type VenueGroup } from './venueGrouping'
 import { VenueStack } from './VenueStack'
-import { within, type Bounds } from './viewport'
+import { sameBounds, within, type Bounds } from './viewport'
 import { useViewportListings } from './useViewportListings'
+import type { ResolvedLocation } from './useLocation'
+import { haversineKm, boundingBox } from '../../api/lib/geo'
 
 /**
  * The public map (#36).
@@ -38,23 +41,51 @@ import { useViewportListings } from './useViewportListings'
 /** Kathmandu, and enough of the valley to have something on screen. */
 const OPENING_CENTRE = { lat: 27.7172, lng: 85.324 }
 const OPENING_ZOOM = 12
+/** Close enough that "near me" means streets rather than districts. */
+const PRECISE_ZOOM = 14
+
+/**
+ * The distance chips (#38), ported unchanged. 2km is walking, 5km is a short
+ * ride, 10km covers the valley, 20km covers it and its edges, and 100km is
+ * "worth the trip" — which for Nepal's geography is a real category rather
+ * than an arbitrary round number.
+ */
+export const DISTANCE_CHIPS_KM = [2, 5, 10, 20, 100]
 
 type Props = {
   /** Where a popup's "See the listing" goes. */
   onOpen: (slug: string) => void
+  /**
+   * The staged location (#38), resolved by the page so that the headline
+   * beside the map and the map itself agree about which city this is. Absent
+   * on surfaces that have no location story of their own.
+   */
+  location?: ResolvedLocation
 }
 
-export function NepalMap({ onOpen }: Props) {
+export function NepalMap({ onOpen, location }: Props) {
+  const t = useT()
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
   const overlayRef = useRef<google.maps.OverlayView | null>(null)
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map())
+  const meMarkerRef = useRef<google.maps.Marker | null>(null)
+  /**
+   * The viewer has panned or zoomed themselves. Read by the follow effect,
+   * held in a ref rather than in state because nothing renders from it and a
+   * re-render on every drag is exactly what the `idle` handler avoids.
+   */
+  const movedRef = useRef(false)
+  /** The latest centre, for the one-shot map constructor to read at build time. */
+  const centreRef = useRef<{ lat: number; lng: number } | null>(null)
 
   const [ready, setReady] = useState(false)
   const [unavailable, setUnavailable] = useState<string | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [viewport, setViewport] = useState<Bounds | null>(null)
+  /** The selected distance chip, in km, or null for "everywhere in view". */
+  const [radiusKm, setRadiusKm] = useState<number | null>(null)
   /**
    * What is open over the map: one listing's popup, or a venue's stack. Never
    * both — they occupy the same anchor, and a stack behind a popup is a
@@ -66,7 +97,26 @@ export function NepalMap({ onOpen }: Props) {
     | null
   >(null)
 
-  const { pins, loading, error, wide } = useViewportListings(viewport)
+  const { pins: fetched, loading, error, wide } = useViewportListings(viewport)
+
+  // Read by the map constructor, which runs once and cannot see later state.
+  centreRef.current = location?.centre ?? null
+
+  /**
+   * The distance filter, applied to what is held (#38).
+   *
+   * Client-side, and correctly so: the rows are already in memory, the circle
+   * is inside the box that fetched them, and the alternative — a `lat`/`lng`/
+   * `radius_km` search — is refused by the API when a bbox is also present,
+   * because a viewport and a radius are two answers to one SQL box
+   * (api/catalog/shared.ts). The map owns the viewport, so the map owns the
+   * circle inside it.
+   */
+  const pins = useMemo(() => {
+    if (radiusKm === null || !location?.precise) return fetched
+    const { lat, lng } = location.centre
+    return fetched.filter((pin) => haversineKm(lat, lng, pin.lat, pin.lng) <= radiusKm)
+  }, [fetched, radiusKm, location?.precise, location?.centre])
 
   /**
    * One marker per *place*, not per listing (#37). Six listings at one venue
@@ -89,7 +139,12 @@ export function NepalMap({ onOpen }: Props) {
       if (cancelled || !containerRef.current || mapRef.current) return
 
       const map = new maps.Map(containerRef.current, {
-        center: OPENING_CENTRE,
+        // Whatever location resolution has reached by now. `useLocation`
+        // starts at the default, so this is never undefined and never waits:
+        // the map draws immediately and moves later if a better answer lands.
+        // "Location resolution never blocks the map from rendering" is the
+        // criterion, and it is satisfied by never awaiting it here.
+        center: centreRef.current ?? OPENING_CENTRE,
         zoom: OPENING_ZOOM,
         mapTypeControl: false,
         streetViewControl: false,
@@ -127,13 +182,21 @@ export function NepalMap({ onOpen }: Props) {
         if (!bounds) return
         const ne = bounds.getNorthEast()
         const sw = bounds.getSouthWest()
-        setViewport({
+        const next = {
           north: ne.lat(), east: ne.lng(), south: sw.lat(), west: sw.lng(),
-        })
+        }
+        // Same rectangle, same object — otherwise the fetch effect restarts,
+        // aborting a request that was already on its way for this very box and
+        // issuing it again. `idle` fires for more than pans.
+        setViewport((current) => (sameBounds(current, next) ? current : next))
       })
       // A drag is the gesture that means "show me somewhere else"; a popup
       // anchored to a pin that is now off screen is just a floating card.
-      map.addListener('dragstart', () => setSelected(null))
+      map.addListener('dragstart', () => {
+        // And it is also the gesture that means "stop moving the map for me".
+        movedRef.current = true
+        setSelected(null)
+      })
       map.addListener('click', () => setSelected(null))
 
       setReady(true)
@@ -173,6 +236,49 @@ export function NepalMap({ onOpen }: Props) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [fullscreen, selected])
+
+  /**
+   * Follow the resolved centre.
+   *
+   * Only while the viewer has not taken over. Panning is a statement about
+   * where they want to look, and a map that yanks itself back to their own
+   * city because a geo-IP response finally landed is a map that fights them.
+   */
+  useEffect(() => {
+    if (!ready || !mapRef.current || !location) return
+    if (movedRef.current) return
+    // The first stage to produce a real answer wins the opening view; after
+    // that only an explicit locate-me moves it, and that is handled below.
+    // `default` is excluded because the map already opened there — moving it
+    // to where it is costs an `idle` and buys nothing.
+    if (location.stage !== 'ip') return
+    mapRef.current.setCenter(location.centre)
+  }, [ready, location?.stage, location?.centre])
+
+  /**
+   * A granted position is an explicit request to be shown where you are, so
+   * it overrides a pan in a way an IP guess never should.
+   */
+  useEffect(() => {
+    if (!ready || !mapRef.current || !location?.precise) return
+    movedRef.current = false
+    mapRef.current.setCenter(location.centre)
+    mapRef.current.setZoom(PRECISE_ZOOM)
+  }, [ready, location?.precise, location?.centre])
+
+  /** Refit to the circle when a distance chip is chosen. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map || radiusKm === null || !location?.precise) return
+    const box = boundingBox(location.centre.lat, location.centre.lng, radiusKm)
+    // The chip means "show me this far", so the viewport becomes the circle's
+    // box — which also makes the next fetch ask for exactly that ground.
+    movedRef.current = false
+    map.fitBounds(new google.maps.LatLngBounds(
+      new google.maps.LatLng(box.minLat, box.minLng),
+      new google.maps.LatLng(box.maxLat, box.maxLng),
+    ))
+  }, [ready, radiusKm, location?.precise, location?.centre])
 
   /** Where a point sits in container pixels, or null if it is not on screen. */
   const positionOf = useCallback((at: { lat: number; lng: number }) => {
@@ -241,11 +347,46 @@ export function NepalMap({ onOpen }: Props) {
     }
   }, [groups, ready, positionOf])
 
+  // ── "You are here", once there is a precise answer ─────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map) return
+
+    if (!location?.precise) {
+      meMarkerRef.current?.setMap(null)
+      meMarkerRef.current = null
+      return
+    }
+
+    const position = { lat: location.centre.lat, lng: location.centre.lng }
+    if (meMarkerRef.current) {
+      meMarkerRef.current.setPosition(position)
+      return
+    }
+    meMarkerRef.current = new google.maps.Marker({
+      map,
+      position,
+      title: 'You are here',
+      // Deliberately not a teardrop: a listing pin points at a thing that is
+      // happening, and the viewer is not one of those. A dot is the
+      // convention every map uses for the reader's own position.
+      icon: {
+        url: meDataUri(),
+        scaledSize: new google.maps.Size(ME_SIZE, ME_SIZE),
+        anchor: new google.maps.Point(ME_SIZE / 2, ME_SIZE / 2),
+      },
+      // Under the listings: it is orientation, not content.
+      zIndex: 0,
+    })
+  }, [ready, location?.precise, location?.centre])
+
   // Everything goes when the component does; the SDK holds its own references
   // and a marker left with a map is a leak that survives navigation.
   useEffect(() => () => {
     for (const marker of markersRef.current.values()) marker.setMap(null)
     markersRef.current.clear()
+    meMarkerRef.current?.setMap(null)
+    meMarkerRef.current = null
     overlayRef.current?.setMap(null)
   }, [])
 
@@ -269,6 +410,19 @@ export function NepalMap({ onOpen }: Props) {
       )}
 
       <div className="nepal-map__controls">
+        {location && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={location.locate}
+            disabled={location.stage === 'locating'}
+            aria-pressed={location.precise}
+          >
+            {location.stage === 'locating' ? t('map.locating')
+              : location.precise ? t('map.centred')
+              : t('map.nearMe')}
+          </Button>
+        )}
         <Button
           type="button"
           variant="secondary"
@@ -279,6 +433,39 @@ export function NepalMap({ onOpen }: Props) {
         </Button>
       </div>
 
+      {/* The distance chips (#38). They appear only once there is a position
+          precise enough for "within 2km" to be true rather than decorative —
+          a geo-IP centroid is accurate to a district, and filtering a 2km
+          circle around one would quietly hide listings that are in fact
+          nearby. */}
+      {location?.precise && (
+        <div className="nepal-map__distances" role="group" aria-label={t('map.distanceGroup')}>
+          {DISTANCE_CHIPS_KM.map((km) => (
+            <button
+              key={km}
+              type="button"
+              className="nepal-map__distance"
+              // A second press on the active chip clears it, which is how
+              // every chip row in the app already behaves.
+              onClick={() => setRadiusKm((current) => (current === km ? null : km))}
+              aria-pressed={radiusKm === km}
+            >
+              {t('map.km', { km: String(km) })}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* The permission-denied path. Not an error — the map behind it is
+          working and showing a whole city. What it says is what actually
+          changed: distance filtering is unavailable, and here is how to get
+          it back. */}
+      {location?.denied && (
+        <p className="nepal-map__denied" role="status">
+          {t('map.denied', { city: location.city })}
+        </p>
+      )}
+
       {/* Status, not decoration: a map that is quietly showing a subset is
           worse than one that says it is. */}
       <div className="nepal-map__status" role="status" aria-live="polite">
@@ -288,8 +475,13 @@ export function NepalMap({ onOpen }: Props) {
         {!loading && !wide && !error && (
           <span className="nepal-map__hint">
             {inView === 0
-              ? 'Nothing listed in this area yet.'
-              : `${inView} listing${inView === 1 ? '' : 's'} in view`}
+              // A filter that hides everything must say it was the filter. An
+              // empty map that blames the area is how somebody concludes there
+              // is nothing on and leaves.
+              ? radiusKm !== null
+                ? `Nothing within ${radiusKm} km of you.`
+                : 'Nothing listed in this area yet.'
+              : `${inView} listing${inView === 1 ? '' : 's'}${radiusKm !== null ? ` within ${radiusKm} km` : ' in view'}`}
           </span>
         )}
       </div>

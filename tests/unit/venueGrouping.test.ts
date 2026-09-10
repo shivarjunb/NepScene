@@ -20,6 +20,7 @@ const NOW = new Date('2026-10-02T12:00:00.000Z')
 /** A pin, described by what the grouping actually reads. */
 const pin = (over: Partial<MapPin> & { id: string }): MapPin => ({
   slug: over.id,
+  dateChip: '2 OCT',
   lat: 27.7154,
   lng: 85.3105,
   venueId: 'v1',
@@ -42,8 +43,8 @@ describe('grouping keys on venue identity', () => {
   it('wraps a single listing in a group of one', () => {
     const groups = groupByVenue([pin({ id: 'a' })])
     expect(groups).toHaveLength(1)
-    expect(groups[0].count).toBe(1)
-    expect(groups[0].primary.id).toBe('a')
+    expect(groups[0]!.count).toBe(1)
+    expect(groups[0]!.primary.id).toBe('a')
   })
 
   it('groups listings sharing a venue id into one group', () => {
@@ -52,7 +53,7 @@ describe('grouping keys on venue identity', () => {
       pin({ id: 'b', venueId: 'v1' }),
     ])
     expect(groups).toHaveLength(1)
-    expect(groups[0].count).toBe(2)
+    expect(groups[0]!.count).toBe(2)
   })
 
   it('groups venue-less listings at the same point into one group', () => {
@@ -61,7 +62,7 @@ describe('grouping keys on venue identity', () => {
       pin({ id: 'b', venueId: null, lat: 27.7, lng: 85.3 }),
     ])
     expect(groups).toHaveLength(1)
-    expect(groups[0].key).toBe('@27.7,85.3')
+    expect(groups[0]!.key).toBe('@27.7,85.3')
   })
 
   it('keeps different venues in separate groups', () => {
@@ -81,7 +82,7 @@ describe('grouping keys on venue identity', () => {
       pin({ id: 'b', venueId: 'v1', lat: 27.71562, lng: 85.31048 }),
     ])
     expect(groups).toHaveLength(1)
-    expect(groups[0].count).toBe(2)
+    expect(groups[0]!.count).toBe(2)
   })
 
   it('keeps two venues 80 metres apart separate', () => {
@@ -110,8 +111,8 @@ describe('grouping keys on venue identity', () => {
 
   it('preserves the coordinates through grouping', () => {
     const groups = groupByVenue([pin({ id: 'a', lat: 27.6588, lng: 85.3247 })])
-    expect(groups[0].lat).toBe(27.6588)
-    expect(groups[0].lng).toBe(85.3247)
+    expect(groups[0]!.lat).toBe(27.6588)
+    expect(groups[0]!.lng).toBe(85.3247)
   })
 
   it('carries the full pin into the stack, not a reduced copy', () => {
@@ -119,9 +120,9 @@ describe('grouping keys on venue identity', () => {
     // stack picker showing titles and nothing else.
     const source = pin({ id: 'a' })
     const [group] = groupByVenue([source])
-    expect(group.pins[0]).toBe(source)
-    expect(group.pins[0].popup.venue).toBe('Jazz Upstairs')
-    expect(group.pins[0].popup.when).toBe('Fri 2 Oct, 7:15 PM')
+    expect(group!.pins[0]).toBe(source)
+    expect(group!.pins[0]!.popup.venue).toBe('Jazz Upstairs')
+    expect(group!.pins[0]!.popup.when).toBe('Fri 2 Oct, 7:15 PM')
   })
 })
 
@@ -131,7 +132,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'plain' }),
       pin({ id: 'featured', rank: { featured: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].primary.id).toBe('featured')
+    expect(groups[0]!.primary.id).toBe('featured')
   })
 
   it('puts a live listing before a plain one', () => {
@@ -139,7 +140,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'plain' }),
       pin({ id: 'live', rank: { live: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].primary.id).toBe('live')
+    expect(groups[0]!.primary.id).toBe('live')
   })
 
   it('puts a live listing before a featured one', () => {
@@ -147,7 +148,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'featured', rank: { featured: true } as MapPin['rank'] }),
       pin({ id: 'live', rank: { live: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].primary.id).toBe('live')
+    expect(groups[0]!.primary.id).toBe('live')
   })
 
   it('puts a plain sold-out listing last', () => {
@@ -155,7 +156,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'sold', rank: { soldOut: true } as MapPin['rank'] }),
       pin({ id: 'plain' }),
     ])
-    expect(groups[0].pins.map((p) => p.id)).toEqual(['plain', 'sold'])
+    expect(groups[0]!.pins.map((p) => p.id)).toEqual(['plain', 'sold'])
   })
 
   it('does not demote a sold-out live listing to last place', () => {
@@ -163,7 +164,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'plain' }),
       pin({ id: 'live-sold', rank: { live: true, soldOut: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].primary.id).toBe('live-sold')
+    expect(groups[0]!.primary.id).toBe('live-sold')
   })
 
   it('does not demote a sold-out featured listing to last place', () => {
@@ -171,7 +172,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'plain' }),
       pin({ id: 'featured-sold', rank: { featured: true, soldOut: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].primary.id).toBe('featured-sold')
+    expect(groups[0]!.primary.id).toBe('featured-sold')
   })
 
   it('orders live, then featured, then regular, then sold-out', () => {
@@ -181,7 +182,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'featured', rank: { featured: true } as MapPin['rank'] }),
       pin({ id: 'live', rank: { live: true } as MapPin['rank'] }),
     ])
-    expect(groups[0].pins.map((p) => p.id)).toEqual(['live', 'featured', 'plain', 'sold'])
+    expect(groups[0]!.pins.map((p) => p.id)).toEqual(['live', 'featured', 'plain', 'sold'])
   })
 
   it('ranks every combination of live, featured and sold-out', () => {
@@ -203,7 +204,7 @@ describe('the tuned sort priority', () => {
       pin({ id: 'later', rank: { startsAt: '2026-10-04T13:00:00.000Z' } as MapPin['rank'] }),
       pin({ id: 'sooner', rank: { startsAt: '2026-10-03T13:00:00.000Z' } as MapPin['rank'] }),
     ])
-    expect(groups[0].pins.map((p) => p.id)).toEqual(['sooner', 'later'])
+    expect(groups[0]!.pins.map((p) => p.id)).toEqual(['sooner', 'later'])
   })
 
   it('breaks a same-instant tie on identity, so the order is stable', () => {
@@ -220,8 +221,8 @@ describe('the count bubble', () => {
     for (const size of [2, 3, 10]) {
       const pins = Array.from({ length: size }, (_, i) => pin({ id: `p${i}` }))
       const [group] = groupByVenue(pins)
-      expect(group.count).toBe(size)
-      expect(group.pins).toHaveLength(size)
+      expect(group!.count).toBe(size)
+      expect(group!.pins).toHaveLength(size)
     }
   })
 

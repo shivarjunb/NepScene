@@ -58,6 +58,71 @@
   top: var(--space-3);
   right: var(--space-3);
   z-index: var(--z-raised);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ── Distance chips (#38) ────────────────────────────────────────────────────
+
+   Top-left, opposite the controls: a filter is a statement about what is on
+   the map, and it belongs with the map's other statement — the status line —
+   rather than in the pile of buttons that change the map's mode. */
+
+.nepal-map__distances {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-raised);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  /* Never under the controls, however narrow the map gets. */
+  max-width: calc(100% - 12rem);
+}
+
+.nepal-map__distance {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.nepal-map__distance:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.nepal-map__distance[aria-pressed='true'] {
+  border-color: var(--accent-border);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* Not an alert: the map behind this is working and showing a whole city. What
+   changed is only that distance filtering is unavailable. */
+.nepal-map__denied {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: var(--z-raised);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-sm);
 }
 
 .nepal-map__status {

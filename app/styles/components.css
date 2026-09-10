@@ -359,6 +359,26 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
 
 .hero .hero__title { text-shadow: 0 4px 34px var(--scrim); }
 
+/* The reveal (#38). The heading is keyed on the city, so React replaces the
+   node when location resolution renames it and this plays on the new one.
+   Under `prefers-reduced-motion` nothing is declared at all — the criterion is
+   that reduced motion suppresses the intro, and the way to suppress an
+   animation is not to give it one. */
+.hero__title-reveal {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__title-reveal {
+    animation: hero-title-reveal var(--duration-slow) var(--ease-out) both;
+  }
+}
+
+@keyframes hero-title-reveal {
+  from { opacity: 0; transform: translateY(0.35em); }
+  to   { opacity: 1; transform: none; }
+}
+
 .hero__lead {
   max-width: 32.5rem;
   color: var(--on-dark-muted);

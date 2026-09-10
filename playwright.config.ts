@@ -31,6 +31,17 @@ export default defineConfig({
     {
       command: 'npm run build && npx vite preview --port 4173 --strictPort',
       url: 'http://localhost:4173',
+      // Keyless by construction, not by accident. Two specs assert the no-key
+      // state directly — `map.spec.ts`'s "no map key at all" and
+      // `venuePicker.spec.ts`'s typed-coordinate fallback — and they read the
+      // built bundle, so they passed only because no key existed anywhere.
+      // A developer's `.env.local` or a provisioned CI secret would have
+      // started loading the real SDK and failed both. An inline VITE_ variable
+      // takes precedence over `.env` files in Vite, and `mapsApiKey()` reads
+      // empty as absent, so this pins the fixture whatever the environment
+      // holds. Every other map spec installs its own SDK stub and does not
+      // care either way.
+      env: { VITE_GOOGLE_MAPS_API_KEY: '' },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { eventRoutes } from './events'
+import { hereRoutes } from './here'
 import { listingRoutes } from './listings'
 import { placeRoutes } from './places'
 import { referenceRoutes } from './reference'
@@ -13,6 +14,7 @@ import { searchRoutes } from './search'
 export const catalogRoutes = new Hono<{ Bindings: Env }>()
 
 catalogRoutes.route('/', referenceRoutes)
+catalogRoutes.route('/', hereRoutes)
 catalogRoutes.route('/', searchRoutes)
 catalogRoutes.route('/', eventRoutes)
 catalogRoutes.route('/', placeRoutes)

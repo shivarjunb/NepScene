@@ -73,8 +73,11 @@ export const KATHMANDU_LISTINGS = [
     starts_at: '2027-03-21T15:00:00.000Z',
   }),
   listing({
+    // 4.4km north of Purple Haze: far enough that a 2km distance chip
+    // excludes it and a 5km one does not, which is what makes the filter
+    // testable rather than merely present.
     id: 'art-week', title: 'Art Week', venue: PATAN,
-    latitude: 27.70, longitude: 85.32,
+    latitude: 27.7554, longitude: 85.3105,
   }),
 ]
 
@@ -155,13 +158,31 @@ export async function stubMapsSdk(page: Page) {
         return { remove: () => {} }
       }
       getBounds() { return new FakeBounds() }
-      setCenter() {}
+      setCenter(at: { lat: number; lng: number }) {
+        centre = at
+        fire('idle', undefined)
+      }
       setZoom() {}
       panTo() {}
+      fitBounds(bounds: { __box: { south: number; north: number; west: number; east: number } }) {
+        const box = bounds.__box
+        centre = { lat: (box.south + box.north) / 2, lng: (box.west + box.east) / 2 }
+        fire('idle', undefined)
+      }
+    }
+
+    /** Just enough to carry a box from `fitBounds` back to the fake map. */
+    class FakeLatLngBounds {
+      readonly __box: { south: number; north: number; west: number; east: number }
+      constructor(sw: FakeLatLng, ne: FakeLatLng) {
+        this.__box = { south: sw.lat(), west: sw.lng(), north: ne.lat(), east: ne.lng() }
+      }
     }
 
     class FakeMarker {
-      constructor(readonly options: { position: { lat: number; lng: number }; title?: string }) {
+      constructor(
+        readonly options: { position: { lat: number; lng: number }; title?: string },
+      ) {
         markers.push(this)
       }
       addListener(_event: string, handler: Listener) {
@@ -178,6 +199,9 @@ export async function stubMapsSdk(page: Page) {
       }
       getPosition() {
         return new FakeLatLng(this.options.position.lat, this.options.position.lng)
+      }
+      setPosition(at: { lat: number; lng: number }) {
+        this.options.position = at
       }
     }
 
@@ -210,6 +234,7 @@ export async function stubMapsSdk(page: Page) {
         Marker: FakeMarker,
         OverlayView: FakeOverlayView,
         LatLng: FakeLatLng,
+        LatLngBounds: FakeLatLngBounds,
         Size: FakeSize,
         Point: FakePoint,
         event: { trigger: () => {} },
@@ -231,7 +256,82 @@ export async function stubMapsSdk(page: Page) {
           for (const handler of markerListeners.get(marker) ?? []) handler(undefined)
         },
         __markerTitles: () => markers.map((m) => m.options.title),
+        __centre: () => ({ ...centre }),
       },
     }
   })
+}
+
+/**
+ * The browser's geolocation, under the spec's control (#38).
+ *
+ * `outcome` is what `getCurrentPosition` does when the app asks:
+ *  - `granted` calls back with `at`
+ *  - `denied` calls the error callback, as a refused permission prompt does
+ *  - `timeout` never calls back at all, which is the case the six-second
+ *    timeout exists for and the one WaahTickets had no answer to
+ *  - `missing` removes `navigator.geolocation` entirely
+ */
+export async function stubGeolocation(
+  page: Page,
+  outcome: 'granted' | 'denied' | 'timeout' | 'missing',
+  at: { lat: number; lng: number } = THAMEL,
+) {
+  await page.addInitScript(
+    ([outcome, at]: [string, { lat: number; lng: number }]) => {
+      if (outcome === 'missing') {
+        // `geolocation` is a getter on the prototype, so deleting the own
+        // property is not enough.
+        Object.defineProperty(navigator, 'geolocation', {
+          value: undefined, configurable: true,
+        })
+        return
+      }
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition: (
+            ok: (position: unknown) => void,
+            fail: (error: unknown) => void,
+          ) => {
+            if (outcome === 'granted') {
+              ok({ coords: { latitude: at.lat, longitude: at.lng, accuracy: 20 } })
+            } else if (outcome === 'denied') {
+              fail({ code: 1, message: 'User denied Geolocation' })
+            }
+            // 'timeout': never calls back, on purpose.
+          },
+          watchPosition: () => 0,
+          clearWatch: () => {},
+        },
+      })
+    },
+    [outcome, at] as [string, { lat: number; lng: number }],
+  )
+}
+
+/**
+ * `/api/catalog/here`, the same-origin replacement for WaahTickets' plain-HTTP
+ * `ip-api.com` call. `null` makes it fail, which must not stop the map.
+ */
+export async function serveHere(
+  page: Page,
+  here: { city: string; city_ne?: string; lat: number; lng: number; source: 'ip' | 'default' } | null,
+) {
+  await page.route('**/api/catalog/here', (route) => (
+    here === null
+      ? route.fulfill({ status: 500, json: { error: { code: 'boom', message: 'no' } } })
+      : route.fulfill({ json: { city_ne: here.city, ...here, in_nepal: true } })
+  ))
+}
+
+/**
+ * A minimal `/bootstrap`, so a spec whose subject is the map can open `/` —
+ * where the hero lives — without also standing up a feed fixture. The rows
+ * the feed builds from it are somebody else's spec (`discover.spec.ts`).
+ */
+export async function serveBootstrap(page: Page) {
+  await page.route('**/api/catalog/bootstrap', (route) => route.fulfill({
+    json: { categories: [], featured: [], upcoming: [] },
+  }))
 }

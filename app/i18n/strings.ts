@@ -52,6 +52,22 @@ export const STRINGS = {
     ne: 'कन्सर्ट, चाडपर्व, खेलकुद, हास्य र सामुदायिक कार्यक्रम — आउँदै गरेका मात्र।',
   },
   'discover.everything': { en: 'Everything', ne: 'सबै' },
+  /**
+   * The dynamic hero headline (#38). It names the detected city, so it is one
+   * string with a slot rather than a sentence assembled from fragments —
+   * Nepali puts the postposition on the place name (`काठमाडौं वरिपरि`), and a
+   * concatenation would put it in the wrong half.
+   */
+  'discover.titleIn': { en: 'What’s happening around {city}', ne: '{city} वरिपरि के-के भइरहेको छ' },
+  'map.nearMe': { en: 'Near me', ne: 'मेरो नजिक' },
+  'map.locating': { en: 'Finding you…', ne: 'खोज्दै…' },
+  'map.centred': { en: 'Centred on you', ne: 'तपाईंमा केन्द्रित' },
+  'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
+  'map.km': { en: '{km} km', ne: '{km} किमी' },
+  'map.denied': {
+    en: 'Location is off, so this is {city}. Turn it on in your browser to sort by how far away things are.',
+    ne: 'स्थान बन्द छ, त्यसैले यो {city} हो। दूरीअनुसार छान्न ब्राउजरमा स्थान खोल्नुहोस्।',
+  },
   'discover.browseByCategory': { en: 'Browse by category', ne: 'वर्गअनुसार हेर्नुहोस्' },
   'discover.results': { en: 'Results', ne: 'नतिजा' },
   // The locative is a suffix, written closed up — not a separate word the way

@@ -79,7 +79,11 @@ test('the homepage renders the hero and four populated rows', async ({ page }) =
   await serveCatalogue(page, FULL)
   await page.goto('/')
 
-  await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Nepal/ }))
+  // The headline names the resolved city (#38). Nothing is stubbed here, so
+  // `/here` 404s against `vite preview` and resolution lands on its default —
+  // which is the case worth asserting on this page anyway: the hero must read
+  // as a finished sentence before any of it resolves.
+  await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Kathmandu/ }))
     .toBeVisible()
 
   for (const row of ['Featured', 'This weekend', 'In Kathmandu', 'Free entry', 'Concerts']) {
@@ -104,7 +108,7 @@ test('the hero mounts the real map, and it loads by viewport', async ({ page }) 
   await page.goto('/')
 
   await expect(page.locator('.hero .nepal-map')).toBeVisible()
-  await expect(page.getByText(/2 listings in view/)).toBeVisible()
+  await expect(page.getByText(/3 listings in view/)).toBeVisible()
 
   // Bounded, exactly as on /map. A hero map that fell back to the unbounded
   // feed would put the pattern the Catalog API replaced on the busiest page.

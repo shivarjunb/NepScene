@@ -117,3 +117,24 @@ function countBubble(label: string): string {
  */
 export const pinDataUri = (pin: PinAppearance, count = 1): string =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(pin, count))}`
+
+/**
+ * The viewer's own position (#38).
+ *
+ * A ringed dot, not a teardrop. A listing pin points *at* something that is
+ * happening; the viewer is not one of those, and drawing them as one puts a
+ * thirteenth category on the map. Every map in the world uses a dot for this
+ * and there is no reason to be the exception.
+ */
+export const ME_SIZE = 22
+
+export function meSvg(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${ME_SIZE}" height="${ME_SIZE}" viewBox="0 0 22 22">`
+    // The halo, so the dot survives a dark tile as well as a pale one.
+    + '<circle cx="11" cy="11" r="10" fill="#2563eb" opacity="0.2"/>'
+    + '<circle cx="11" cy="11" r="5" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>'
+    + '</svg>'
+}
+
+export const meDataUri = (): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(meSvg())}`

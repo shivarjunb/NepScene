@@ -154,9 +154,9 @@ describe('shared venues become one pin each', () => {
     const groups = groupByVenue(toMapPins(body.data))
 
     expect(groups).toHaveLength(1)
-    expect(groups[0].key).toBe('ven_thamel')
-    expect(groups[0].count).toBe(2)
-    expect(groups[0].pins.map((pin) => pin.slug).sort()).toEqual(['art-week', 'rock-night'])
+    expect(groups[0]!.key).toBe('ven_thamel')
+    expect(groups[0]!.count).toBe(2)
+    expect(groups[0]!.pins.map((pin) => pin.slug).sort()).toEqual(['art-week', 'rock-night'])
   })
 
   it('groups the two Pokhara listings into one Lakeside pin', async () => {
@@ -164,8 +164,8 @@ describe('shared venues become one pin each', () => {
     const groups = groupByVenue(toMapPins(body.data))
 
     expect(groups).toHaveLength(1)
-    expect(groups[0].key).toBe('ven_pokhara')
-    expect(groups[0].count).toBe(2)
+    expect(groups[0]!.key).toBe('ven_pokhara')
+    expect(groups[0]!.count).toBe(2)
   })
 
   it('puts the running listing at the top of its stack, ahead of the featured one', async () => {

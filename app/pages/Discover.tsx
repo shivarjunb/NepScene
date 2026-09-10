@@ -8,6 +8,7 @@ import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
 import { SearchBox } from '../components/SearchBox'
 import { Alert } from '../components/primitives'
 import { NepalMap } from '../map/NepalMap'
+import { useLocation } from '../map/useLocation'
 import { useLanguage, useT } from '../i18n'
 import { categoryName, count } from '../lib/format'
 import { Link, navigate, useSearch } from '../router'
@@ -119,9 +120,24 @@ export function Discover() {
  */
 function Hero() {
   const t = useT()
+  /**
+   * Resolved here rather than inside the map (#38), so the headline and the
+   * map are two views of one answer. Two `useLocation()` calls would be two
+   * `/here` requests that could disagree, and a headline naming a city the
+   * map is not centred on is worse than a headline naming no city at all.
+   */
+  const location = useLocation()
+
   return (
     <section className="hero">
-      <h1 className="hero__title">{t('discover.title')}</h1>
+      {/* Keyed on the city so React replaces the node rather than patching
+          its text — which is what gives the reveal something to animate. The
+          animation itself is CSS and is suppressed under reduced motion. */}
+      <h1 className="hero__title" key={location.city}>
+        <span className="hero__title-reveal">
+          {t('discover.titleIn', { city: location.city })}
+        </span>
+      </h1>
       <p className="hero__lead">{t('discover.lead')}</p>
       {/* Search sits under the hero on every screen, not only in the header
           where the phone layout hides it (#42). */}
@@ -129,7 +145,7 @@ function Hero() {
         <SearchBox />
       </div>
       <div className="hero__map">
-        <NepalMap onOpen={(slug) => navigate(`/listings/${slug}`)} />
+        <NepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
       </div>
     </section>
   )

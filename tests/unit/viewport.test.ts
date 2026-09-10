@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bboxParam, contains, MAX_SPAN_DEGREES, needsFetch, padBounds, PAD_RATIO, tooWide, within,
-  type Bounds,
+  bboxParam, contains, MAX_SPAN_DEGREES, needsFetch, padBounds, PAD_RATIO, sameBounds,
+  tooWide, within, type Bounds,
 } from '../../app/map/viewport'
 import { parseViewport } from '../../api/catalog/shared'
 
@@ -161,5 +161,32 @@ describe('what is actually on screen', () => {
 
   it('counts a pin exactly on the edge', () => {
     expect(within(VALLEY, { lat: VALLEY.north, lng: VALLEY.east })).toBe(true)
+  })
+})
+
+
+/**
+ * `idle` fires for more than pans — a resize, a programmatic `setCenter` to
+ * where the map already is, the SDK settling after tiles load. Each hands back
+ * bounds, and storing a fresh object for identical numbers restarts the fetch
+ * effect: it aborts the request already in flight for that box and issues the
+ * same one again. This is the comparison that stops it.
+ */
+describe('the same rectangle is the same rectangle', () => {
+  const box: Bounds = { west: 85.2, south: 27.6, east: 85.4, north: 27.8 }
+
+  it('is true for equal numbers in a different object', () => {
+    expect(sameBounds({ ...box }, box)).toBe(true)
+  })
+
+  it('is false when any edge moved', () => {
+    expect(sameBounds({ ...box, west: 85.21 }, box)).toBe(false)
+    expect(sameBounds({ ...box, east: 85.41 }, box)).toBe(false)
+    expect(sameBounds({ ...box, south: 27.61 }, box)).toBe(false)
+    expect(sameBounds({ ...box, north: 27.81 }, box)).toBe(false)
+  })
+
+  it('is false against nothing loaded yet', () => {
+    expect(sameBounds(null, box)).toBe(false)
   })
 })
