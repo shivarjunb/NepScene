@@ -8,7 +8,7 @@ import { DEFAULT_PIN, resolvePin } from '../../api/catalog/pin'
  * free to disagree with the chip next to it.
  */
 const category = (over: Partial<CategoryRef> = {}): CategoryRef => ({
-  slug: 'concerts', name: 'Concerts', color: '#e91e63', icon: 'Music',
+  slug: 'concerts', name: 'Concerts', name_ne: null, color: '#e91e63', icon: 'Music',
   is_primary: true, ...over,
 })
 

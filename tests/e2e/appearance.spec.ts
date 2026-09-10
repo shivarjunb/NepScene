@@ -11,7 +11,7 @@ import { pickVenue, serveAuthoring } from './authoringStub'
  */
 
 async function toAppearance(page: import('@playwright/test').Page) {
-  await page.getByLabel('Title').fill('Kutumba live')
+  await page.getByLabel('Title', { exact: true }).fill('Kutumba live')
   await page.getByRole('button', { name: 'Concerts' }).click()
   await page.getByRole('button', { name: 'Next' }).click()
   await page.getByLabel('Starts').fill('2027-03-14T18:45')

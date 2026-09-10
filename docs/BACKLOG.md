@@ -87,7 +87,7 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 | [#43](../../issues/43) | Listing detail pages |
 | [#44](../../issues/44) | Venue and organizer pages |
 | [#45](../../issues/45) | Server rendering, SEO and structured data |
-| [#46](../../issues/46) | Nepali language support |
+| [#46](../../issues/46) | Nepali language support · *interface and content done; the wizard and the moderation queue are not translated* |
 
 ## M5 — Launch readiness
 *Accessible, observed, performant, documented.*

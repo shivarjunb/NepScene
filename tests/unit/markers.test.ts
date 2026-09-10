@@ -16,7 +16,9 @@ const listing = (over: Partial<Listing> = {}): Listing => ({
   id: 'listing-1',
   slug: 'jazz-at-the-house',
   title: 'Jazz at the House',
+  title_ne: null,
   summary: 'A quartet, twice through.',
+  summary_ne: null,
   listing_type: 'ticketed_internal',
   source: 'organizer',
   starts_at: '2026-10-02T13:15:00.000Z',
@@ -33,8 +35,8 @@ const listing = (over: Partial<Listing> = {}): Listing => ({
   venue: { id: 'v1', slug: 'jazz-house', name: 'Jazz Upstairs', area: 'Lazimpat', city: 'Kathmandu' },
   organizer: null,
   categories: [
-    { slug: 'concerts', name: 'Concerts', color: '#e91e63', icon: 'Music', is_primary: true },
-    { slug: 'nightlife', name: 'Nightlife', color: '#06b6d4', icon: 'Moon', is_primary: false },
+    { slug: 'concerts', name: 'Concerts', name_ne: null, color: '#e91e63', icon: 'Music', is_primary: true },
+    { slug: 'nightlife', name: 'Nightlife', name_ne: null, color: '#06b6d4', icon: 'Moon', is_primary: false },
   ],
   cover: null,
   offer: null,
@@ -59,8 +61,8 @@ describe('a listing becomes a pin', () => {
   it('names the primary category in the popup, not the first one listed', () => {
     const secondaryFirst = listing({
       categories: [
-        { slug: 'nightlife', name: 'Nightlife', color: '#06b6d4', icon: 'Moon', is_primary: false },
-        { slug: 'concerts', name: 'Concerts', color: '#e91e63', icon: 'Music', is_primary: true },
+        { slug: 'nightlife', name: 'Nightlife', name_ne: null, color: '#06b6d4', icon: 'Moon', is_primary: false },
+        { slug: 'concerts', name: 'Concerts', name_ne: null, color: '#e91e63', icon: 'Music', is_primary: true },
       ],
     })
     expect(toPopupListing(secondaryFirst).category).toBe('Concerts')

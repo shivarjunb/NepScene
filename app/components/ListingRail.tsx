@@ -1,5 +1,6 @@
 import type { Row } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from './ListingCard'
+import { useT } from '../i18n'
 import { Link } from '../router'
 
 /**
@@ -12,6 +13,7 @@ import { Link } from '../router'
  * without tabbing through every one of them.
  */
 export function ListingRail({ row }: { row: Row }) {
+  const t = useT()
   const empty = row.listings.length === 0
 
   return (
@@ -23,7 +25,7 @@ export function ListingRail({ row }: { row: Row }) {
         </div>
         {!empty && row.href && (
           <Link className="rail__more" href={row.href}>
-            See all<span className="visually-hidden"> {row.title}</span>
+            {t('discover.seeAll')}<span className="visually-hidden"> {row.title}</span>
           </Link>
         )}
       </div>

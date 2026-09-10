@@ -12,6 +12,8 @@ const CATEGORY_REF = {
   properties: {
     slug: { type: 'string' },
     name: { type: 'string' },
+    // The taxonomy's Nepali label (#46). Null falls back to `name`.
+    name_ne: { type: ['string', 'null'] },
     color: { type: ['string', 'null'] },
     icon: { type: ['string', 'null'] },
     // Exactly one per listing, and the one the pin is derived from.
@@ -102,7 +104,7 @@ const OFFER = {
 const LISTING_SUMMARY = {
   type: 'object',
   required: [
-    'id', 'slug', 'title', 'listing_type', 'source', 'starts_at',
+    'id', 'slug', 'title', 'title_ne', 'listing_type', 'source', 'starts_at',
     'is_all_day', 'timezone', 'is_featured', 'venue', 'organizer', 'categories', 'pin',
     'cover', 'offer',
   ],
@@ -110,7 +112,11 @@ const LISTING_SUMMARY = {
     id: { type: 'string' },
     slug: { type: 'string', pattern: '^[a-z0-9-]+$' },
     title: { type: 'string' },
+    // The Nepali half (#46). Null means "render the English one", never
+    // "render nothing" — `title` is the field every language-less surface uses.
+    title_ne: { type: ['string', 'null'] },
     summary: { type: ['string', 'null'] },
+    summary_ne: { type: ['string', 'null'] },
     listing_type: { enum: ['ticketed_internal', 'ticketed_external', 'free', 'announcement'] },
     source: { enum: ['organizer', 'submission', 'import', 'editorial'] },
     starts_at: { type: 'string' },
@@ -163,7 +169,11 @@ const LISTING_DETAIL = {
   properties: {
     ...LISTING_SUMMARY.properties,
     description: { type: ['string', 'null'] },
+    description_ne: { type: ['string', 'null'] },
     published_at: { type: ['string', 'null'] },
+    // What to read next (#43). Ranked same-venue, same-organizer, then shared
+    // category, and it never contains the listing it is on.
+    related: { type: 'array', items: LISTING_SUMMARY },
     // Which room or stage inside the venue; the venue itself is not duplicated.
     venue_room: { type: ['string', 'null'] },
     map_popup_config: {},
@@ -176,10 +186,64 @@ const LISTING_DETAIL = {
         properties: {
           slug: { type: 'string' }, name: { type: 'string' },
           image_url: { type: ['string', 'null'] },
+          listing_count: { type: 'integer' },
+          // Whether /artists/{slug} will answer. The API owns the threshold.
+          has_page: { type: 'boolean' },
         },
       },
     },
     tags: { type: 'array', items: TAG_REF },
+  },
+} as const
+
+/**
+ * A search says more than a feed does: what it counted, what it corrected, and
+ * — when it found nothing — where else to go. The rows themselves are the same
+ * `ListingSummary` everything else serves.
+ */
+const FACET = {
+  type: 'object',
+  required: ['value', 'label', 'count'],
+  properties: {
+    value: { type: 'string' },
+    label: { type: 'string' },
+    label_ne: { type: ['string', 'null'] },
+    count: { type: 'integer' },
+    from: { type: ['string', 'null'] },
+    to: { type: ['string', 'null'] },
+  },
+} as const
+
+const SUGGESTION = {
+  type: 'object',
+  required: ['kind', 'slug', 'label'],
+  properties: {
+    kind: { enum: ['listing', 'venue', 'city', 'area', 'organizer', 'artist', 'category', 'tag'] },
+    slug: { type: 'string' },
+    label: { type: 'string' },
+  },
+} as const
+
+const SEARCH_RESULT = {
+  type: 'object',
+  required: ['data', 'page', 'facets', 'corrected_from', 'alternatives'],
+  properties: {
+    ...PAGE.properties,
+    facets: {
+      type: 'object',
+      required: ['city', 'category', 'price', 'when'],
+      properties: {
+        city: { type: 'array', items: FACET },
+        category: { type: 'array', items: FACET },
+        price: { type: 'array', items: FACET },
+        when: { type: 'array', items: FACET },
+      },
+    },
+    // Set when the query was respelled to find these results, so the page can
+    // say "showing results for …" rather than quietly answering a different
+    // question.
+    corrected_from: { type: ['string', 'null'] },
+    alternatives: { type: 'array', items: SUGGESTION },
   },
 } as const
 
@@ -199,6 +263,8 @@ export const SCHEMAS = {
   ListingSummary: LISTING_SUMMARY,
   ListingPage: PAGE,
   ListingDetail: LISTING_DETAIL,
+  SearchResult: SEARCH_RESULT,
+  Suggestion: SUGGESTION,
   Offer: OFFER,
   Error: ERROR,
 } as const
@@ -207,7 +273,8 @@ const feedParameters = [
   ['category', 'Category slug'], ['tag', 'Free-form tag; normalised, so `Open Mic` finds `open-mic`'],
   ['artist', 'Artist slug'], ['city', 'City name, case-insensitive'],
   ['venue', 'Venue slug'], ['organizer', 'Organizer slug'],
-  ['type', 'listing_type'], ['featured', 'Only featured listings'],
+  ['type', 'listing_type'], ['price', 'free, ticketed or announcement — the band the facet counts'],
+  ['featured', 'Only featured listings'],
   ['from', 'ISO-8601 lower bound on starts_at'], ['to', 'ISO-8601 upper bound on starts_at'],
   ['include_past', 'Include finished listings; off by default'],
   ['cursor', 'Opaque keyset cursor from a previous page'],
@@ -261,17 +328,27 @@ export const openApiDocument = {
         summary: 'Search by text, place and distance',
         parameters: [
           ...feedParameters,
-          { name: 'q', in: 'query', description: 'Matches title, summary, venue, area, city and organizer', schema: { type: 'string' } },
+          { name: 'q', in: 'query', description: 'Matches title, summary, venue, area, city, organizer, category and tag, in either script', schema: { type: 'string' } },
+          { name: 'exact', in: 'query', description: '1 to suppress spelling correction on a zero-result query', schema: { type: 'string' } },
           { name: 'lat', in: 'query', schema: { type: 'number' } },
           { name: 'lng', in: 'query', schema: { type: 'number' } },
           { name: 'radius_km', in: 'query', description: 'Default 10, max 500', schema: { type: 'number' } },
         ],
-        responses: { '200': jsonResponse('ListingPage', 'Matching listings, with distance_km when a centre is given'), ...errorResponses },
+        responses: { '200': jsonResponse('SearchResult', 'Ranked listings with facet counts, with distance_km when a centre is given'), ...errorResponses },
+      },
+    },
+    '/api/catalog/suggest': {
+      get: {
+        summary: 'Search-as-you-type suggestions drawn from the catalogue itself',
+        parameters: [{ name: 'q', in: 'query', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Up to eight suggestions, best first' } },
       },
     },
     '/api/catalog/venues': { get: { summary: 'Venues, ordered by slug', responses: { '200': { description: 'A bounded page of venues' } } } },
-    '/api/catalog/venues/{slug}': { get: { summary: 'A venue and what is on there', responses: { '200': { description: 'Venue with upcoming listings' }, ...errorResponses } } },
-    '/api/catalog/organizers/{slug}': { get: { summary: 'An organizer and their listings', responses: { '200': { description: 'Organizer with upcoming listings' }, ...errorResponses } } },
+    '/api/catalog/venues/{slug}': { get: { summary: 'A venue and what is on there', responses: { '200': { description: 'Venue with upcoming and past listings' }, ...errorResponses } } },
+    '/api/catalog/organizers': { get: { summary: 'Organizers with something published, ordered by slug', responses: { '200': { description: 'A bounded page of organizers' } } } },
+    '/api/catalog/organizers/{slug}': { get: { summary: 'An organizer and their listings', responses: { '200': { description: 'Organizer with upcoming and past listings' }, ...errorResponses } } },
+    '/api/catalog/artists/{slug}': { get: { summary: 'An artist with enough listings to warrant a page', responses: { '200': { description: 'Artist with upcoming and past listings' }, '404': { description: 'Unknown, or below the threshold for a page' } } } },
     '/api/catalog/categories': { get: { summary: 'Reference categories with upcoming counts', responses: { '200': { description: 'All active categories' } } } },
     '/api/catalog/tags': { get: { summary: 'Tags in use on upcoming listings, most used first', responses: { '200': { description: 'Up to 40 tags with upcoming counts' } } } },
     '/api/catalog/bootstrap': { get: { summary: 'Everything the homepage needs, in one request', responses: { '200': { description: 'Categories, upcoming and featured listings' } } } },

@@ -23,6 +23,11 @@ export type ListingInput = {
   title: string
   summary: string | null
   description: string | null
+  /** The Nepali half (#46). Never required — English is what every
+   *  language-less surface reads, so a listing always has a usable name. */
+  title_ne: string | null
+  summary_ne: string | null
+  description_ne: string | null
   listing_type: ListingType
   organization_id: string | null
   venue_id: string | null
@@ -124,6 +129,17 @@ export function validateStep(step: StepId, input: Partial<ListingInput>): FieldE
     if (!blank(input.description) && input.description!.length > MAX.description) {
       errors.push({ field: 'description', message: 'The description is too long' })
     }
+    // The Nepali fields are optional but not unbounded: the same limits as
+    // their English counterparts, because they are rendered in the same places.
+    if (!blank(input.title_ne) && input.title_ne!.trim().length > MAX.title) {
+      errors.push({ field: 'title_ne', message: `Shorten the Nepali title to ${MAX.title} characters or fewer` })
+    }
+    if (!blank(input.summary_ne) && input.summary_ne!.length > MAX.summary) {
+      errors.push({ field: 'summary_ne', message: 'The Nepali summary is too long' })
+    }
+    if (!blank(input.description_ne) && input.description_ne!.length > MAX.description) {
+      errors.push({ field: 'description_ne', message: 'The Nepali description is too long' })
+    }
     if (!blank(input.external_url) && !isHttpUrl(input.external_url!.trim())) {
       errors.push({ field: 'external_url', message: 'The event website must start with http:// or https://' })
     }
@@ -215,6 +231,7 @@ export function validateListing(input: Partial<ListingInput>): FieldError[] {
 export function emptyListing(): ListingInput {
   return {
     title: '', summary: null, description: null,
+    title_ne: null, summary_ne: null, description_ne: null,
     listing_type: 'free',
     organization_id: null, venue_id: null,
     starts_at: '', ends_at: null, is_all_day: false, timezone: 'Asia/Kathmandu',

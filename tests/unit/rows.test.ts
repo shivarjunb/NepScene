@@ -11,7 +11,9 @@ import { buildRows, entryCategories, nepalDay, weekendDays } from '../../app/lib
 const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Listing => ({
   slug: over.id,
   title: over.id,
+  title_ne: null,
   summary: null,
+  summary_ne: null,
   listing_type: 'ticketed_internal',
   source: 'organizer',
   ends_at: null,
@@ -94,14 +96,14 @@ describe('every row is a rule over the catalogue', () => {
     featured: [listing({ id: 'featured-1', starts_at: '2026-09-20T12:00:00Z' })],
     upcoming: [
       listing({ id: 'ktm-weekend', starts_at: '2026-09-11T13:00:00Z',
-                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
+                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', name_ne: null, color: null, icon: null, is_primary: true }] }),
       listing({ id: 'ktm-later', starts_at: '2026-09-20T13:00:00Z',
-                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
+                venue: venue('Kathmandu'), categories: [{ slug: 'concerts', name: 'concerts', name_ne: null, color: null, icon: null, is_primary: true }] }),
       listing({ id: 'ktm-free', starts_at: '2026-09-21T13:00:00Z',
                 listing_type: 'free', venue: venue('Kathmandu'),
-                categories: [{ slug: 'concerts', name: 'concerts', color: null, icon: null, is_primary: true }] }),
+                categories: [{ slug: 'concerts', name: 'concerts', name_ne: null, color: null, icon: null, is_primary: true }] }),
       listing({ id: 'pokhara', starts_at: '2026-09-22T13:00:00Z',
-                venue: venue('Pokhara'), categories: [{ slug: 'film', name: 'film', color: null, icon: null, is_primary: true }] }),
+                venue: venue('Pokhara'), categories: [{ slug: 'film', name: 'film', name_ne: null, color: null, icon: null, is_primary: true }] }),
     ],
   })
 

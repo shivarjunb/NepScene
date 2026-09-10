@@ -60,6 +60,13 @@ export function parseListingInput(body: unknown): Partial<ListingInput> {
   if (raw.title !== undefined) input.title = typeof raw.title === 'string' ? raw.title.trim() : ''
   if (raw.summary !== undefined) input.summary = str(raw.summary) ?? null
   if (raw.description !== undefined) input.description = str(raw.description) ?? null
+  // The Nepali half of a listing (#46). Optional in every sense: an author may
+  // fill in one, both or neither, and nothing downstream requires the pair to
+  // agree — a listing whose Nepali title is not a translation of its English
+  // one is a listing, not an error.
+  if (raw.title_ne !== undefined) input.title_ne = str(raw.title_ne) ?? null
+  if (raw.summary_ne !== undefined) input.summary_ne = str(raw.summary_ne) ?? null
+  if (raw.description_ne !== undefined) input.description_ne = str(raw.description_ne) ?? null
 
   if (raw.listing_type !== undefined) {
     const type = raw.listing_type
@@ -230,9 +237,10 @@ authorWriteRoutes.post('/listings', requirePermission('listing:create'), async (
          id, slug, title, summary, description, listing_type, source, status,
          organization_id, venue_id, venue_room, starts_at, ends_at, is_all_day, timezone,
          external_url, offer_url, offer_provider, location_lat, location_lng,
-         map_popup_config, created_by, created_at, updated_at
+         map_popup_config, created_by, created_at, updated_at,
+         title_ne, summary_ne, description_ne
        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'draft', ?8, ?9, ?22, ?10, ?11, ?12, ?13,
-                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?21)`,
+                 ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?21, ?23, ?24, ?25)`,
     ).bind(
       id, slug, input.title ?? '', input.summary ?? null, input.description ?? null,
       type,
@@ -256,6 +264,9 @@ authorWriteRoutes.post('/listings', requirePermission('listing:create'), async (
       // rather than renumbering fifteen existing placeholders, which is the
       // kind of edit that silently swaps two columns of the same type.
       input.venue_room ?? null,
+      // Same reasoning for the Nepali fields (#46, migration 0013): appended
+      // rather than woven into the middle of the list.
+      input.title_ne ?? null, input.summary_ne ?? null, input.description_ne ?? null,
     ),
     ...taxonomyStatements(c.env, id, input, categoryIds, now),
     auditStatement(c.env, {
@@ -328,6 +339,9 @@ authorWriteRoutes.get('/listings/:id', requirePermission('listing:edit_own'), as
       title: text(row.title) ?? '',
       summary: text(row.summary),
       description: text(row.description),
+      title_ne: text(row.title_ne),
+      summary_ne: text(row.summary_ne),
+      description_ne: text(row.description_ne),
       listing_type: row.listing_type as ListingType,
       organization_id: text(row.organization_id),
       venue_id: text(row.venue_id),
@@ -368,6 +382,9 @@ const COLUMNS: { key: keyof ListingInput; column: string; transform?: (v: unknow
   { key: 'title', column: 'title' },
   { key: 'summary', column: 'summary' },
   { key: 'description', column: 'description' },
+  { key: 'title_ne', column: 'title_ne' },
+  { key: 'summary_ne', column: 'summary_ne' },
+  { key: 'description_ne', column: 'description_ne' },
   { key: 'listing_type', column: 'listing_type' },
   { key: 'organization_id', column: 'organization_id' },
   { key: 'venue_id', column: 'venue_id' },

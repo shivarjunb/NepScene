@@ -118,11 +118,14 @@ GET  /api/catalog/listings          cursor-paginated, upcoming by default
 GET  /api/catalog/listings/:slug
 POST /api/catalog/listings/:slug/events  the view/click beacon; 202, no body
 GET  /api/catalog/venues
-GET  /api/catalog/venues/:slug
+GET  /api/catalog/venues/:slug      the venue, what is on, and what has been
+GET  /api/catalog/organizers
 GET  /api/catalog/organizers/:slug
+GET  /api/catalog/artists/:slug     404 below ARTIST_PAGE_THRESHOLD listings
 GET  /api/catalog/categories
 GET  /api/catalog/tags              tags in use on upcoming listings
-GET  /api/catalog/search            q, city, category, date range, distance
+GET  /api/catalog/search            q, filters, facet counts, ranked
+GET  /api/catalog/suggest           search-as-you-type, from the catalogue
 GET  /api/catalog/bootstrap         everything the homepage needs, in one call
 ```
 
@@ -198,6 +201,66 @@ returned the entire catalogue with 28 of 50 events already finished:
 
 - **Always bounded.** Cursor pagination, hard maximum page size, no unbounded reads.
 - **Upcoming by default.** Past listings require an explicit opt-in parameter.
+
+## Search: recall in SQL, order in the Worker
+
+Search (#42) is three decisions in order, and the order is the design.
+
+**Recall happens in SQL.** Words are ANDed, spellings are ORed. A word's
+spellings come from `api/catalog/aliases.ts` — a curated table of the ways one
+Nepali place is actually written, in both scripts, because nothing derives
+"Patan" from "Lalitpur" and no phonetic scheme gets Pokhra and Pokhara together
+without also collapsing names that are genuinely different. Every row the SQL
+returns is a result: nothing is filtered out afterwards, which is what lets the
+facet counts — taken over the same WHERE — describe exactly what the reader is
+looking at.
+
+**Order happens in the Worker**, over a bounded candidate set
+(`SEARCH_CANDIDATES`). Not for speed — SQLite would compute an ORDER BY
+expression happily — but because a blend of four signals (text, date proximity,
+distance, popularity) is a thing that has to be argued about, and an expression
+spliced into a query string cannot be unit-tested against a list of listings and
+a stated expectation. The cost is a ceiling on how deep a ranked search reaches,
+stated in `buildCandidateQuery`.
+
+**Typo tolerance is a rescue, not a step.** A query that found something is never
+second-guessed. A query that found nothing is corrected against the catalogue's
+own vocabulary — proper nouns, so a dictionary would be worse than useless — and
+run once more, which is the only path that spends a second round trip.
+
+### Two D1 limits that shape the SQL
+
+Both measured against D1 rather than assumed, and both change what the query
+builder is allowed to emit:
+
+- **A hundred bound variables per statement.** A four-word query matched across
+  eleven columns would bind several hundred positionally, so every value is
+  bound once and referenced by number (`?7`), with identical values sharing a
+  number. This is also what makes the facet query affordable: it repeats the
+  same WHERE four times and binds nothing extra to do it.
+- **Five terms in a compound SELECT.** The facet query has exactly four
+  aggregates because a fifth is refused, and the search vocabulary is two
+  statements in one batch rather than one statement with nine branches.
+
+### What a text scan costs, and what was done about it
+
+At ten thousand listings, the obvious shape — the haystack expression inline in
+the WHERE, once per spelling, and the WHERE repeated in each facet aggregate —
+measured **114ms** for the candidate query and **664ms** for the facets, and it
+scaled with the number of spellings rather than with the number of rows.
+
+Two changes brought both under 35ms:
+
+1. The haystack is a **column**, computed once per row in a CTE, and the
+   spellings are matched against that column. Same rows, an eighth of the string
+   building.
+2. The matched set is **`MATERIALIZED`**. The keyword is load-bearing in both
+   places: without it SQLite flattens the CTE into its consumer, substituting
+   the haystack expression back into every LIKE and scanning once per facet.
+
+`tests/integration/searchScale.test.ts` holds the line, and it asserts a ratio —
+the same endpoint with and without a text query — rather than a millisecond
+count, because wall-clock in a parallel test runner measures the runner.
 
 ## Venues: finding one before making another
 
@@ -516,3 +579,10 @@ The homepage additionally gets its data in **one request** (server-rendered with
 data inlined, or a single bootstrap endpoint) rather than the five separate
 settings/catalog calls the WaahTickets SPA makes — on a 3G connection, request
 count dominates.
+
+The public pages hold the same budget. A listing page is one round trip — the
+detail and its related rail are batched, which is why the related query resolves
+the listing by slug in a CTE of its own instead of waiting to be told the venue
+and organizer ids. A venue, organizer or artist page is one round trip for the
+entity, what is on and what has been. A search is one, and a second only on the
+query that found nothing.

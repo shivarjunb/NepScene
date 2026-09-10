@@ -14,6 +14,8 @@
 export type CategoryRef = {
   slug: string
   name: string
+  /** The taxonomy's Nepali label. Null falls back to `name` (#46). */
+  name_ne: string | null
   color: string | null
   icon: string | null
   is_primary: boolean
@@ -37,7 +39,6 @@ export type TagRef = {
  * here — the two shapes are deliberately not interchangeable.
  */
 export type Category = Omit<CategoryRef, 'is_primary'> & {
-  name_ne: string | null
   upcoming_listing_count: number
 }
 
@@ -82,7 +83,13 @@ export type Listing = {
   id: string
   slug: string
   title: string
+  /**
+   * The Nepali title and teaser where the listing carries them (#46). Null is
+   * the normal case and means "show the English one" — never "show nothing".
+   */
+  title_ne: string | null
   summary: string | null
+  summary_ne: string | null
   listing_type: ListingType
   source: 'organizer' | 'submission' | 'import' | 'editorial'
   starts_at: string
@@ -119,6 +126,119 @@ export type MediaItem = {
   height: number | null
   aspect_ratio: number | null
   sources: MediaSource[]
+}
+
+/** The full record behind a listing page (#43). */
+export type ListingDetail = Listing & {
+  description: string | null
+  description_ne: string | null
+  published_at: string | null
+  venue_room: string | null
+  venue: (VenueRef & {
+    address: string | null
+    district: string | null
+    province: string | null
+    latitude: number | null
+    longitude: number | null
+  }) | null
+  media: MediaItem[]
+  artists: ArtistRef[]
+  tags: TagRef[]
+  /** Ranked same-venue, same-organizer, then shared category. Never itself. */
+  related: Listing[]
+}
+
+export type ArtistRef = {
+  slug: string
+  name: string
+  image_url: string | null
+  listing_count: number
+  /** Whether /artists/:slug will answer. Below it the name is text (#44). */
+  has_page: boolean
+}
+
+export type VenueSummary = {
+  id: string
+  slug: string
+  name: string
+  area: string | null
+  city: string | null
+  district: string | null
+  province: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  cover_image_url: string | null
+  is_verified: boolean
+  upcoming_listing_count: number
+  past_listing_count: number
+}
+
+export type VenueDetail = VenueSummary & {
+  description: string | null
+  website_url: string | null
+  phone: string | null
+  capacity: number | null
+  google_place_id: string | null
+}
+
+export type OrganizerSummary = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  website_url: string | null
+  is_verified: boolean
+  upcoming_listing_count: number
+  past_listing_count: number
+}
+
+export type ArtistSummary = {
+  id: string
+  slug: string
+  name: string
+  bio: string | null
+  image_url: string | null
+  links: Record<string, string>
+  upcoming_listing_count: number
+  listing_count: number
+}
+
+/** An entity page: the thing, what is on, and what has been (#44). */
+export type PlacePage<T, K extends string> = { listings: Listing[]; past: Listing[] } & {
+  [key in K]: T
+}
+
+/** What a search says beyond the rows (#42). */
+export type Facet = {
+  value: string
+  label: string
+  /** Present on category facets, where the taxonomy carries a Nepali name. */
+  label_ne?: string | null
+  count: number
+  from?: string | null
+  to?: string | null
+}
+
+export type SearchFacets = {
+  city: Facet[]
+  category: Facet[]
+  price: Facet[]
+  when: Facet[]
+}
+
+export type Suggestion = {
+  kind: 'listing' | 'venue' | 'city' | 'area' | 'organizer' | 'artist' | 'category' | 'tag'
+  slug: string
+  label: string
+}
+
+export type SearchResult = Page<Listing> & {
+  facets: SearchFacets
+  /** The query the results are really for, when it is not the one typed. */
+  corrected_from: string | null
+  alternatives: Suggestion[]
 }
 
 export type Bootstrap = {

@@ -3,6 +3,8 @@
 export type CategoryRef = {
   slug: string
   name: string
+  /** The taxonomy's Nepali label (migration 0002). Null falls back to `name`. */
+  name_ne: string | null
   color: string | null
   icon: string | null
   /** Exactly one category per listing carries this (migration 0005). */
@@ -59,7 +61,15 @@ export type ListingSummary = {
   id: string
   slug: string
   title: string
+  /**
+   * The Nepali title and teaser, where the listing carries them (#46). Null is
+   * the normal case and means "render the English one" — never "render
+   * nothing". The English fields stay authoritative for slugs, metadata and
+   * every surface that has no language of its own.
+   */
+  title_ne: string | null
   summary: string | null
+  summary_ne: string | null
   listing_type: 'ticketed_internal' | 'ticketed_external' | 'free' | 'announcement'
   source: 'organizer' | 'submission' | 'import' | 'editorial'
   starts_at: string
@@ -123,10 +133,19 @@ export type ArtistRef = {
   slug: string
   name: string
   image_url: string | null
+  /** How many published listings this artist is on. */
+  listing_count: number
+  /**
+   * Whether `/artists/:slug` will answer for them. The API decides, because it
+   * owns the threshold — a page that compared the count against a number of
+   * its own would link to a 404 the day the threshold moved.
+   */
+  has_page: boolean
 }
 
 export type ListingDetail = ListingSummary & {
   description: string | null
+  description_ne: string | null
   published_at: string | null
   /** Which room or stage inside the venue (#31). The venue is not duplicated. */
   venue_room: string | null
@@ -140,6 +159,58 @@ export type ListingDetail = ListingSummary & {
   media: MediaItem[]
   artists: ArtistRef[]
   tags: TagRef[]
+}
+
+export type OrganizerSummary = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  logo_url: string | null
+  website_url: string | null
+  is_verified: boolean
+  upcoming_listing_count: number
+  past_listing_count: number
+}
+
+export type ArtistSummary = {
+  id: string
+  slug: string
+  name: string
+  bio: string | null
+  image_url: string | null
+  links: Record<string, string>
+  upcoming_listing_count: number
+  listing_count: number
+}
+
+/**
+ * What a search says about itself beyond the rows (#42): the counts the reader
+ * can refine by, and — when the query was corrected or found nothing — what
+ * was done about it.
+ */
+export type Facet = {
+  value: string
+  label: string
+  /** Present on category facets, where the taxonomy carries a Nepali name. */
+  label_ne?: string | null
+  count: number
+  /** Present on date facets: the window the count was taken over. */
+  from?: string | null
+  to?: string | null
+}
+
+export type SearchFacets = {
+  city: Facet[]
+  category: Facet[]
+  price: Facet[]
+  when: Facet[]
+}
+
+export type Suggestion = {
+  kind: 'listing' | 'venue' | 'city' | 'area' | 'organizer' | 'artist' | 'category' | 'tag'
+  slug: string
+  label: string
 }
 
 export type VenueSummary = {
@@ -156,6 +227,7 @@ export type VenueSummary = {
   cover_image_url: string | null
   is_verified: boolean
   upcoming_listing_count: number
+  past_listing_count: number
 }
 
 export type Page<T> = {

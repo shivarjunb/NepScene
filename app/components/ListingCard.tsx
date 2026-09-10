@@ -1,7 +1,8 @@
 import type { Listing } from '../lib/catalog'
 import { Badge } from './primitives'
 import { ResponsiveImage } from './ResponsiveImage'
-import { LISTING_TYPE_LABEL, offerLine, startDay, startTime, venueLine } from '../lib/format'
+import { categoryName, langOf, offerLine, startDay, startTime, titleOf, venueLine } from '../lib/format'
+import { useLanguage, useT } from '../i18n'
 import { Link } from '../router'
 
 /**
@@ -27,12 +28,20 @@ export function ListingCard({ listing, layout = 'grid' }: {
   listing: Listing
   layout?: 'grid' | 'row'
 }) {
-  const { day, month, weekday } = startDay(listing)
+  const t = useT()
+  const { language } = useLanguage()
+  const { day, month, weekday } = startDay(listing, language)
   const hasPoster = Boolean(listing.cover || listing.cover_image_url)
   const category = listing.categories[0]
   const place = venueLine(listing)
-  const price = offerLine(listing)
-  const typeLabel = LISTING_TYPE_LABEL[listing.listing_type]
+  const price = offerLine(listing, language)
+  // Translated rather than looked up from a table of English labels, so the
+  // badge is in the reader's language like everything else on the card (#46).
+  const typeLabel = listing.listing_type === 'ticketed_external'
+    ? t('listing.externalTickets')
+    : listing.listing_type === 'free' ? t('listing.free')
+    : listing.listing_type === 'announcement' ? t('listing.announcement')
+    : null
 
   return (
     <article
@@ -70,14 +79,18 @@ export function ListingCard({ listing, layout = 'grid' }: {
         </div>
 
         <div className="listing-card__body">
-          {category && <span className="listing-card__category">{category.name}</span>}
-          <h3 className="listing-card__title">{listing.title}</h3>
+          {category && (
+            <span className="listing-card__category">{categoryName(category, language)}</span>
+          )}
+          <h3 className="listing-card__title" lang={langOf(listing.title_ne, language)}>
+            {titleOf(listing, language)}
+          </h3>
 
           {/* The date is in the poster for sighted users; a screen reader gets
               it here, where it reads as part of the sentence. */}
           <p className="listing-card__when">
             <span className="visually-hidden">{`${weekday} ${day} ${month}, `}</span>
-            {startTime(listing)}
+            {startTime(listing, language)}
             {place && <span className="listing-card__where"> · {place}</span>}
           </p>
         </div>

@@ -3,7 +3,7 @@ import type { Env } from '../env'
 import type { ReadSession } from '../lib/d1'
 import { withRoundTrips } from '../lib/d1'
 import { decodeCursor, encodeCursor } from '../lib/cursor'
-import { boundingBox, haversineKm, type BoundingBox } from '../lib/geo'
+import { boundingBox, circleOf, type BoundingBox } from '../lib/geo'
 import { badRequest, boolParam, dateParam, floatParam, intParam } from '../lib/http'
 import { normaliseTag } from './tags'
 import { buildFeedQuery, type FeedFilters } from './queries'
@@ -17,11 +17,16 @@ export const MAX_LIMIT = 50
 export const LISTING_TYPES = ['ticketed_internal', 'ticketed_external', 'free', 'announcement']
 
 export const FEED_PARAMS = [
-  'category', 'tag', 'artist', 'city', 'venue', 'organizer', 'type', 'featured',
+  'category', 'tag', 'artist', 'city', 'venue', 'organizer', 'type', 'price', 'featured',
   'from', 'to', 'include_past', 'cursor', 'limit',
 ] as const
 
-export const SEARCH_PARAMS = [...FEED_PARAMS, 'q', 'lat', 'lng', 'radius_km', 'bbox'] as const
+export const SEARCH_PARAMS = [
+  ...FEED_PARAMS, 'q', 'exact', 'lat', 'lng', 'radius_km', 'bbox',
+] as const
+
+/** Free-versus-ticketed, as the facet reports it (api/catalog/queries.ts). */
+export const PRICE_BANDS = ['free', 'ticketed', 'announcement']
 
 export type CatalogContext = Context<{ Bindings: Env }>
 
@@ -34,11 +39,18 @@ export function limitParam(url: URL): number {
   })
 }
 
-export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean }): FeedFilters {
+export function parseFeedFilters(
+  url: URL,
+  { withSearch, withCursor = true }: { withSearch: boolean; withCursor?: boolean },
+): FeedFilters {
   const q = url.searchParams
   const listingType = q.get('type') ?? undefined
   if (listingType && !LISTING_TYPES.includes(listingType)) {
     throw badRequest('invalid_parameter', `type must be one of ${LISTING_TYPES.join(', ')}`)
+  }
+  const priceBand = q.get('price') ?? undefined
+  if (priceBand && !PRICE_BANDS.includes(priceBand)) {
+    throw badRequest('invalid_parameter', `price must be one of ${PRICE_BANDS.join(', ')}`)
   }
 
   const filters: FeedFilters = {
@@ -51,13 +63,16 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
     venue: q.get('venue') ?? undefined,
     organizer: q.get('organizer') ?? undefined,
     listingType,
+    priceBand,
     featured: boolParam(q.get('featured') ?? undefined),
     from: dateParam(q.get('from') ?? undefined, 'from'),
     to: dateParam(q.get('to') ?? undefined, 'to'),
     // Upcoming by default. Past listings are opt-in, because the WaahTickets
     // endpoint this replaces returned 28 finished events out of 50.
     includePast: boolParam(q.get('include_past') ?? undefined),
-    cursor: decodeCursor(q.get('cursor') ?? undefined),
+    // A ranked search pages by offset rather than by keyset, and decodes its
+    // own cursor (api/catalog/search.ts). Decoding it here would reject it.
+    cursor: withCursor ? decodeCursor(q.get('cursor') ?? undefined) : undefined,
     limit: limitParam(url),
     now: new Date().toISOString(),
   }
@@ -67,9 +82,10 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
   }
 
   if (withSearch) {
-    const query = (q.get('q') ?? '').trim()
-    if (query) filters.query = query
-
+    // The text itself is not parsed here: it becomes terms, aliases and
+    // spellings in api/catalog/terms.ts, which is search's business rather
+    // than the feed's. What this block owns is the geography.
+    //
     // A viewport and a radius are two answers to the same question, and the
     // SQL has one box to put an answer in. Silently letting one win would make
     // a map that pans inside a distance filter show the wrong thing without
@@ -79,7 +95,13 @@ export function parseFeedFilters(url: URL, { withSearch }: { withSearch: boolean
     if (centre && viewport) {
       throw badRequest('invalid_parameter', 'give either bbox or lat/lng, not both')
     }
-    if (centre) filters.box = boundingBox(centre.lat, centre.lng, centre.radiusKm)
+    if (centre) {
+      filters.box = boundingBox(centre.lat, centre.lng, centre.radiusKm)
+      // The box contains the circle; the circle is what was asked for. Both go
+      // to SQL, so the results and the facet counts beside them come from one
+      // WHERE — see geo.ts for why the exact haversine cannot.
+      filters.circle = circleOf(centre.lat, centre.lng, centre.radiusKm)
+    }
     if (viewport) filters.box = viewport
   }
 
@@ -159,10 +181,15 @@ export function parseViewport(url: URL): BoundingBox | undefined {
   return { minLat: south, maxLat: north, minLng: west, maxLng: east }
 }
 
+/**
+ * The feed, paged by keyset. Distance is not its business: `/listings` has no
+ * geography, and `/search` applies the circle itself while it is ranking
+ * (api/catalog/search.ts) rather than having two places that know how to turn
+ * a box into a radius.
+ */
 export async function fetchFeed(
   session: ReadSession,
   filters: FeedFilters,
-  centre?: Centre,
 ): Promise<Page<ListingSummary>> {
   const { sql, params } = buildFeedQuery(filters)
   const rows = await session.all<Record<string, unknown>>(sql, params)
@@ -170,21 +197,9 @@ export async function fetchFeed(
   const hasMore = rows.length > filters.limit
   const page = rows.slice(0, filters.limit).map(toListingSummary)
 
-  let data = page
-  if (centre) {
-    // The SQL box contains the circle, so the exact radius is applied here.
-    // A page may therefore come back shorter than `limit`; has_more still
-    // tells the client whether to keep paging.
-    data = page.flatMap((listing) => {
-      if (listing.latitude === null || listing.longitude === null) return []
-      const distance = haversineKm(centre.lat, centre.lng, listing.latitude, listing.longitude)
-      return distance <= centre.radiusKm ? [{ ...listing, distance_km: round(distance) }] : []
-    })
-  }
-
   const last = page.at(-1)
   return {
-    data,
+    data: page,
     page: {
       limit: filters.limit,
       has_more: hasMore,
@@ -192,5 +207,3 @@ export async function fetchFeed(
     },
   }
 }
-
-const round = (n: number) => Math.round(n * 10) / 10

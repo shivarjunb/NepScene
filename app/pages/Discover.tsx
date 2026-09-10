@@ -4,8 +4,11 @@ import { fetchBootstrap, fetchListings } from '../lib/client'
 import { buildRows, entryCategories } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from '../components/ListingCard'
 import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
+import { SearchBox } from '../components/SearchBox'
 import { Alert } from '../components/primitives'
 import { NepalMap } from '../map/NepalMap'
+import { useLanguage, useT } from '../i18n'
+import { categoryName, count } from '../lib/format'
 import { Link, navigate, useSearch } from '../router'
 
 /**
@@ -22,6 +25,8 @@ import { Link, navigate, useSearch } from '../router'
  * URL depends on a previous response.
  */
 export function Discover() {
+  const t = useT()
+  const { language } = useLanguage()
   const search = useSearch()
   const category = search.get('category') ?? undefined
   const city = search.get('city') ?? undefined
@@ -63,9 +68,9 @@ export function Discover() {
       <div className="layout stack">
         {/* The heading stays. Losing it because a fetch failed leaves a screen
             reader on a page with no identity at all. */}
-        <h1 className="hero__title">What’s happening around Nepal</h1>
-        <Alert tone="danger" title="The catalogue did not load">
-          {error} — <Link href="/">try again</Link>.
+        <h1 className="hero__title">{t('discover.title')}</h1>
+        <Alert tone="danger" title={t('discover.loadFailed')}>
+          {error} — <Link href="/">{t('discover.tryAgain')}</Link>.
         </Alert>
       </div>
     )
@@ -75,8 +80,8 @@ export function Discover() {
     <div className="layout discover">
       <Hero />
 
-      <nav className="chips" aria-label="Browse by category">
-        <Chip href="/" active={!filtered}>Everything</Chip>
+      <nav className="chips" aria-label={t('discover.browseByCategory')}>
+        <Chip href="/" active={!filtered}>{t('discover.everything')}</Chip>
         {categories.map((entry) => (
           <Chip
             key={entry.slug}
@@ -84,15 +89,16 @@ export function Discover() {
             active={entry.slug === category}
             color={entry.color}
           >
-            {entry.name}
-            <span className="chips__count"> {entry.upcoming_listing_count}</span>
+            {categoryName(entry, language)}
+            <span className="chips__count"> {count(entry.upcoming_listing_count, language)}</span>
           </Chip>
         ))}
       </nav>
 
       {filtered
         ? <Results
-            heading={activeCategory?.name ?? (city ? `In ${city}` : 'Results')}
+            heading={(activeCategory && categoryName(activeCategory, language))
+              ?? (city ? t('discover.inCity', { city }) : t('discover.results'))}
             listings={results}
           />
         : <Rows rows={rows} loading={!bootstrap} />}
@@ -111,13 +117,16 @@ export function Discover() {
  * takes `onOpen` instead of routing itself.
  */
 function Hero() {
+  const t = useT()
   return (
     <section className="hero">
-      <h1 className="hero__title">What’s happening around Nepal</h1>
-      <p className="hero__lead">
-        Concerts, festivals, sport, comedy and community events — bounded and
-        upcoming by default.
-      </p>
+      <h1 className="hero__title">{t('discover.title')}</h1>
+      <p className="hero__lead">{t('discover.lead')}</p>
+      {/* Search sits under the hero on every screen, not only in the header
+          where the phone layout hides it (#42). */}
+      <div className="hero__search">
+        <SearchBox />
+      </div>
       <div className="hero__map">
         <NepalMap onOpen={(slug) => navigate(`/listings/${slug}`)} />
       </div>
@@ -150,6 +159,7 @@ function Chip({ href, active, color, children }: {
 }
 
 function Rows({ rows, loading }: { rows: ReturnType<typeof buildRows>; loading: boolean }) {
+  const t = useT()
   if (loading) {
     return (
       <div className="discover__rows">
@@ -161,9 +171,8 @@ function Rows({ rows, loading }: { rows: ReturnType<typeof buildRows>; loading: 
   const anything = rows.some((row) => row.listings.length > 0)
   if (!anything) {
     return (
-      <Alert tone="info" title="Nothing on yet">
-        The catalogue has no upcoming listings. Rows appear here as soon as
-        something is published.
+      <Alert tone="info" title={t('discover.nothingYet')}>
+        {t('discover.nothingYetBody')}
       </Alert>
     )
   }
@@ -176,11 +185,13 @@ function Rows({ rows, loading }: { rows: ReturnType<typeof buildRows>; loading: 
 }
 
 function Results({ heading, listings }: { heading: string; listings: Listing[] | null }) {
+  const t = useT()
+  const { language } = useLanguage()
   return (
     <section className="results" aria-labelledby="results-heading">
       <h2 id="results-heading" className="results__heading">
         {heading}
-        {listings && <span className="results__count"> · {listings.length}</span>}
+        {listings && <span className="results__count"> · {count(listings.length, language)}</span>}
       </h2>
 
       {listings === null ? (
@@ -189,7 +200,7 @@ function Results({ heading, listings }: { heading: string; listings: Listing[] |
         </div>
       ) : listings.length === 0 ? (
         <p className="rail__empty">
-          Nothing coming up here yet. <Link href="/">See everything</Link>.
+          {t('discover.nothingHere')} <Link href="/">{t('discover.seeEverything')}</Link>.
         </p>
       ) : (
         <ul className="grid" role="list">

@@ -8,8 +8,9 @@ import { Badge } from '../components/primitives'
  * end. This says what will be here and which issue puts it there, so the
  * staging site reads as a site under construction rather than a broken one.
  *
- * Every one of these is deleted by the feature named on it. When `pages/`
- * holds no Placeholder, the public site is done.
+ * Every one of these is deleted by the feature named on it. What is left is
+ * /about and /privacy, which are copy rather than features and have no issue
+ * scheduling them.
  */
 export type Planned = {
   title: string
