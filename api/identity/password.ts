@@ -1,13 +1,26 @@
 /**
  * PBKDF2-SHA256 via WebCrypto. Workers has no bcrypt or argon2, and pulling a
  * pure-JS implementation onto the sign-in path would cost more CPU than this
- * does. Iteration count follows OWASP's 2023 guidance for PBKDF2-SHA256.
+ * does.
  *
  * Format: pbkdf2$sha256$<iterations>$<salt b64>$<hash b64>. The parameters
  * travel with the hash so they can be raised later without invalidating
  * everyone's password.
+ *
+ * **The iteration count is capped by the runtime, not chosen freely.** The
+ * deployed Workers runtime refuses PBKDF2 above 100,000 iterations with
+ * `NotSupportedError: iteration counts above 100000 are not supported`. The
+ * local workerd that Miniflare and the test pool run has no such limit, so a
+ * higher count passes every test and then 500s on every sign-in and
+ * registration once deployed — which is exactly what it did. `MAX_ITERATIONS`
+ * and the test that asserts against it exist to keep that gap from reopening;
+ * no test running locally can catch it on its own.
+ *
+ * OWASP would prefer more than 100,000 here. 100,000 is what the platform
+ * allows, so it is what we use.
  */
-const ITERATIONS = 210_000
+export const MAX_ITERATIONS = 100_000
+const ITERATIONS = MAX_ITERATIONS
 const KEY_LENGTH_BITS = 256
 const SALT_BYTES = 16
 
