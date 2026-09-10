@@ -36,6 +36,7 @@
     "@cloudflare/workers-types": "^5.20260905.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "@types/google.maps": "^3.66.2",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.7",

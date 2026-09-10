@@ -100,6 +100,15 @@ Notable differences from the WaahTickets schema:
 | No provenance | `source` column | A publicly writable catalogue must know who wrote what |
 | `map_pin_icon` set independently of `event_type` | Pin appearance derived from the primary category | Two fields for one fact drift; WaahTickets needed a separate `pinCategory` to reconcile them |
 
+**One date per listing, for now.** `listings.starts_at` and `ends_at` hold a
+single occurrence, which is enough for a gig and wrong for a festival, a
+theatre run or a weekly residency. The model that replaces it was decided in
+#35 — one listing, many materialised occurrence rows, with any recurrence rule
+demoted to an authoring convenience that generates them — and is written up in
+[RECURRING_EVENTS.md](RECURRING_EVENTS.md), with the implementation in #81 and
+#82. Nothing here anticipates it; the point of that document is that it does
+not have to.
+
 ## API contracts
 
 ### Catalog API (public, read-only)
@@ -107,6 +116,7 @@ Notable differences from the WaahTickets schema:
 ```
 GET  /api/catalog/listings          cursor-paginated, upcoming by default
 GET  /api/catalog/listings/:slug
+POST /api/catalog/listings/:slug/events  the view/click beacon; 202, no body
 GET  /api/catalog/venues
 GET  /api/catalog/venues/:slug
 GET  /api/catalog/organizers/:slug
@@ -140,7 +150,18 @@ PATCH  /api/author/listings/:id         the autosave target; partial by construc
 DELETE /api/author/listings/:id
 POST   /api/author/listings/:id/submit  validates; 400 lists the fields still missing
 POST   /api/author/listings/:id/publish editor and above
-POST   /api/author/listings/:id/{reject,archive,unpublish}
+POST   /api/author/listings/:id/reject   body: { reason } — refused without one
+POST   /api/author/listings/:id/{archive,unpublish}
+POST   /api/author/listings/:id/merge   body: { into } — folds this one into that
+
+GET    /api/author/queue?status=        the moderation queue, oldest first
+POST   /api/author/queue/actions        body: { action, ids[], reason? } — max 50
+
+GET    /api/author/dashboard            your own listings, with view counts; one round trip
+POST   /api/author/listings/:id/duplicate  copies into a new, dateless draft
+
+GET    /api/author/venues?q=             venue autocomplete, ranked; one round trip
+POST   /api/author/venues               creates one; 409 names the venue it resembles
 
 POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
@@ -161,7 +182,9 @@ needs a ticket URL" drift silently. It stays free of platform globals so both
 halves can compile it.
 
 Write handlers report `x-d1-round-trips` exactly as the read path does. The
-budget is 1 for a lookup or an edit-mode load, 2 for a create or an update.
+budget is 1 for a lookup, an edit-mode load or a venue search, and 2 for a
+create or an update. A venue create refused as a possible duplicate costs 1: it
+read, it wrote nothing, and it must not pay for the write it declined to make.
 
 Shared feed parameters: `category`, `tag`, `artist`, `city`, `venue`, `organizer`, `type`,
 `featured`, `from`, `to`, `include_past`, `cursor`, `limit` (max 50). Responses
@@ -176,10 +199,215 @@ returned the entire catalogue with 28 of 50 events already finished:
 - **Always bounded.** Cursor pagination, hard maximum page size, no unbounded reads.
 - **Upcoming by default.** Past listings require an explicit opt-in parameter.
 
+## Venues: finding one before making another
+
+A venue is canonical (`venues`, migration 0001) precisely so that it can own a
+page and dedupe across listings, which only works if authors keep finding the
+one that already exists. If creating a venue is easier than finding one,
+everyone creates one, and the catalogue re-accumulates the duplicates the
+canonical table was built to remove. So the whole venue surface is arranged
+around search-before-create.
+
+**Ranking without a full-text index.** There is no FTS5 table in this schema and
+there is not going to be one: keeping an FTS table in sync needs triggers, and
+`wrangler d1 migrations apply` splits SQL on semicolons, so a trigger body never
+survives the pipeline (migration 0004 says the same thing about status
+transitions). The shape instead is the one `api/lib/geo.ts` already uses for
+distance — a coarse, index-friendly `LIKE` prefilter in SQL that decides which
+60 rows survive the `LIMIT`, and the real comparison in the Worker over that
+bounded set. SQL cannot normalise Devanagari, punctuation or word boundaries;
+`api/author/venueMatch.ts` can, and it is pure, so the ranking is unit-tested
+rather than inferred from a query plan.
+
+**Duplicate detection is two thresholds, and they cover each other.**
+
+| Signal | Threshold | Why that number |
+|---|---|---|
+| Name | Sørensen–Dice ≥ **0.80** over bigrams, or one name's words contained in the other's | The highest-scoring pair that is genuinely two places — "Patan Durbar Square" against "Basantapur Durbar Square" — is 0.70. The lowest-scoring pair that is genuinely one place — "Bhrikutimandap Exhibition Hall" against "Bhrikuti Mandap Exhibition Ground" — is 0.82. 0.80 sits in that gap. Containment is separate because Dice scores "Purple Haze" against "Purple Haze Rock Bar" at 0.72, below any line that also rejects the two durbar squares |
+| Distance | **150 m** | Floor: two honest attempts at the same place disagree by roughly that much — a phone's GPS in a Thamel alley is good to 20-40 m, and Google's geocoder on a Nepali address is routinely 100 m out. Ceiling: Thamel has several genuinely distinct bars inside 200 m of each other, so 500 m would warn constantly and be learned as noise |
+
+Neither signal is sufficient alone, which is the point of having two. A
+transposition in a short name ("Purpel Haze") scores 0.67 and is caught by the
+pin; a venue entered with no coordinates at all is caught by the name. The name
+signal is suppressed when both venues name a city and the cities differ, because
+Nepali place names repeat — a "Lakeside" in Kathmandu is not the Pokhara one.
+
+**A warning refuses the write rather than riding along with it.** The gentler
+alternative is to create the venue and return the warning beside it. It does not
+work: the duplicate is in the catalogue by the time anyone reads the warning, and
+undoing it is a merge nobody will do. `POST /api/author/venues` answers 409 with
+`{ error: { code: 'possible_duplicate', … }, duplicates: [...] }` naming the venue
+and the distance, and a repeat with `confirm_duplicate: true` goes through and is
+audited as an override. A matching `google_place_id` is not a warning at all —
+Google saying "this is the same place" is an identity, not a resemblance, and
+migration 0001's unique index would refuse the row anyway.
+
+**A room is not a venue** (`listings.venue_room`, migration 0009). Without that
+column the only way to write "Hall B, Bhrikutimandap" is to create a venue called
+"Bhrikutimandap Hall B", and then somebody writes "Bhrikuti Mandap - Hall B".
+Free text, no index, no lookup table: rooms are named by whoever runs the
+building, change between events, and nothing joins on them.
+
+### Geocoding stays in the browser
+
+**Decision (2026-09-09): NepScene does not proxy Google's Geocoding API.** There
+is no `/api/author/geocode`, forward or reverse, and this is the reasoning so
+that it is not relitigated by whoever next wants one.
+
+The deciding factor is the key, and there are two different ones in play:
+
+- `VITE_GOOGLE_MAPS_API_KEY` is a build-time public value baked into the bundle
+  and HTTP-referrer restricted per environment (docs/DEVOPS.md > Secrets). The
+  map cannot draw without it, so it is on the page whatever we decide here.
+- The Geocoding **web service** does not accept referrer restrictions — Google
+  supports those for the JavaScript, Static and Embed APIs only. A key called
+  from a Worker can be restricted by API but not by caller, and Cloudflare offers
+  no stable egress IP to restrict to instead.
+
+So proxying protects nothing. The key it would guard is already in the bundle for
+the map; what it adds is a *second*, strictly less restrictable secret, plus an
+authenticated geocoding endpoint of our own that is itself an abusable proxy and
+would now need its own rate limiting. That is more attack surface and more
+latency in exchange for no reduction in exposure.
+
+The browser path is not a workaround either. The Maps JS SDK the picker already
+loads carries `google.maps.Geocoder`, which uses the same referrer-restricted key
+that draws the map, so forward and reverse geocoding cost no Worker round trip
+and no external hop at all — and rule 1 below stays a rule rather than something
+with an exception carved out of it for authoring. It is the same division of
+labour as the media pipeline: the browser does the work, and the Worker checks
+the result rather than trusting it. Whatever the geocoder returns is written
+through `POST /api/author/venues`, which range-checks the coordinates — the Nepal
+bounding box in `validateVenue` exists to catch a latitude and longitude entered
+the wrong way round, which is otherwise invisible because 85.3N 27.7E is a
+perfectly valid point in the Arctic Ocean — and then duplicate-checks the venue.
+
+What would change this: an importer. `scripts/import-waahtickets.mjs` has no
+browser, and if it ever has to place a venue it will need a server-side key. That
+belongs in the importer's own credentials, run out of band, not in a Worker
+endpoint the public site can call — exactly as an importer with no browser
+uploads no derivatives and its original is served alone.
+
 ### Offer API (consumed, not owned)
 
 NepScene calls WaahTickets to resolve offers, batched per feed page. It must never
 block a render: on timeout or error, listings render without offers.
+
+## Publication: the path out of a draft
+
+The state machine is migration 0004 and `TRANSITIONS` in `api/author/listings.ts`
+— one table, and every status write goes through it. The queue, the bulk action
+and the merge in `api/author/moderation.ts` add no transition of their own: a
+bulk action that could reach a state the single action cannot would be a hole in
+the state machine with a friendly name on it.
+
+**A rejection is refused without a reason.** The author reads what the editor
+types, verbatim, and "rejected" on its own tells them nothing they can act on.
+The check is in the handler rather than the form, because a reason a client may
+omit is a reason that will be omitted — by the bulk action, by a script, by the
+next client. The reason is denormalised onto `listings.rejection_reason`
+(migration 0010) and cleared by every move that is not a rejection; the history
+stays in the audit log, which is what an audit log is for.
+
+**Trusted authors do not wait, but they do not skip review either.** An editor
+publishing their own listing submits and publishes in one motion — two
+transitions, both audited — rather than moving `draft → published`, which the
+state machine does not have. The distinction matters when someone asks later
+who reviewed a listing: the answer is always a name and a timestamp, even when
+it is the author's own.
+
+**Duplicate detection runs at submission and flags rather than refuses.** The
+asymmetry with the venue check (which refuses) is about who is next. A duplicate
+venue is created by the author, seen by nobody, and merged by nobody. A
+duplicate listing goes straight to a moderator about to look at both, so the
+flag has a reader — and refusing a genuine second event that merely resembles
+the first would be worse than a warning an editor can dismiss. The score is
+stored on the row (`suspected_duplicate_of`, `duplicate_score`) rather than
+recomputed, because recomputing would put a similarity search inside the one
+screen that is worked through in bulk.
+
+Three signals, weighted 0.5 / 0.3 / 0.2 across title, time and place, with a
+threshold of 0.75 — and a *contradicted* place vetoes outright, whatever the
+title says, because the same tribute night in Kathmandu and in Pokhara is two
+gigs. A listing needs three signals where a venue needed two: a venue's name is
+close to an identity, and "Open Mic Night" is the title of fifty-two different
+events a year. The numbers are reasoned rather than measured — there is no
+corpus of known-duplicate Nepali listings yet — so the calibration lives in
+`tests/unit/listingMatch.test.ts` as the cases they must get right.
+
+**Merging: the survivor wins every field it has an answer for, the loser fills
+the blanks.** Not "longest wins", which rewards padding; not "newest wins",
+since the second submission is usually the thinner one, which is why it looked
+like a duplicate. Sets — categories, tags, artists — are unioned. Media *moves*
+rather than being copied, so no R2 object ends up with two owners. The loser is
+archived pointing at the survivor rather than deleted: its slug has to stay
+redirectable (#24), and its author deserves to be shown where it went.
+
+**Auto-archive is the Worker's one cron**, at 18:15 UTC — midnight in Kathmandu.
+It archives published listings whose `COALESCE(ends_at, starts_at)` passed more
+than 24 hours ago, a hundred at a time. The read path already hides finished
+events, so this is not about what the public sees: without it, `published` would
+be the status of every event that ever happened, and the queue counts, the
+dashboard filters and every future report would describe a catalogue that is
+mostly the past. The day of grace is because a gig that ended at 2am is still
+being looked up at 9am.
+
+## The pin and the popup
+
+Pin appearance is a **function of the primary category**, never a stored field
+(`api/catalog/pin.ts`). WaahTickets carried a `map_pin_icon` an author could set
+independently, then needed a separate `pinCategory` concept to reconcile the pin
+with the filter chips, and the two drifted anyway. One value read twice cannot
+disagree with itself, so the wizard's map step shows the pin rather than
+offering to change it, and the way to change it is to change the category.
+
+What *is* customisable is the popup: which of a **closed** set of fields shows,
+in what order, under what label (`api/author/popupConfig.ts`). Closed, because
+the field name was previously rendered as a key lookup — an unknown field was a
+blank row nobody could explain — and because a stored label is arbitrary text
+that ends up on a public page. Labels are capped and the whole config is
+validated at the write boundary rather than wherever it is next read.
+
+**The default config is stored as `NULL`.** Reset is therefore a clearing, and a
+later change to the defaults reaches every listing that never overrode them
+instead of only the ones created after it.
+
+`app/map/` holds the marker SVG and the popup component. They live there rather
+than under `author/` because the wizard's preview has to be accurate against the
+*real* map component, and the only way to make that a fact rather than an
+aspiration is for there to be one component. WaahTickets had two — a preview
+that assembled an HTML string full of Leaflet class names, and a map that drew a
+plain circle — and they had drifted apart before anybody noticed. #36 mounts
+these same two files on the public map.
+
+## Counting, and what is deliberately not counted
+
+An organizer who can see that 400 people looked at their listing has a reason
+to post the next one. That is the whole justification for `listing_stats`
+(migration 0011), and it is why the numbers are on the dashboard row rather
+than behind an analytics tab.
+
+**A daily counter, not an event log.** `POST /api/catalog/listings/:slug/events`
+upserts into `(listing_id, day)` — one statement, off the response path,
+bounded at one row per listing per day. An event log with a row per view is the
+obvious alternative and it is the shape that makes this the largest table in the
+database within a month, needs a retention policy nobody will write, and buys
+precision no criterion asks for. What it costs, said now rather than discovered
+later: no per-visitor detail, no funnel, no referrer. The day any of those is
+wanted, a rollup is what an event log would have produced anyway.
+
+**The beacon is a POST from JavaScript, and that is the bot filter.** A crawler
+fetching the page never runs it, which removes the largest source of noise
+without a user-agent list to maintain. A view is deduplicated per browser tab
+session, so a reload is not a second person; a click is not, because going to
+the ticket page twice is two clicks.
+
+**Nothing here identifies anybody.** No cookie is read, no IP is stored, and
+the row has no dimension but the day — so there is nothing to disclose beyond
+"we count views" and nothing to delete when an account is (#29).
+
+The day is Kathmandu's. A Friday gig is looked up until 2am, and a UTC boundary
+would file half of those views under Saturday.
 
 ## Leaving
 

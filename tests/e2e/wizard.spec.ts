@@ -1,137 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
+import { pickVenue, serveAuthoring } from './authoringStub'
 
 /**
  * #30 — the listing creation wizard.
  *
- * As with the discovery specs, the Playwright server is `vite preview`, which
- * serves the built SPA and no Worker, so the authoring API is stubbed at the
- * network boundary. The stub is not a mock of convenience: it behaves the way
- * the real endpoints do — a draft accepts anything, a submission validates and
- * answers with per-field errors — because those behaviours are what the
- * criteria here are about. The API side of the same rules is covered against a
- * real D1 in tests/integration/authoring.test.ts.
+ * The stub it runs against is in `authoringStub.ts`: the Playwright server is
+ * `vite preview`, which serves the built SPA and no Worker, so the authoring
+ * API is stubbed at the network boundary. The API side of the same rules is
+ * covered against a real D1 in tests/integration/authoring.test.ts.
  */
 
-const CATEGORIES = [
-  { slug: 'concerts', name: 'Concerts', name_ne: null, icon: 'Music', color: '#e91e63' },
-  { slug: 'film', name: 'Film', name_ne: null, icon: 'Film', color: '#8b5cf6' },
-  { slug: 'community', name: 'Community', name_ne: null, icon: 'Users', color: '#14b8a6' },
-]
-
-const VENUES = [
-  { id: 'ven_patan', name: 'Patan Durbar Square', area: 'Patan', city: 'Lalitpur',
-    latitude: 27.6727, longitude: 85.3250 },
-  { id: 'ven_purple', name: 'Purple Haze Rock Bar', area: 'Thamel', city: 'Kathmandu',
-    latitude: 27.7150, longitude: 85.3110 },
-]
-
-const LOOKUPS = {
-  categories: CATEGORIES,
-  venues: VENUES,
-  artists: [{ slug: 'kutumba', name: 'Kutumba' }],
-  organizations: [],
-  tags: [{ slug: 'live-music', label: 'Live Music' }],
-  timezones: ['Asia/Kathmandu'],
-}
-
-type Options = {
-  /** Null signs the visitor out; the wizard should then show sign-in. */
-  role?: 'organizer' | 'editor' | 'visitor' | null
-  /** Seeds localStorage before the app boots, to exercise draft recovery. */
-  localDraft?: Record<string, unknown>
-}
-
-/**
- * A stub that keeps state, so the wizard's autosave has something to autosave
- * to and edit mode has something to load back.
- */
-async function serveAuthoring(page: Page, { role = 'editor', localDraft }: Options = {}) {
-  const store: Record<string, unknown> = {
-    title: '', summary: null, description: null, listing_type: 'free',
-    organization_id: null, venue_id: null, starts_at: '', ends_at: null,
-    is_all_day: false, timezone: 'Asia/Kathmandu', external_url: null, offer_url: null,
-    location_lat: null, location_lng: null, map_popup_config: null,
-    category_slugs: [], primary_category_slug: null, tags: [], artist_slugs: [],
-  }
-  let created = false
-
-  await page.route('**/api/auth/me', (route) => {
-    if (role === null) {
-      return route.fulfill({
-        status: 401,
-        json: { error: { code: 'unauthenticated', message: 'Sign in to do that' } },
-      })
-    }
-    const permissions = role === 'visitor' ? []
-      : role === 'editor'
-        ? ['listing:create', 'listing:edit_own', 'listing:publish', 'media:upload']
-        : ['listing:create', 'listing:edit_own', 'media:upload']
-    return route.fulfill({
-      json: { user: { id: 'usr_1', email: 'author@nepscene.test', name: null, role }, permissions },
-    })
-  })
-
-  await page.route('**/api/author/lookups', (route) => route.fulfill({ json: LOOKUPS }))
-
-  await page.route('**/api/author/listings', async (route) => {
-    if (route.request().method() !== 'POST') return route.fulfill({ json: { data: [] } })
-    Object.assign(store, route.request().postDataJSON())
-    created = true
-    return route.fulfill({
-      status: 201, json: { id: 'lst_new', slug: 'a-draft', status: 'draft' },
-    })
-  })
-
-  await page.route('**/api/author/listings/lst_new', async (route) => {
-    if (route.request().method() === 'PATCH') {
-      Object.assign(store, route.request().postDataJSON())
-      return route.fulfill({
-        json: { id: 'lst_new', slug: 'a-draft', status: 'draft',
-                updated_at: new Date().toISOString() },
-      })
-    }
-    return route.fulfill({
-      json: {
-        id: 'lst_new', slug: 'a-draft', status: 'draft',
-        listing: store, media: [], updated_at: new Date().toISOString(),
-      },
-    })
-  })
-
-  // The stub validates the way the server does: the fields that are missing,
-  // named, rather than a bare rejection.
-  await page.route('**/api/author/listings/lst_new/submit', (route) => {
-    const missing: { field: string; message: string }[] = []
-    if (!String(store.title ?? '').trim()) {
-      missing.push({ field: 'title', message: 'Give it a title — this is what people see first' })
-    }
-    if (!store.starts_at) missing.push({ field: 'starts_at', message: 'Say when it starts' })
-    if (!store.venue_id) {
-      missing.push({ field: 'venue_id', message: 'Choose where it happens, or add a new venue' })
-    }
-    if ((store.category_slugs as string[]).length === 0) {
-      missing.push({ field: 'category_slugs', message: 'Pick at least one category — it decides the map pin' })
-    }
-    if (missing.length > 0) {
-      return route.fulfill({
-        status: 400,
-        json: { error: { code: 'incomplete_listing', message: 'Some things still need filling in', fields: missing } },
-      })
-    }
-    return route.fulfill({ json: { id: 'lst_new', slug: 'a-draft', status: 'pending_review' } })
-  })
-
-  await page.route('**/api/author/listings/lst_new/publish', (route) =>
-    route.fulfill({ json: { id: 'lst_new', slug: 'a-draft', status: 'published' } }))
-
-  if (localDraft) {
-    await page.addInitScript((draft) => {
-      window.localStorage.setItem('nepscene:draft:new', JSON.stringify(draft))
-    }, localDraft)
-  }
-
-  return { store: () => store, wasCreated: () => created }
-}
 
 /** Fills the first step. Used by the tests that are about something later. */
 async function fillDetails(page: Page, title = 'Kutumba at Patan Durbar') {
@@ -169,7 +47,7 @@ test('the whole journey: create, publish, and see it confirmed', async ({ page }
   await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Where' })).toBeVisible()
-  await page.getByLabel('Venue', { exact: true }).selectOption('ven_patan')
+  await pickVenue(page, 'Patan Durbar Square')
   await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Pictures' })).toBeVisible()
@@ -199,7 +77,7 @@ test('an organizer sends for review rather than publishing', async ({ page }) =>
   await page.getByRole('button', { name: 'Next' }).click()
   await page.getByLabel('Starts').fill('2027-03-14T18:45')
   await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByLabel('Venue', { exact: true }).selectOption('ven_patan')
+  await pickVenue(page, 'Patan Durbar Square')
 
   // Walked to, not jumped to — a step ahead of the current one is disabled.
   for (const _ of ['where', 'media', 'appearance']) {

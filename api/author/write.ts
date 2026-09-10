@@ -10,6 +10,7 @@ import { mediaUrl } from '../catalog/serialize'
 import { requirePermission, type AuthVariables } from '../identity/middleware'
 import { loadEditableListing } from './access'
 import { LISTING_TYPES, validateListing, type ListingInput, type ListingType } from './validate'
+import { parsePopupConfig, serialisePopupConfig } from './popupConfig'
 
 /**
  * Create, read-for-edit and update (#30). The status verbs live in
@@ -70,6 +71,7 @@ export function parseListingInput(body: unknown): Partial<ListingInput> {
 
   if (raw.organization_id !== undefined) input.organization_id = str(raw.organization_id) ?? null
   if (raw.venue_id !== undefined) input.venue_id = str(raw.venue_id) ?? null
+  if (raw.venue_room !== undefined) input.venue_room = str(raw.venue_room) ?? null
   if (raw.starts_at !== undefined) input.starts_at = str(raw.starts_at) ?? ''
   if (raw.ends_at !== undefined) input.ends_at = str(raw.ends_at) ?? null
   if (raw.is_all_day !== undefined) input.is_all_day = raw.is_all_day === true
@@ -78,7 +80,15 @@ export function parseListingInput(body: unknown): Partial<ListingInput> {
   if (raw.offer_url !== undefined) input.offer_url = str(raw.offer_url) ?? null
   if (raw.location_lat !== undefined) input.location_lat = num(raw.location_lat) ?? null
   if (raw.location_lng !== undefined) input.location_lng = num(raw.location_lng) ?? null
-  if (raw.map_popup_config !== undefined) input.map_popup_config = raw.map_popup_config ?? null
+  // Validated rather than passed through (#32). It arrives as arbitrary JSON,
+  // is stored, and is later rendered on a public map — so the field set is
+  // closed and the labels are capped here, at the boundary, not in whichever
+  // component happens to read it.
+  if (raw.map_popup_config !== undefined) {
+    input.map_popup_config = raw.map_popup_config === null
+      ? null
+      : serialisePopupConfig(parsePopupConfig(raw.map_popup_config))
+  }
 
   const categories = strings(raw.category_slugs)
   if (categories) input.category_slugs = [...new Set(categories)]
@@ -218,10 +228,10 @@ authorWriteRoutes.post('/listings', requirePermission('listing:create'), async (
     c.env.DB.prepare(
       `INSERT INTO listings (
          id, slug, title, summary, description, listing_type, source, status,
-         organization_id, venue_id, starts_at, ends_at, is_all_day, timezone,
+         organization_id, venue_id, venue_room, starts_at, ends_at, is_all_day, timezone,
          external_url, offer_url, offer_provider, location_lat, location_lng,
          map_popup_config, created_by, created_at, updated_at
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'draft', ?8, ?9, ?10, ?11, ?12, ?13,
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'draft', ?8, ?9, ?22, ?10, ?11, ?12, ?13,
                  ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?21)`,
     ).bind(
       id, slug, input.title ?? '', input.summary ?? null, input.description ?? null,
@@ -242,6 +252,10 @@ authorWriteRoutes.post('/listings', requirePermission('listing:create'), async (
       input.location_lat ?? null, input.location_lng ?? null,
       input.map_popup_config ? JSON.stringify(input.map_popup_config) : null,
       user.id, now,
+      // Which room inside the venue (#31, migration 0009). Appended as ?22
+      // rather than renumbering fifteen existing placeholders, which is the
+      // kind of edit that silently swaps two columns of the same type.
+      input.venue_room ?? null,
     ),
     ...taxonomyStatements(c.env, id, input, categoryIds, now),
     auditStatement(c.env, {
@@ -307,6 +321,9 @@ authorWriteRoutes.get('/listings/:id', requirePermission('listing:edit_own'), as
 
   return withRoundTrips(Response.json({
     id: row.id, slug: row.slug, status: row.status,
+    // Returned on every edit-mode load, not fetched separately: the author
+    // sees why it came back at the moment they open it to fix it (#33).
+    rejection_reason: text(row.rejection_reason),
     listing: {
       title: text(row.title) ?? '',
       summary: text(row.summary),
@@ -314,6 +331,7 @@ authorWriteRoutes.get('/listings/:id', requirePermission('listing:edit_own'), as
       listing_type: row.listing_type as ListingType,
       organization_id: text(row.organization_id),
       venue_id: text(row.venue_id),
+      venue_room: text(row.venue_room),
       starts_at: text(row.starts_at) ?? '',
       ends_at: text(row.ends_at),
       is_all_day: row.is_all_day === 1,
@@ -353,6 +371,7 @@ const COLUMNS: { key: keyof ListingInput; column: string; transform?: (v: unknow
   { key: 'listing_type', column: 'listing_type' },
   { key: 'organization_id', column: 'organization_id' },
   { key: 'venue_id', column: 'venue_id' },
+  { key: 'venue_room', column: 'venue_room' },
   { key: 'starts_at', column: 'starts_at' },
   { key: 'ends_at', column: 'ends_at' },
   { key: 'is_all_day', column: 'is_all_day', transform: (v) => (v ? 1 : 0) },
@@ -501,6 +520,7 @@ export async function validateForSubmission(env: Env, listingId: string) {
     listing_type: row.listing_type as ListingType,
     organization_id: text(row.organization_id),
     venue_id: text(row.venue_id),
+    venue_room: text(row.venue_room),
     starts_at: text(row.starts_at) ?? '',
     ends_at: text(row.ends_at),
     is_all_day: row.is_all_day === 1,

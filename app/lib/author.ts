@@ -1,4 +1,5 @@
-import type { ListingInput } from '../../api/author/validate'
+import type { ListingInput, VenueInput } from '../../api/author/validate'
+import type { DuplicateWarning, RankedVenue } from '../../api/author/venueMatch'
 
 /**
  * The browser's half of the authoring API.
@@ -108,12 +109,104 @@ export type Lookups = {
  */
 export const fetchLookups = () => request<Lookups>('/api/author/lookups')
 
+// ── Venues ──────────────────────────────────────────────────────────────────
+
+export type VenueMatch = RankedVenue
+
+export type VenueSearch = {
+  query: string
+  normalised_query: string
+  data: VenueMatch[]
+  /**
+   * The server's answer to "should the picker offer to add a new one?". False
+   * means what was typed already exists exactly. Deciding this here rather
+   * than in the component keeps the acceptance criterion in one place with a
+   * test around it (api/author/venueMatch.ts).
+   */
+  suggest_create: boolean
+}
+
+/**
+ * Autocomplete over existing venues, aborted by the caller on the next
+ * keystroke. It takes a signal rather than debouncing internally because the
+ * component owns the timer either way, and a search that keeps running after
+ * its answer stopped mattering is the source of a list that flickers back to a
+ * stale result.
+ */
+export const searchVenues = (query: string, signal?: AbortSignal) =>
+  request<VenueSearch>(`/api/author/venues?q=${encodeURIComponent(query)}`, { signal })
+
+export type CreatedVenue = {
+  id: string; slug: string; name: string
+  city: string | null; latitude: number | null; longitude: number | null
+  duplicates: DuplicateWarning[]
+}
+
+/**
+ * A 409 here is not a failure, it is the duplicate warning (#31), and it
+ * carries the venues it resembles. `AuthorError` only keeps the message and the
+ * field errors, so the warning is unwrapped into its own error type — the
+ * picker has to render the venue it matched, with a button to use that one
+ * instead, and a sentence cannot be turned back into a button.
+ */
+export class DuplicateVenueError extends Error {
+  constructor(
+    message: string,
+    readonly code: 'possible_duplicate' | 'venue_exists',
+    readonly duplicates: DuplicateWarning[],
+    /** Set on `venue_exists`: Google says this *is* that venue. */
+    readonly venue: { id: string; slug: string; name: string } | null,
+  ) {
+    super(message)
+    this.name = 'DuplicateVenueError'
+  }
+}
+
+export async function createVenue(
+  input: Partial<VenueInput>, options: { confirmDuplicate?: boolean } = {},
+): Promise<CreatedVenue> {
+  const response = await fetch('/api/author/venues', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { accept: 'application/json', 'content-type': 'application/json' },
+    body: JSON.stringify({ ...input, confirm_duplicate: options.confirmDuplicate === true }),
+  })
+
+  const body = await response.json().catch(() => null) as Record<string, unknown> | null
+
+  if (response.status === 409) {
+    const error = (body?.error ?? {}) as { code?: string; message?: string }
+    throw new DuplicateVenueError(
+      error.message ?? 'That venue may already be in the catalogue',
+      error.code === 'venue_exists' ? 'venue_exists' : 'possible_duplicate',
+      (body?.duplicates as DuplicateWarning[] | undefined) ?? [],
+      (body?.venue as { id: string; slug: string; name: string } | undefined) ?? null,
+    )
+  }
+
+  if (!response.ok) {
+    const error = (body?.error ?? {}) as {
+      code?: string; message?: string; fields?: { field: string; message: string }[]
+    }
+    throw new AuthorError(
+      response.status,
+      error.code ?? 'request_failed',
+      error.message ?? `Request failed (${response.status})`,
+      error.fields ?? [],
+    )
+  }
+
+  return body as unknown as CreatedVenue
+}
+
 // ── Listings ────────────────────────────────────────────────────────────────
 
 export type SavedListing = {
   id: string
   slug: string
   status: 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived'
+  /** Why it came back, verbatim from the editor who sent it (#33). */
+  rejection_reason?: string | null
   listing: ListingInput
   media: { id: string; url: string; alt_text: string | null; width: number | null; height: number | null }[]
   updated_at: string
@@ -141,9 +234,100 @@ export const updateListing = (id: string, input: Partial<ListingInput>) =>
 export const fetchMyListings = () =>
   request<{ data: ListingStub[] }>('/api/author/listings')
 
+export type DuplicateFlag = {
+  id: string; slug: string; title: string; score: number; message: string
+}
+
 export const submitListing = (id: string) =>
-  request<{ id: string; slug: string; status: string }>(
+  request<{ id: string; slug: string; status: string; duplicate: DuplicateFlag | null }>(
     `/api/author/listings/${encodeURIComponent(id)}/submit`, { method: 'POST' },
+  )
+
+// ── The organizer's own listings (#34) ──────────────────────────────────────
+
+export type DashboardListing = {
+  id: string; slug: string; title: string; status: string
+  listing_type: string
+  starts_at: string | null; updated_at: string; published_at: string | null
+  rejection_reason: string | null
+  venue_name: string | null
+  media_count: number
+  views: number
+  clicks: number
+}
+
+export type Dashboard = {
+  data: DashboardListing[]
+  counts: Record<string, number>
+  page: { limit: number; offset: number; has_more: boolean }
+}
+
+export const fetchDashboard = (
+  { status, query, offset = 0 }: { status?: string; query?: string; offset?: number } = {},
+) => {
+  const params = new URLSearchParams()
+  if (status) params.set('status', status)
+  if (query) params.set('q', query)
+  if (offset) params.set('offset', String(offset))
+  const suffix = params.toString()
+  return request<Dashboard>(`/api/author/dashboard${suffix ? `?${suffix}` : ''}`)
+}
+
+export const duplicateListing = (id: string) =>
+  request<{ id: string; slug: string; status: string }>(
+    `/api/author/listings/${encodeURIComponent(id)}/duplicate`, { method: 'POST' },
+  )
+
+export const archiveListing = (id: string) =>
+  request<{ id: string; slug: string; status: string }>(
+    `/api/author/listings/${encodeURIComponent(id)}/archive`, { method: 'POST' },
+  )
+
+// ── Moderation (#33) ────────────────────────────────────────────────────────
+
+export type QueueEntry = {
+  id: string; slug: string; title: string; status: string
+  listing_type: string; source: string
+  starts_at: string | null; updated_at: string
+  venue_name: string | null
+  author: { email: string; name: string | null } | null
+  organization_name: string | null
+  media_count: number
+  category_slugs: string[]
+  duplicate: { id: string; slug: string; title: string; status: string; score: number | null } | null
+}
+
+export type Queue = {
+  data: QueueEntry[]
+  counts: Record<string, number>
+  next: string | null
+}
+
+export const fetchQueue = (status = 'pending_review', after?: string | null) =>
+  request<Queue>(
+    `/api/author/queue?status=${encodeURIComponent(status)}${after ? `&after=${encodeURIComponent(after)}` : ''}`,
+  )
+
+export type BulkResult = {
+  applied: string[]
+  refused: { id: string; reason: string }[]
+  status: string
+}
+
+/**
+ * One decision, many listings. The single-listing buttons go through here too
+ * with an array of one, so there is one code path to the server rather than
+ * two that can drift — the API applies the same per-row checks either way.
+ */
+export const moderate = (action: 'publish' | 'reject' | 'archive', ids: string[], reason?: string) =>
+  request<BulkResult>('/api/author/queue/actions', {
+    method: 'POST', body: JSON.stringify({ action, ids, reason }),
+  })
+
+export const mergeListing = (id: string, into: string) =>
+  request<{ merged: string; into: string; slug: string; inherited: string[] }>(
+    `/api/author/listings/${encodeURIComponent(id)}/merge`,
+    { method: 'POST', body: JSON.stringify({ into }) },
   )
 
 export const publishListing = (id: string) =>

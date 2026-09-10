@@ -3,7 +3,10 @@ import type { Env } from './env'
 import { authorListingRoutes } from './author/listings'
 import { authorMediaRoutes } from './author/media'
 import { authorLookupRoutes } from './author/lookups'
+import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
+import { dashboardRoutes } from './author/dashboard'
+import { moderationRoutes } from './author/moderation'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
 import { accountRoutes } from './identity/account'
@@ -13,6 +16,7 @@ import type { AuthVariables } from './identity/middleware'
 import { healthRoutes } from './health/routes'
 import { mediaRoutes } from './media/routes'
 import { ApiError, errorResponse, requestId } from './lib/http'
+import { scheduled } from './scheduled'
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
 
@@ -48,13 +52,22 @@ app.route('/api/auth/google', googleRoutes)
 app.route('/api/auth', accountRoutes)
 app.route('/api/auth', identityRoutes)
 app.route('/api/author', authorLookupRoutes)
+app.route('/api/author', authorVenueRoutes)
 app.route('/api/author', authorWriteRoutes)
 app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
+app.route('/api/author', moderationRoutes)
+app.route('/api/author', dashboardRoutes)
 
 app.notFound((c) =>
   errorResponse(new ApiError(404, 'not_found', 'No such endpoint'), requestId(c)),
 )
 app.onError((err, c) => errorResponse(err, requestId(c)))
 
-export default app
+/**
+ * Two entry points, not one. `fetch` is the Hono app; `scheduled` is the
+ * nightly auto-archive sweep (api/scheduled.ts). Exporting the app directly
+ * would leave the cron trigger in wrangler.jsonc firing into a Worker with no
+ * handler for it — which fails silently, since nothing is waiting on a cron.
+ */
+export default { fetch: app.fetch, scheduled }

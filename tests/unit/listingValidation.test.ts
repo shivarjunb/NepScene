@@ -113,6 +113,21 @@ describe('the where step', () => {
     expect(fields(complete({ location_lat: 91, location_lng: 85.3 }))).toContain('location_lat')
     expect(fields(complete({ location_lat: 27.7, location_lng: 181 }))).toContain('location_lng')
   })
+
+  // #31: a room is an attribute of a listing, and it only means anything once
+  // the venue it is inside has been picked.
+  it('takes a room inside the chosen venue', () => {
+    expect(fields(complete({ venue_room: 'Hall B' }))).toEqual([])
+  })
+
+  it('refuses a room with no venue, which is a venue about to be duplicated', () => {
+    expect(fields(complete({ venue_id: null, venue_room: 'Hall B' })))
+      .toEqual(expect.arrayContaining(['venue_id', 'venue_room']))
+  })
+
+  it('refuses a room name long enough to be the whole address', () => {
+    expect(fields(complete({ venue_room: 'x'.repeat(121) }))).toContain('venue_room')
+  })
 })
 
 describe('a complete listing of each type', () => {

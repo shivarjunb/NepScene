@@ -16,10 +16,15 @@
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# --- Google Maps (#36, M3) ----------------------------------------------------
-# Not yet read by the application — the map port is M3. When it lands, this is a
-# build-time public value baked into the bundle, so it MUST be HTTP-referrer
-# restricted, and a separate key per environment (docs/DEVOPS.md > Secrets).
+# --- Google Maps (#31) --------------------------------------------------------
+# Optional, and read by Vite at build time — so it belongs in a `.env.local`
+# too if you build rather than run `wrangler dev`. The wizard's venue picker
+# degrades to typed coordinates without it, which is exactly what a preview
+# deployment does, so a fresh clone still works end to end.
+#
+# It is a build-time public value baked into the bundle, so it MUST be
+# HTTP-referrer restricted, with a separate key per environment
+# (docs/DEVOPS.md > Secrets).
 #   Local key referrers: http://localhost:5173/*, http://localhost:8787/*
 # VITE_GOOGLE_MAPS_API_KEY=
 

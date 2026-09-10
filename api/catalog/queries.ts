@@ -199,7 +199,7 @@ export function buildFeedQuery(filters: FeedFilters): SqlStatement {
 export function listingBySlugQuery(slug: string): SqlStatement {
   return {
     sql: `SELECT ${LISTING_SUMMARY_COLUMNS},
-            l.description, l.map_popup_config, l.published_at,
+            l.description, l.map_popup_config, l.published_at, l.venue_room,
             v.address AS venue_address, v.district AS venue_district,
             v.province AS venue_province, v.latitude AS venue_latitude,
             v.longitude AS venue_longitude,

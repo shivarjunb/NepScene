@@ -164,6 +164,8 @@ const LISTING_DETAIL = {
     ...LISTING_SUMMARY.properties,
     description: { type: ['string', 'null'] },
     published_at: { type: ['string', 'null'] },
+    // Which room or stage inside the venue; the venue itself is not duplicated.
+    venue_room: { type: ['string', 'null'] },
     map_popup_config: {},
     media: { type: 'array', items: { ...MEDIA_ITEM, type: 'object' } },
     artists: {
