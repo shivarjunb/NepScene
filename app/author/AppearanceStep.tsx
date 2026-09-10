@@ -42,7 +42,7 @@ export function AppearanceStep({ listing, set, lookups }: Props) {
   const pin = resolvePin(
     primary
       ? [{
-          slug: primary.slug, name: primary.name,
+          slug: primary.slug, name: primary.name, name_ne: primary.name_ne ?? null,
           icon: primary.icon, color: primary.color, is_primary: true,
         }]
       : [],

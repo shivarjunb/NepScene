@@ -411,6 +411,11 @@ body.map-is-fullscreen .hero__map {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
+  /* The row is a `<nav>` on the homepage and a `<ul>` in the search facets
+     (#42); the list needs its markers and padding removed either way. */
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 /*

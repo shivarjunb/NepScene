@@ -6,8 +6,13 @@ import { Discover } from './pages/Discover'
 import { SubmitPage } from './author/SubmitPage'
 import { QueuePage } from './moderation/QueuePage'
 import { DashboardPage } from './author/DashboardPage'
-import { ListingRoute } from './pages/ListingRoute'
+import { ListingPage } from './pages/Listing'
 import { MapPage } from './pages/MapPage'
+import { SearchPage } from './pages/Search'
+import { OrganizersIndex, VenuesIndex } from './pages/PlaceIndex'
+import { VenuePage } from './pages/VenuePage'
+import { OrganizerPage } from './pages/OrganizerPage'
+import { ArtistPage } from './pages/ArtistPage'
 
 /**
  * Every path the shell links to, in one table.
@@ -26,6 +31,12 @@ export const ROUTES: Route[] = [
     element: <Discover />,
   },
   {
+    path: '/search',
+    title: 'Search',
+    summary: 'Everything in the catalogue, ranked, filtered and forgiving of spelling.',
+    element: <SearchPage />,
+  },
+  {
     path: '/map',
     title: 'Map',
     summary: 'Every listing on one map, grouped by venue, filtered by distance and date.',
@@ -35,15 +46,13 @@ export const ROUTES: Route[] = [
     path: '/venues',
     title: 'Venues',
     summary: 'Places that host things, and what is coming up at each.',
-    issue: 44,
-    milestone: 'M4 — Public site',
+    element: <VenuesIndex />,
   },
   {
     path: '/organizers',
     title: 'Organizers',
     summary: 'Who puts events on, and everything they have listed.',
-    issue: 44,
-    milestone: 'M4 — Public site',
+    element: <OrganizersIndex />,
   },
   {
     path: '/submit',
@@ -86,40 +95,57 @@ export function routeFor(path: string) {
 }
 
 /**
- * One dynamic route, matched by prefix. The cards have to link somewhere real —
- * a card that goes nowhere teaches people the feed is decorative — so a listing
- * URL resolves to the page that will hold it. The slug is not read yet; #43 is
- * what turns this into a listing.
+ * The dynamic routes, matched by prefix.
+ *
+ * Each one is `/thing/:slug`, and the slug is the whole parameter — there is
+ * no nesting and no optional segment, so a prefix table beats a matcher. The
+ * titles below are what the tab says while the page is still loading, which is
+ * the only thing that tells a reader with fifteen tabs open which one this is.
  */
-const LISTING_PREFIX = '/listings/'
+const DYNAMIC = [
+  { prefix: '/listings/', title: 'Listing', render: (slug: string) => <ListingPage slug={slug} /> },
+  { prefix: '/venues/', title: 'Venue', render: (slug: string) => <VenuePage slug={slug} /> },
+  { prefix: '/organizers/', title: 'Organizer', render: (slug: string) => <OrganizerPage slug={slug} /> },
+  { prefix: '/artists/', title: 'Artist', render: (slug: string) => <ArtistPage slug={slug} /> },
+  {
+    prefix: '/submit/',
+    title: 'Edit your listing',
+    // A draft's own address. The wizard rewrites the URL to this the moment
+    // autosave first succeeds, so a reload returns to the draft in progress
+    // rather than starting a second empty one.
+    render: (id: string) => <SubmitPage listingId={id} />,
+  },
+] as const
+
+function dynamicMatch(path: string) {
+  for (const route of DYNAMIC) {
+    if (path.startsWith(route.prefix) && path.length > route.prefix.length) {
+      return { route, slug: decodeSlug(path.slice(route.prefix.length)) }
+    }
+  }
+  return null
+}
 
 /**
- * A draft's own address. The wizard rewrites the URL to this the moment
- * autosave first succeeds, so a reload returns to the draft in progress rather
- * than starting a second empty one.
+ * `decodeURIComponent` throws on a malformed escape — `/listings/%zz` is
+ * enough — and this runs during render, so an unguarded call takes the whole
+ * app down rather than showing a 404. The raw segment is the honest fallback:
+ * it will not match a listing either, and the page that says so still renders.
  */
-const SUBMIT_PREFIX = '/submit/'
+function decodeSlug(raw: string): string {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
 
 export function renderRoute(path: string): ReactNode {
   const route = routeFor(path)
   if (route) return route.element ?? <Placeholder {...route} />
 
-  if (path.startsWith(SUBMIT_PREFIX) && path.length > SUBMIT_PREFIX.length) {
-    return <SubmitPage listingId={path.slice(SUBMIT_PREFIX.length)} />
-  }
-
-  if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
-    return (
-      <ListingRoute slug={path.slice(LISTING_PREFIX.length)}>
-        <Placeholder
-          title="Listing"
-          summary="The full listing: description, media, artists, the venue on a map, and the offer if it carries one."
-          issue={43}
-          milestone="M4 — Public site"
-        />
-      </ListingRoute>
-    )
-  }
+  const dynamic = dynamicMatch(path)
+  if (dynamic) return dynamic.route.render(dynamic.slug)
 
   return <NotFound path={path} />
 }
@@ -128,12 +154,8 @@ export function renderRoute(path: string): ReactNode {
 export function titleFor(path: string) {
   const route = routeFor(path)
   if (!route) {
-    if (path.startsWith(LISTING_PREFIX) && path.length > LISTING_PREFIX.length) {
-      return 'Listing — NepScene'
-    }
-    if (path.startsWith(SUBMIT_PREFIX) && path.length > SUBMIT_PREFIX.length) {
-      return 'Edit your listing — NepScene'
-    }
+    const dynamic = dynamicMatch(path)
+    if (dynamic) return `${dynamic.route.title} — NepScene`
     return 'Page not found — NepScene'
   }
   return route.path === '/'

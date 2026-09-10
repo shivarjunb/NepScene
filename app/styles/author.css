@@ -975,3 +975,34 @@
 @media (max-width: 44rem) {
   .appearance__split { grid-template-columns: minmax(0, 1fr); }
 }
+
+/*
+ * The optional-fields disclosure in the wizard (#46).
+ *
+ * A `<details>` rather than a toggle button and a conditional render: it is
+ * open or closed without any state of its own, it is keyboard operable and
+ * announced correctly with no ARIA, and a browser find-in-page can still reach
+ * what is inside it.
+ */
+.wizard__optional {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--surface-raised);
+}
+
+.wizard__optional > summary {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+  /* The marker stays: it is the only affordance saying this opens. */
+  list-style-position: inside;
+}
+
+.wizard__optional > summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.wizard__optional[open] > summary { margin-bottom: var(--space-4); }
+
+.wizard__optional .field + .field { margin-top: var(--space-4); }

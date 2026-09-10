@@ -252,8 +252,34 @@ test('nothing scrolls sideways at 320px', async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(0)
 })
 
+/** The minimum a listing page needs to render; the beacon is what is measured. */
+const viewedListing = (slug: string) => ({
+  id: slug, slug, title: slug, title_ne: null, summary: null, summary_ne: null,
+  listing_type: 'free', source: 'organizer', starts_at: '2026-09-11T13:00:00Z',
+  ends_at: null, is_all_day: false, timezone: 'Asia/Kathmandu', cover_image_url: null,
+  external_url: null, is_featured: false, map_popup_config: null,
+  latitude: null, longitude: null,
+  pin: { icon: 'MapPin', color: '#64748b', category: null },
+  cover: null, venue: null, organizer: null, categories: [], offer: null,
+  description: null, description_ne: null, published_at: null, venue_room: null,
+  media: [], artists: [], tags: [], related: [],
+})
+
 test('opening a listing counts one view, and a reload does not count another', async ({ page }) => {
   const beacons: string[] = []
+
+  /*
+   * The listing itself has to be served, because the beacon now waits for the
+   * record to arrive before it fires (#43). That is deliberate: counting a
+   * view for a slug the catalogue has never heard of teaches the dashboard
+   * that a mistyped URL is a visitor.
+   *
+   * Registered before the beacon route: Playwright matches the most recently
+   * registered handler first, so the wildcard on the listing path would
+   * otherwise swallow the events path nested under it.
+   */
+  await page.route('**/api/catalog/listings/*', (route) =>
+    route.fulfill({ json: viewedListing(new URL(route.request().url()).pathname.split('/').pop()!) }))
   await page.route('**/api/catalog/listings/*/events', (route) => {
     beacons.push(route.request().url())
     return route.fulfill({ status: 202, body: '' })

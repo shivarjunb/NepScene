@@ -126,8 +126,8 @@ describe('storing one back', () => {
 describe('the pin is a function of the category', () => {
   it('takes its colour and icon from the primary category', () => {
     const pin = resolvePin([
-      { slug: 'film', name: 'Film', icon: 'Film', color: '#ef4444', is_primary: true },
-      { slug: 'concerts', name: 'Concerts', icon: 'Music', color: '#e91e63', is_primary: false },
+      { slug: 'film', name: 'Film', name_ne: null, icon: 'Film', color: '#ef4444', is_primary: true },
+      { slug: 'concerts', name: 'Concerts', name_ne: null, icon: 'Music', color: '#e91e63', is_primary: false },
     ])
     expect(pin).toEqual({ icon: 'Film', color: '#ef4444', category: 'film' })
   })

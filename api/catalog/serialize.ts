@@ -1,6 +1,6 @@
 import type {
-  ArtistRef, CategoryRef, ListingDetail, ListingSummary, MediaItem, MediaSource, Offer, TagRef,
-  VenueSummary,
+  ArtistRef, ArtistSummary, CategoryRef, ListingDetail, ListingSummary, MediaItem, MediaSource,
+  Offer, OrganizerSummary, TagRef, VenueSummary,
 } from './types'
 import { resolvePin } from './pin'
 import { FORMAT_ORDER, MIME_BY_FORMAT, type Format } from '../media/pipeline'
@@ -113,6 +113,7 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
     .map<CategoryRef>((category) => ({
       slug: category.slug as string,
       name: category.name as string,
+      name_ne: (category.name_ne as string | null) ?? null,
       color: (category.color as string | null) ?? null,
       icon: (category.icon as string | null) ?? null,
       is_primary: bool(category.is_primary),
@@ -122,7 +123,9 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
     id: row.id as string,
     slug: row.slug as string,
     title: row.title as string,
+    title_ne: (row.title_ne as string | null) ?? null,
     summary: (row.summary as string | null) ?? null,
+    summary_ne: (row.summary_ne as string | null) ?? null,
     listing_type: row.listing_type as ListingSummary['listing_type'],
     source: row.source as ListingSummary['source'],
     starts_at: row.starts_at as string,
@@ -164,6 +167,14 @@ function parseCover(raw: unknown): MediaItem | null {
   return row?.r2_key ? toMediaItem(row) : null
 }
 
+/**
+ * How many published listings an artist needs before they get a page. Declared
+ * here rather than imported from the route file, because the route imports the
+ * serializer and the other direction would be a cycle; `places.ts` re-exports
+ * it as `ARTIST_PAGE_THRESHOLD` and both read this one value.
+ */
+export const ARTIST_PAGE_MINIMUM = 2
+
 export function toListingDetail(row: Record<string, unknown>): ListingDetail {
   const summary = toListingSummary(row)
   const media = parseJsonArray<MediaRow>(row.media_json)
@@ -171,6 +182,7 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
   return {
     ...summary,
     description: (row.description as string | null) ?? null,
+    description_ne: (row.description_ne as string | null) ?? null,
     published_at: (row.published_at as string | null) ?? null,
     venue_room: (row.venue_room as string | null) ?? null,
     venue: summary.venue
@@ -184,7 +196,16 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
         }
       : null,
     media: media.map(toMediaItem),
-    artists: parseJsonArray<ArtistRef>(row.artists_json),
+    // `has_page` rather than a count the client has to compare against a
+    // threshold of its own: the API is the only place that knows whether
+    // /artists/:slug will answer, and a listing must not link to a 404.
+    artists: parseJsonArray<Record<string, unknown>>(row.artists_json).map<ArtistRef>((artist) => ({
+      slug: artist.slug as string,
+      name: artist.name as string,
+      image_url: (artist.image_url as string | null) ?? null,
+      listing_count: (artist.listing_count as number | null) ?? 0,
+      has_page: ((artist.listing_count as number | null) ?? 0) >= ARTIST_PAGE_MINIMUM,
+    })),
     tags: parseJsonArray<TagRef>(row.tags_json),
   }
 }
@@ -204,6 +225,42 @@ export function toVenueSummary(row: Record<string, unknown>): VenueSummary {
     cover_image_url: (row.cover_image_url as string | null) ?? null,
     is_verified: bool(row.is_verified),
     upcoming_listing_count: (row.upcoming_listing_count as number | null) ?? 0,
+    past_listing_count: (row.past_listing_count as number | null) ?? 0,
+  }
+}
+
+export function toOrganizerSummary(row: Record<string, unknown>): OrganizerSummary {
+  return {
+    id: row.id as string,
+    slug: row.slug as string,
+    name: row.name as string,
+    description: (row.description as string | null) ?? null,
+    logo_url: (row.logo_url as string | null) ?? null,
+    website_url: (row.website_url as string | null) ?? null,
+    is_verified: bool(row.is_verified),
+    upcoming_listing_count: (row.upcoming_listing_count as number | null) ?? 0,
+    past_listing_count: (row.past_listing_count as number | null) ?? 0,
+  }
+}
+
+export function toArtistSummary(row: Record<string, unknown>): ArtistSummary {
+  const links = parseJsonObject(row.links)
+  return {
+    id: row.id as string,
+    slug: row.slug as string,
+    name: row.name as string,
+    bio: (row.bio as string | null) ?? null,
+    image_url: (row.image_url as string | null) ?? null,
+    // Stored as free-form JSON (migration 0001); anything that is not a string
+    // map is dropped rather than rendered as "[object Object]".
+    links: links && typeof links === 'object' && !Array.isArray(links)
+      ? Object.fromEntries(
+          Object.entries(links as Record<string, unknown>)
+            .filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+        )
+      : {},
+    upcoming_listing_count: (row.upcoming_listing_count as number | null) ?? 0,
+    listing_count: (row.listing_count as number | null) ?? 0,
   }
 }
 

@@ -37,6 +37,58 @@ const TYPE_LABELS: Record<(typeof LISTING_TYPES)[number], { label: string; hint:
 
 // ── Details ─────────────────────────────────────────────────────────────────
 
+/**
+ * The listing in Nepali (#46), behind a disclosure.
+ *
+ * **Collapsed, and never required.** Most listings arrive in English and the
+ * wizard is already six steps; three more always-visible fields would read as
+ * three more things to fill in. Open, they are ordinary fields — an author who
+ * has a Nepali title types it, and one who does not is not blocked, because
+ * the English fields stay authoritative for the slug, the metadata and every
+ * surface with no language of its own.
+ *
+ * `lang="ne"` on the inputs is what gets a Devanagari keyboard on a phone and
+ * the right shaping in the field, rather than the author typing into a box
+ * that renders their own language badly.
+ */
+function NepaliFields({ listing, set, errors }: Pick<StepProps, 'listing' | 'set' | 'errors'>) {
+  const filled = Boolean(listing.title_ne || listing.summary_ne || listing.description_ne)
+
+  return (
+    <details className="wizard__optional" open={filled}>
+      <summary>In Nepali — नेपालीमा</summary>
+      <p className="field__hint">
+        Optional. Anything left blank shows in English.
+      </p>
+
+      <Field label="Title in Nepali" error={errorFor(errors, 'title_ne')}>
+        {({ id, describedBy, invalid }) => (
+          <Input id={id} lang="ne" aria-describedby={describedBy}
+                 aria-invalid={invalid || undefined} autoComplete="off"
+                 value={listing.title_ne ?? ''}
+                 onChange={(e) => set({ title_ne: e.target.value || null })} />
+        )}
+      </Field>
+
+      <Field label="One-line summary in Nepali" error={errorFor(errors, 'summary_ne')}>
+        {({ id, describedBy, invalid }) => (
+          <Input id={id} lang="ne" maxLength={300} aria-describedby={describedBy}
+                 aria-invalid={invalid || undefined} value={listing.summary_ne ?? ''}
+                 onChange={(e) => set({ summary_ne: e.target.value || null })} />
+        )}
+      </Field>
+
+      <Field label="Description in Nepali" error={errorFor(errors, 'description_ne')}>
+        {({ id, describedBy, invalid }) => (
+          <Textarea id={id} lang="ne" rows={5} aria-describedby={describedBy}
+                    aria-invalid={invalid || undefined} value={listing.description_ne ?? ''}
+                    onChange={(e) => set({ description_ne: e.target.value || null })} />
+        )}
+      </Field>
+    </details>
+  )
+}
+
 export function DetailsStep({ listing, set, lookups, errors }: StepProps) {
   return (
     <div className="wizard__fields">
@@ -102,6 +154,8 @@ export function DetailsStep({ listing, set, lookups, errors }: StepProps) {
                     onChange={(e) => set({ description: e.target.value || null })} />
         )}
       </Field>
+
+      <NepaliFields listing={listing} set={set} errors={errors} />
 
       <CategoryPicker listing={listing} set={set} lookups={lookups} errors={errors} />
       <TagPicker listing={listing} set={set} lookups={lookups} errors={errors} />

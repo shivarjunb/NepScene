@@ -57,10 +57,10 @@ export default defineConfig({
       // Ratcheted to the measured floor. A drop fails the build; when coverage
       // rises, raise these with it (docs/DEVOPS.md).
       thresholds: {
-        statements: 93,
-        branches: 80,
+        statements: 94,
+        branches: 81,
         functions: 97,
-        lines: 95,
+        lines: 96,
       },
     },
   },

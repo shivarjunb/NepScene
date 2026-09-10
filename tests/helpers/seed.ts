@@ -51,8 +51,9 @@ export async function seedCatalogue(): Promise<void> {
        VALUES ('ven_pokhara', 'lakeside', 'Lakeside', 'Baidam', 'Pokhara', 'Kaski', 'Gandaki', 28.2096, 83.9556, ?1, ?1)`,
     ).bind(now),
     env.DB.prepare(
-      `INSERT INTO artists (id, slug, name, created_at, updated_at)
-       VALUES ('art_a', 'kutumba', 'Kutumba', ?1, ?1)`,
+      `INSERT INTO artists (id, slug, name, links, created_at, updated_at)
+       VALUES ('art_a', 'kutumba', 'Kutumba',
+               '{"instagram": "https://instagram.example/kutumba", "plays": 4}', ?1, ?1)`,
     ).bind(now),
   ])
 
@@ -127,3 +128,65 @@ export async function seedCatalogue(): Promise<void> {
 
 /** The four listings a default public read must return, in start order. */
 export const UPCOMING_SLUGS = ['art-week', 'rock-night', 'lakeside-live', 'lake-cleanup']
+
+/**
+ * What the public site's own tests need on top of the base catalogue (#42,
+ * #43, #44, #46), added rather than folded in.
+ *
+ * The base seed is a fixed shape that a dozen existing tests count rows
+ * against — "exactly four listings are upcoming" is an assertion, not a
+ * description. Growing it to cover an artist with two listings, a venue with
+ * only past ones and a bilingual title would have rewritten those assertions
+ * to make room for fixtures they do not use. So this is a second call, made by
+ * the files that need it, and the base seed keeps meaning what it said.
+ */
+export async function seedPublicSite(): Promise<void> {
+  const now = new Date().toISOString()
+
+  await env.DB.batch([
+    // A venue whose only listing has finished: #44's "shows past listings
+    // rather than an empty page" needs a venue that is actually in that state.
+    env.DB.prepare(
+      `INSERT INTO venues (id, slug, name, area, city, capacity, address, latitude, longitude, created_at, updated_at)
+       VALUES ('ven_quiet', 'quiet-hall', 'Quiet Hall', 'Patan', 'Lalitpur', 200, 'Pulchowk Road', 27.6766, 85.3169, ?1, ?1)`,
+    ).bind(now),
+    env.DB.prepare(
+      `INSERT INTO listings
+        (id, slug, title, summary, listing_type, source, status, organization_id, venue_id,
+         starts_at, ends_at, is_featured, published_at, created_at, updated_at)
+       VALUES ('lst_quiet', 'quiet-recital', 'Quiet Recital', 'A recital', 'free', 'editorial',
+               'published', NULL, 'ven_quiet', ?1, NULL, 0, ?2, ?2, ?2)`,
+    ).bind(fixtures.past, now),
+    // The artist's second listing, which is what takes Kutumba over the
+    // threshold for a page of their own (api/catalog/places.ts).
+    env.DB.prepare(
+      `INSERT INTO listings
+        (id, slug, title, summary, listing_type, source, status, organization_id, venue_id,
+         starts_at, ends_at, is_featured, published_at, created_at, updated_at)
+       VALUES ('lst_kutumba', 'kutumba-live', 'Kutumba Live', 'The quartet', 'ticketed_internal',
+               'organizer', 'published', 'org_a', 'ven_thamel', ?1, NULL, 0, ?2, ?2, ?2)`,
+    ).bind(fixtures.later, now),
+  ])
+
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO listing_categories (listing_id, category_id, is_primary)
+       VALUES ('lst_kutumba', 'cat_concert', 1), ('lst_quiet', 'cat_arts', 1)`,
+    ),
+    env.DB.prepare(
+      `INSERT INTO listing_artists (listing_id, artist_id, billing_order)
+       VALUES ('lst_kutumba', 'art_a', 0)`,
+    ),
+    // Bilingual content (#46). Rock Night carries both halves; everything else
+    // carries only English, which is the normal case the fallback exists for.
+    env.DB.prepare(
+      `UPDATE listings SET title_ne = 'रक नाइट', summary_ne = 'काठमाडौंमा लाइभ सङ्गीत'
+        WHERE id = 'lst_soon'`,
+    ),
+    // Views, so ranking has a popularity signal to weigh (#42).
+    env.DB.prepare(
+      `INSERT INTO listing_stats (listing_id, day, views, clicks)
+       VALUES ('lst_later', ?1, 400, 12)`,
+    ).bind(new Date().toISOString().slice(0, 10)),
+  ])
+}

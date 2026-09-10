@@ -4,15 +4,22 @@ import { createContext, useContext, useEffect, useRef, useState,
 /**
  * A minimal history router.
  *
- * Deliberately not react-router. The routing model belongs to the discovery
- * surface (#41) and the listing pages (#43) — nested layouts, loaders, search
- * params and code splitting are all decisions those features get to make. This
- * exists so the shell's navigation (#18) stops lying: before it, every link in
- * the header and footer full-page-reloaded back into the design system, because
- * the SPA fallback serves index.html for every path and index.html rendered the
- * gallery unconditionally.
+ * Deliberately not react-router, and now deliberately kept. The discovery
+ * surface (#41), search (#42), the listing pages (#43) and the entity pages
+ * (#44) have all been built on it, and none of them wanted what react-router
+ * sells: there are no nested layouts, every dynamic route is one `/thing/:slug`
+ * segment, and filters live in the query string on purpose so a refined view
+ * can be linked and shared. What is left of the case for a router is code
+ * splitting, which belongs to the bundle rather than to the routing model.
  *
- * Sixty lines with no dependency is cheap to delete when #41 chooses properly.
+ * It exists because the shell's navigation (#18) was lying: before it, every
+ * link in the header and footer full-page-reloaded back into the design system,
+ * because the SPA fallback serves index.html for every path and index.html
+ * rendered the gallery unconditionally.
+ *
+ * Server rendering (#45) is the change that will reopen this, since it needs
+ * the route table on both sides — which is why `routes.tsx` is a table rather
+ * than a switch.
  */
 
 /** Trailing slashes are not a different page. `/` itself keeps its slash. */

@@ -7,6 +7,83 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Server-side search (#42).** A rebuild rather than a port: WaahTickets
+  filtered an already-downloaded array in the browser, which is why its search
+  only ever worked at fifty events. `GET /api/catalog/search` now returns ranked
+  results, facet counts and — when it has to — a correction, and
+  `GET /api/catalog/suggest` answers as you type.
+  - **Ranking is a blend, and it is a pure function.** Text match, date
+    proximity, distance and popularity, weighted, in `api/catalog/ranking.ts`
+    rather than in an ORDER BY expression — because "a match tomorrow beats one
+    in six months" is a claim that should be arguable in a test, and a query
+    string cannot be. It runs over a bounded candidate set, and the ceiling that
+    implies is stated where it is applied.
+  - **Nepali place names are a table, not an algorithm.** One place arrives as
+    Pokhara and Pokhra, Birgunj and Birganj, Lalitpur and Patan and Yala — and
+    the hard cases are not phonetic, so nothing derives them. Thirty-odd groups
+    cover where events happen, each indexed by its *folded* spelling, which is
+    what makes the two directions in #46 one mechanism: `काठमाडौं` folds into
+    the Kathmandu group and expands back out to the Devanagari spelling that
+    finds a Devanagari title.
+  - **Typo tolerance costs nothing on the requests that did not need it.** A
+    query that found something is never second-guessed; a query that found
+    nothing is corrected against the catalogue's own vocabulary — proper nouns,
+    where a dictionary is worse than useless — and run once more. That is the
+    only path that spends a second D1 round trip.
+  - **Facet counts describe the whole matching set**, not the page: a city facet
+    that said 12 on page one and 4 on page two would be describing the page. The
+    date facets carry the exact window they were counted over, so the chip that
+    says 8 leads to 8 listings rather than to a boundary the client recomputed.
+  - A zero-result search offers near-misses, and when the query resembles
+    nothing at all it offers the broadest entry points there are rather than an
+    apology.
+- **Listing pages (#43).** `/listings/:slug` is a real, addressable, shareable
+  page: description, media, artists, tags, the venue on a map, the organizer,
+  related listings, WhatsApp-first sharing and an iCalendar download.
+  - **The offer section degrades and says so.** A ticketed listing whose offer
+    could not be resolved renders everything above the buy button and states
+    that ticket details are unavailable — a rendered state rather than a missing
+    element, so it is visible in a screenshot when it happens. Discovery is
+    never held hostage by commerce being up (docs/SCOPE.md).
+  - Add-to-calendar writes UTC instants rather than a local time plus a
+    `VTIMEZONE`: the same instant everywhere, converted by the reader's own
+    client, with no copy of Nepal's tz rules to keep right. An all-day listing
+    is a `VALUE=DATE` event, because a timestamped midnight lands as a
+    Tuesday-night alarm for somebody in London.
+  - The view beacon now waits for the record. Counting a view for a slug the
+    catalogue has never heard of taught the dashboard that a mistyped URL is a
+    visitor.
+- **Venue, organizer and artist pages (#44),** with index pages for the first
+  two. Each answers the same two questions — what is on, and what has been — in
+  one round trip, and **a venue with nothing coming up shows its past rather
+  than an empty page**, because a venue between seasons is one people are still
+  looking up and "nothing here" reads as "closed". An artist gets a page once
+  they are on more than one listing, and the same threshold decides whether a
+  listing links to it, read from one place rather than guessed at in two.
+- **Nepali (#46).** The public interface, the listing content, the search and
+  the dates.
+  - One string table with both languages on each line, so a missing translation
+    is a type error rather than a key rendered in production. The authoring
+    wizard and the moderation queue are *not* translated — they are tools for
+    people who chose to list events here, not the audience #46 exists for — and
+    that is stated in the file rather than discovered later.
+  - Language is state, not a route: no `/ne/` prefix and no `?lang=`, so
+    switching keeps the page, the filters and the scroll position. The cost is
+    that language is invisible to a crawler, which is #45's to solve.
+  - `title_ne`, `summary_ne` and `description_ne` on listings (migration 0013),
+    authored behind a disclosure in the wizard, matched by search beside their
+    English counterparts, and rendered with a `lang` attribute where the
+    fallback kicked in — so a screen reader does not read English in a Nepali
+    voice.
+  - **Bikram Sambat, from the published table.** There is no arithmetic rule for
+    it: months begin at sankranti and vary between 29 and 32 days in a sequence
+    that has to be observed. BS 2070–2090 is carried, verified against Hamro
+    Patro, and anything outside that window falls back to the Gregorian date
+    rather than extrapolating.
+  - Gregorian dates in Nepali are formatted from a table rather than through
+    `Intl`, because a browser with a trimmed ICU falls back to English silently
+    — which would put an English date under a Nepali heading on exactly the
+    devices this feature is for.
 - Account management (#29): `POST /api/auth/email/change`, `GET /api/auth/me/export`
   and `DELETE /api/auth/me`.
   - Changing an address does not change it. The new one waits in
@@ -63,6 +140,30 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sight. It reads `git ls-files`, so a gitignored `.dev.vars` is not flagged (#13)
 
 ### Changed
+- The Catalog API's query builder binds every value **once**, by number, and
+  matches text against a haystack computed once per row inside a `MATERIALIZED`
+  CTE. Both are forced rather than chosen: D1 refuses more than a hundred bound
+  variables and more than five terms in a compound SELECT, and the obvious shape
+  cost 114ms for candidates and 664ms for facets at ten thousand listings.
+  Both are now under 35ms (docs/ARCHITECTURE.md).
+- `CategoryRef` carries `name_ne`, so a chip, a card, a pin popup and a filter
+  are all in the reader's language rather than only the ones that happened to
+  fetch the taxonomy.
+- `fetchFeed` no longer takes a centre. `/listings` has no geography and
+  `/search` applies the circle itself while ranking, rather than two places
+  knowing how to turn a box into a radius.
+- Coverage thresholds ratcheted to the new floor (94/82/97/96).
+- `radius_km` is applied in SQL as a circle rather than only as the bounding box
+  around it. A box is 27% larger than the circle it contains, so a radius that
+  was only a prefilter returned listings beyond it — and, once the facet counts
+  moved into the same query, described a set the reader was not being shown.
+  SQLite has no trigonometry we can rely on across D1 builds, so the comparison
+  is the flat-earth one with the two scale factors precomputed: metres out at
+  Nepal's latitudes, and the same WHERE for the rows and the counts.
+- All-day calendar exports end on the day *after* the last one. `DTEND` is
+  exclusive for a date-valued event, and passing `ends_at` through unchanged
+  made a one-day listing zero-length — dropped outright by most clients — and a
+  three-day festival two days long.
 - **Breaking (Catalog API).** `MediaItem` gains `sources`, `aspect_ratio` and a
   `cover` on every listing summary; uploads now reject an image whose header
   will not parse, because a picture with no intrinsic size cannot reserve a box

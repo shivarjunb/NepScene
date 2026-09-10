@@ -13,7 +13,7 @@ import { pickVenue, serveAuthoring } from './authoringStub'
 
 /** Fills the first step. Used by the tests that are about something later. */
 async function fillDetails(page: Page, title = 'Kutumba at Patan Durbar') {
-  await page.getByLabel('Title').fill(title)
+  await page.getByLabel('Title', { exact: true }).fill(title)
   await page.getByRole('button', { name: 'Concerts' }).click()
 }
 
@@ -106,7 +106,7 @@ test('the step rail refuses to skip ahead but allows going back', async ({ page 
   // Going back three steps to fix a typo must not mean pressing Back three times.
   await page.getByRole('button', { name: /What is it/ }).click()
   await expect(page.getByRole('heading', { name: 'What is it' })).toBeVisible()
-  await expect(page.getByLabel('Title')).toHaveValue('Kutumba at Patan Durbar')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Kutumba at Patan Durbar')
 })
 
 test('validation names the field and blocks the step it belongs to', async ({ page }) => {
@@ -172,10 +172,10 @@ test('a draft left on the device is offered back, not restored behind your back'
 
   await expect(page.getByText('You have unsaved work on this device')).toBeVisible()
   // Offered, not applied — the form is still empty until the author says so.
-  await expect(page.getByLabel('Title')).toHaveValue('')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('')
 
   await page.getByRole('button', { name: 'Pick up where I left off' }).click()
-  await expect(page.getByLabel('Title')).toHaveValue('Half-written gig')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Half-written gig')
   await expect(page.getByText('You have unsaved work on this device')).toBeHidden()
 })
 
@@ -190,7 +190,7 @@ test('a recovered draft can be thrown away instead', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Discard it' }).click()
   await expect(page.getByText('You have unsaved work on this device')).toBeHidden()
-  await expect(page.getByLabel('Title')).toHaveValue('')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('')
 
   // Gone from the device, not merely dismissed for this visit. This only holds
   // because an empty form no longer autosaves over the key it just cleared.
@@ -217,7 +217,7 @@ test('the first real keystroke is what starts the draft', async ({ page }) => {
   const api = await serveAuthoring(page)
   await page.goto('/submit')
 
-  await page.getByLabel('Title').fill('Now there is something')
+  await page.getByLabel('Title', { exact: true }).fill('Now there is something')
   await expect(page.getByText('Saved')).toBeVisible()
 
   expect(api.wasCreated()).toBe(true)
@@ -228,7 +228,7 @@ test('autosave does not offer to recover the draft you are still typing', async 
   await serveAuthoring(page)
   await page.goto('/submit')
 
-  await page.getByLabel('Title').fill('Being typed right now')
+  await page.getByLabel('Title', { exact: true }).fill('Being typed right now')
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
 
   // The first save rewrites the URL to the draft's own address, which sends a
@@ -237,7 +237,7 @@ test('autosave does not offer to recover the draft you are still typing', async 
   // is on screen — a recovery prompt in the middle of writing.
   await expect(page).toHaveURL(/\/submit\/lst_new$/)
   await expect(page.getByText('You have unsaved work on this device')).toBeHidden()
-  await expect(page.getByLabel('Title')).toHaveValue('Being typed right now')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Being typed right now')
 })
 
 test('editing an existing listing does not make you walk the wizard again', async ({ page }) => {
@@ -262,7 +262,7 @@ test('editing an existing listing does not make you walk the wizard again', asyn
   })
 
   await page.goto('/submit/lst_new')
-  await expect(page.getByLabel('Title')).toHaveValue('Finished already')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Finished already')
 
   // Its steps were all filled in before it was saved. Making someone press Next
   // five times to change one word is re-entry, not editing.
@@ -294,8 +294,8 @@ test('an edit-mode load fills the form from the server', async ({ page }) => {
 
   await page.goto('/submit/lst_new')
 
-  await expect(page.getByLabel('Title')).toHaveValue('Already written')
-  await expect(page.getByLabel('One-line summary')).toHaveValue('A summary')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Already written')
+  await expect(page.getByLabel('One-line summary', { exact: true })).toHaveValue('A summary')
   await expect(page.getByRole('button', { name: 'Film', pressed: true })).toBeVisible()
   await expect(page.getByText('Outdoors')).toBeVisible()
 })
@@ -307,10 +307,10 @@ test('the whole wizard is operable from the keyboard alone', async ({ page }) =>
   // Tab until the title field has focus, then type into it — no clicking.
   await page.keyboard.press('Tab')
   for (let i = 0; i < 25; i++) {
-    if (await page.getByLabel('Title').evaluate((el) => el === document.activeElement)) break
+    if (await page.getByLabel('Title', { exact: true }).evaluate((el) => el === document.activeElement)) break
     await page.keyboard.press('Tab')
   }
-  await expect(page.getByLabel('Title')).toBeFocused()
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
   await page.keyboard.type('Typed with no mouse')
 
   // Reach the category chips and toggle one with the keyboard.
@@ -349,4 +349,43 @@ test('nothing scrolls sideways at 320px', async ({ page }) => {
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(0)
+})
+
+/**
+ * The Nepali half of a listing (#46).
+ *
+ * Optional in the strongest sense: collapsed by default, never validated, and
+ * never a blocker. What these settle is that it reaches the API when it is
+ * filled in — the fields exist in the model (migration 0013) and are rendered
+ * on the listing page, so a wizard that quietly dropped them would leave a
+ * feature that only importers could use.
+ */
+test('a listing can carry a Nepali title and description, and they are saved', async ({ page }) => {
+  const stub = await serveAuthoring(page)
+  await page.goto('/submit')
+  await fillDetails(page)
+
+  // The disclosure's own control, which is what opens it.
+  await page.locator('summary', { hasText: 'In Nepali' }).click()
+  await page.getByLabel('Title in Nepali').fill('कुतुम्ब पाटन दरबारमा')
+  await page.getByLabel('Description in Nepali').fill('साँझ सात बजेदेखि।')
+
+  // Autosave carries them with everything else; nothing here is a second save.
+  await expect.poll(() => stub.store().title_ne).toBe('कुतुम्ब पाटन दरबारमा')
+  expect(stub.store().description_ne).toBe('साँझ सात बजेदेखि।')
+})
+
+test('the Nepali fields are closed until they are wanted, and never required', async ({ page }) => {
+  await serveAuthoring(page)
+  await page.goto('/submit')
+
+  // Present but collapsed: three more visible fields on the first step would
+  // read as three more things that have to be filled in.
+  await expect(page.getByLabel('Title in Nepali')).toBeHidden()
+  await expect(page.locator('summary', { hasText: 'In Nepali' })).toBeVisible()
+
+  // And a listing with none of them still submits.
+  await fillDetails(page)
+  await page.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByRole('heading', { name: /When/ })).toBeVisible()
 })

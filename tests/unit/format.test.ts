@@ -6,6 +6,7 @@ import { offerLine, startDay, startTime, venueLine } from '../../app/lib/format'
 
 const listing = (over: Partial<Listing> = {}): Listing => ({
   id: 'x', slug: 'x', title: 'x', summary: null,
+  title_ne: null, summary_ne: null,
   listing_type: 'ticketed_internal', source: 'organizer',
   starts_at: '2026-09-11T13:15:00Z', ends_at: null, is_all_day: false,
   timezone: 'Asia/Kathmandu', cover_image_url: null, external_url: null,
