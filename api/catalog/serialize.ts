@@ -132,6 +132,7 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
     cover_image_url: (row.cover_image_url as string | null) ?? null,
     external_url: (row.external_url as string | null) ?? null,
     is_featured: bool(row.is_featured),
+    map_popup_config: parseJsonObject(row.map_popup_config),
     latitude: (row.latitude as number | null) ?? null,
     longitude: (row.longitude as number | null) ?? null,
     venue: row.venue_id
@@ -170,7 +171,6 @@ export function toListingDetail(row: Record<string, unknown>): ListingDetail {
   return {
     ...summary,
     description: (row.description as string | null) ?? null,
-    map_popup_config: parseJsonObject(row.map_popup_config),
     published_at: (row.published_at as string | null) ?? null,
     venue_room: (row.venue_room as string | null) ?? null,
     venue: summary.venue

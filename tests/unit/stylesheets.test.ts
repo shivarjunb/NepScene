@@ -15,12 +15,13 @@ const sheets = () => ({
   base: env.BASE_CSS,
   shell: env.SHELL_CSS,
   author: env.AUTHOR_CSS,
+  map: env.MAP_CSS,
 })
 
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '')
 
 describe('the token layer is the only place colour is written', () => {
-  it.each(['components', 'base', 'shell', 'author'] as const)(
+  it.each(['components', 'base', 'shell', 'author', 'map'] as const)(
     '%s.css contains no literal hex colour',
     (name) => {
       const found = stripComments(sheets()[name]).match(/#[0-9a-fA-F]{3,8}\b/g) ?? []
@@ -28,7 +29,7 @@ describe('the token layer is the only place colour is written', () => {
     },
   )
 
-  it.each(['components', 'base', 'shell', 'author'] as const)(
+  it.each(['components', 'base', 'shell', 'author', 'map'] as const)(
     '%s.css names no colour function outside a token',
     (name) => {
       // rgb()/hsl() with numbers is a literal by another spelling.
@@ -39,7 +40,7 @@ describe('the token layer is the only place colour is written', () => {
 })
 
 describe('stacking order is a named scale', () => {
-  it.each(['components', 'base', 'shell', 'author'] as const)(
+  it.each(['components', 'base', 'shell', 'author', 'map'] as const)(
     '%s.css uses z-index tokens, never a number',
     (name) => {
       const declarations = stripComments(sheets()[name]).match(/z-index:\s*[^;]+/g) ?? []
@@ -70,4 +71,23 @@ describe('the reference page can show every token', () => {
       expect(tokens, `${name} is missing`).toContain(`${name}:`)
     }
   })
+})
+
+/**
+ * #36's manual step — "grep the ported tree for `leaflet` and confirm zero
+ * hits" — as something that runs.
+ *
+ * WaahTickets' `heroMapStyles.css` styled `map-leaflet-pin` and `pin-ripple`
+ * for a whole renderer after Leaflet was gone: the map drew Google markers and
+ * the stylesheet went on describing something that no longer existed. Nobody
+ * greps on a Tuesday, so the check lives here instead.
+ */
+describe('no Leaflet survived the port', () => {
+  it.each(['components', 'base', 'shell', 'author', 'map'] as const)(
+    '%s.css styles no Leaflet class name',
+    (name) => {
+      const found = stripComments(sheets()[name]).match(/leaflet|pin-ripple/gi) ?? []
+      expect(found, `Leaflet residue: ${found.join(', ')}`).toEqual([])
+    },
+  )
 })

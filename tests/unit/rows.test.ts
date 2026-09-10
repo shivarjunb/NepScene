@@ -20,6 +20,7 @@ const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Li
   cover_image_url: null,
   external_url: null,
   is_featured: false,
+  map_popup_config: null,
   latitude: null,
   longitude: null,
   pin: { icon: 'MapPin', color: '#64748b', category: null },

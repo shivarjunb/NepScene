@@ -20,6 +20,7 @@ const componentsCss = sheet('components.css')
 const baseCss = sheet('base.css')
 const shellCss = sheet('shell.css')
 const authorCss = sheet('author.css')
+const mapCss = sheet('map.css')
 
 export default defineConfig({
   plugins: [
@@ -33,6 +34,7 @@ export default defineConfig({
           BASE_CSS: baseCss,
           SHELL_CSS: shellCss,
           AUTHOR_CSS: authorCss,
+          MAP_CSS: mapCss,
         },
       },
     }),

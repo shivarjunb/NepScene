@@ -1,0 +1,285 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { loadGoogleMaps, MapsUnavailableError } from '../lib/googleMaps'
+import { Alert, Button, Spinner } from '../components/primitives'
+import { parsePopupConfig } from '../../api/author/popupConfig'
+import { ListingPopup } from './ListingPopup'
+import { pinDataUri, PIN_SIZE } from './pinMarker'
+import type { MapPin } from './markers'
+import { within, type Bounds } from './viewport'
+import { useViewportListings } from './useViewportListings'
+
+/**
+ * The public map (#36).
+ *
+ * Ported from WaahTickets' `NepalMap`, which was 488 lines holding four jobs:
+ * the map, venue grouping, a distance ring and the commerce card. Three of
+ * those are somebody else's feature here — grouping is #37, distance is #38,
+ * and the commerce never comes across at all (docs/SCOPE.md) — so what is left
+ * is the map, and it is short enough to read in one sitting.
+ *
+ * Two things changed on the way in that are worth naming.
+ *
+ * **The data source.** The original took `events: MapEvent[]` — every
+ * published event, fetched once, held in memory. That is the unbounded pattern
+ * the Catalog API exists to replace, and it is the reason the map got slower
+ * every month whether or not anybody panned it. Here the map asks for what is
+ * in view and nothing else (`useViewportListings`).
+ *
+ * **The pin.** The original built an HTML string with `map-leaflet-pin` and
+ * `pin-ripple` class names in it, then never used it — the map had already
+ * moved to Google and drew a plain `SymbolPath.CIRCLE` instead, so the pin the
+ * author previewed was not the pin the map drew. `pinMarker.ts` draws one pin
+ * and both surfaces use it.
+ */
+
+/** Kathmandu, and enough of the valley to have something on screen. */
+const OPENING_CENTRE = { lat: 27.7172, lng: 85.324 }
+const OPENING_ZOOM = 12
+
+type Props = {
+  /** Where a popup's "See the listing" goes. */
+  onOpen: (slug: string) => void
+}
+
+export function NepalMap({ onOpen }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const overlayRef = useRef<google.maps.OverlayView | null>(null)
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map())
+
+  const [ready, setReady] = useState(false)
+  const [unavailable, setUnavailable] = useState<string | null>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [viewport, setViewport] = useState<Bounds | null>(null)
+  const [selected, setSelected] = useState<{ pin: MapPin; x: number; y: number } | null>(null)
+
+  const { pins, loading, error, wide } = useViewportListings(viewport)
+
+  /**
+   * Pins are kept across pans, so what is held and what is on screen are two
+   * different numbers. The status line means the second one.
+   */
+  const inView = viewport ? pins.filter((pin) => within(viewport, pin)).length : 0
+
+  // ── Build the map, once ────────────────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+
+    loadGoogleMaps().then((maps) => {
+      if (cancelled || !containerRef.current || mapRef.current) return
+
+      const map = new maps.Map(containerRef.current, {
+        center: OPENING_CENTRE,
+        zoom: OPENING_ZOOM,
+        mapTypeControl: false,
+        streetViewControl: false,
+        // Ours is a CSS class, not the native API. The native one puts the map
+        // in the browser's fullscreen layer, where a portalled modal — the
+        // listing sheet, an auth prompt — renders *behind* it and looks like
+        // the app hung. The class keeps everything in one stacking context.
+        fullscreenControl: false,
+        // Google's own POI pins swallow the click meant for the map.
+        clickableIcons: false,
+        /**
+         * The scroll trap. `cooperative` means a one-finger drag scrolls the
+         * page and a wheel scroll needs Ctrl — so a full-width map in the
+         * middle of a phone screen cannot capture the gesture that was meant
+         * to scroll past it. This is the behaviour WaahTickets built by hand
+         * and then set `gestureHandling: 'auto'`, disabling it.
+         */
+        gestureHandling: 'cooperative',
+      })
+      mapRef.current = map
+
+      // A projection, so a pin's popup can be positioned over it. An empty
+      // OverlayView is the documented way to get one; nothing is drawn.
+      const overlay = new maps.OverlayView()
+      overlay.onAdd = () => {}
+      overlay.draw = () => {}
+      overlay.onRemove = () => {}
+      overlay.setMap(map)
+      overlayRef.current = overlay
+
+      // `idle` rather than `bounds_changed`: the latter fires continuously
+      // through a drag, and every frame of a pan would be a fetch decision.
+      map.addListener('idle', () => {
+        const bounds = map.getBounds()
+        if (!bounds) return
+        const ne = bounds.getNorthEast()
+        const sw = bounds.getSouthWest()
+        setViewport({
+          north: ne.lat(), east: ne.lng(), south: sw.lat(), west: sw.lng(),
+        })
+      })
+      // A drag is the gesture that means "show me somewhere else"; a popup
+      // anchored to a pin that is now off screen is just a floating card.
+      map.addListener('dragstart', () => setSelected(null))
+      map.addListener('click', () => setSelected(null))
+
+      setReady(true)
+      setUnavailable(null)
+    }).catch((cause: unknown) => {
+      if (cancelled) return
+      setUnavailable(cause instanceof MapsUnavailableError && cause.reason === 'no_key'
+        ? 'This build has no map key, so the map cannot be drawn.'
+        : 'The map could not be loaded.')
+    })
+
+    return () => { cancelled = true }
+  }, [])
+
+  // ── Fullscreen is a class on the body, and Escape leaves it ────────────────
+  useEffect(() => {
+    document.body.classList.toggle('map-is-fullscreen', fullscreen)
+    // The container changed size underneath the SDK, which only re-reads it on
+    // a resize event.
+    const timer = setTimeout(() => {
+      if (mapRef.current) google.maps.event.trigger(mapRef.current, 'resize')
+    }, 80)
+    return () => {
+      clearTimeout(timer)
+      document.body.classList.remove('map-is-fullscreen')
+    }
+  }, [fullscreen])
+
+  useEffect(() => {
+    if (!fullscreen && !selected) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      // Innermost first: Escape closes the popup, and only then the fullscreen.
+      if (selected) setSelected(null)
+      else setFullscreen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen, selected])
+
+  /** Where a pin sits in container pixels, or null if it is not on screen. */
+  const positionOf = useCallback((pin: MapPin) => {
+    const projection = overlayRef.current?.getProjection()
+    if (!projection) return null
+    const point = projection.fromLatLngToContainerPixel(
+      new google.maps.LatLng(pin.lat, pin.lng),
+    )
+    return point ? { x: point.x, y: point.y } : null
+  }, [])
+
+  // ── Draw the pins ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+
+    const live = markersRef.current
+    const wanted = new Set(pins.map((pin) => pin.id))
+
+    // Only what left the set is torn down. Rebuilding every marker on every
+    // pan is what makes a map flicker, and it closes the popup mid-read.
+    for (const [id, marker] of live) {
+      if (!wanted.has(id)) {
+        marker.setMap(null)
+        live.delete(id)
+      }
+    }
+
+    for (const pin of pins) {
+      if (live.has(pin.id)) continue
+      const marker = new google.maps.Marker({
+        map,
+        position: { lat: pin.lat, lng: pin.lng },
+        title: pin.popup.title,
+        icon: {
+          url: pinDataUri(pin.pin),
+          scaledSize: new google.maps.Size(PIN_SIZE, PIN_SIZE),
+          // The teardrop's point is the bottom-centre of the box, and that is
+          // the part that means "here".
+          anchor: new google.maps.Point(PIN_SIZE / 2, PIN_SIZE),
+        },
+      })
+      marker.addListener('click', () => {
+        const at = positionOf(pin)
+        if (at) setSelected({ pin, ...at })
+      })
+      live.set(pin.id, marker)
+    }
+  }, [pins, ready, positionOf])
+
+  // Everything goes when the component does; the SDK holds its own references
+  // and a marker left with a map is a leak that survives navigation.
+  useEffect(() => () => {
+    for (const marker of markersRef.current.values()) marker.setMap(null)
+    markersRef.current.clear()
+    overlayRef.current?.setMap(null)
+  }, [])
+
+  if (unavailable) {
+    return (
+      <Alert tone="warning" title="The map is not available">
+        {unavailable} Everything on it is also in <a href="/">the listings feed</a>.
+      </Alert>
+    )
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className={`nepal-map${fullscreen ? ' nepal-map--fullscreen' : ''}`}
+    >
+      <div ref={containerRef} className="nepal-map__canvas" role="application" aria-label="Map of listings" />
+
+      {!ready && (
+        <div className="nepal-map__veil"><Spinner /> <span>Loading the map…</span></div>
+      )}
+
+      <div className="nepal-map__controls">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setFullscreen((on) => !on)}
+          aria-pressed={fullscreen}
+        >
+          {fullscreen ? 'Exit full screen' : 'Full screen'}
+        </Button>
+      </div>
+
+      {/* Status, not decoration: a map that is quietly showing a subset is
+          worse than one that says it is. */}
+      <div className="nepal-map__status" role="status" aria-live="polite">
+        {wide && <span className="nepal-map__hint">Zoom in to load listings.</span>}
+        {loading && !wide && <span className="nepal-map__hint">Loading listings…</span>}
+        {error && <span className="nepal-map__hint nepal-map__hint--error">{error}</span>}
+        {!loading && !wide && !error && (
+          <span className="nepal-map__hint">
+            {inView === 0
+              ? 'Nothing listed in this area yet.'
+              : `${inView} listing${inView === 1 ? '' : 's'} in view`}
+          </span>
+        )}
+      </div>
+
+      {selected && (
+        <div
+          className="nepal-map__popup"
+          style={{ left: selected.x, top: selected.y }}
+        >
+          {/* The author's configuration, not the default — `parsePopupConfig`
+              falls back to the default for a null, so the customisation the
+              wizard previewed (#32) is what the public map draws. */}
+          <ListingPopup
+            listing={selected.pin.popup}
+            config={parsePopupConfig(selected.pin.popupConfig)}
+            onOpen={onOpen}
+          />
+          <button
+            type="button"
+            className="nepal-map__popup-close"
+            onClick={() => setSelected(null)}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

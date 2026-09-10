@@ -56,6 +56,11 @@ const LISTING_SUMMARY_COLUMNS = `
   l.id, l.slug, l.title, l.summary, l.listing_type, l.source,
   l.starts_at, l.ends_at, l.is_all_day, l.timezone,
   l.cover_image_url, l.external_url, l.is_featured,
+  -- The map draws popups straight from a feed row (#36), so the author's
+  -- customisation (#32) has to travel with the summary. Leaving it to the
+  -- detail payload would mean the public map silently ignoring what the wizard
+  -- previewed — the exact drift #32 was written to end.
+  l.map_popup_config,
   l.offer_url, l.offer_provider, l.offer_price_from_paisa,
   l.offer_currency, l.offer_sold_out, l.offer_checked_at,
   COALESCE(l.location_lat, v.latitude)  AS latitude,
