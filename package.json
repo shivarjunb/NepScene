@@ -21,6 +21,7 @@
     "db:verify": "node scripts/verify-catalogue.mjs",
     "db:volume": "node scripts/seed-volume.mjs --count 10000",
     "db:import": "node scripts/import-waahtickets.mjs",
+    "db:admin": "node scripts/create-admin.mjs",
     "test:e2e": "playwright test",
     "brand": "node scripts/generate-brand-assets.mjs",
     "ci:guards": "node scripts/check-migrations.mjs && node scripts/check-scope.mjs && node scripts/check-secrets.mjs",
