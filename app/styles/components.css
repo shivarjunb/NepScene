@@ -366,29 +366,44 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   line-height: var(--leading-normal);
 }
 
+/*
+ * The hero's frame around the map core (#36). Everything inside it — canvas,
+ * controls, popup — is `.nepal-map` in map.css; what belongs here is the
+ * height the hero wants and the two things the hero's own layout would
+ * otherwise break.
+ *
+ * No `backdrop-filter`, which is what the placeholder that used to sit here
+ * had: it would make this element the containing block for `position: fixed`
+ * descendants, and the map's fullscreen is exactly that. The map would have
+ * been clipped into this box instead of covering the viewport.
+ */
 .hero__map {
-  display: grid;
-  gap: var(--space-3);
-  place-items: center;
-  text-align: center;
-  min-height: 12rem;
   margin-top: var(--space-5);
-  padding: var(--space-9);
-  border: 1px dashed var(--on-dark-line);
-  border-radius: var(--radius-2xl);
-  background: var(--on-dark-veil);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--on-dark-muted);
-  font-size: var(--text-sm);
 }
 
-.hero__map-label {
-  font-weight: var(--weight-black);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: var(--text-2xs);
-  opacity: 0.8;
+/*
+ * Shorter than the /map page's map, and only while it is in the hero: the
+ * hero is an entry point, and the category rows underneath it have to be
+ * reachable without scrolling to look for them.
+ *
+ * The `:not()` matters. Without it this rule is more specific than
+ * `.nepal-map--fullscreen`, so going fullscreen from the hero would keep the
+ * hero's height and draw a 22rem map pinned to the top of the viewport.
+ */
+.hero__map .nepal-map:not(.nepal-map--fullscreen) {
+  height: clamp(15rem, 34vh, 22rem);
+  border-color: var(--on-dark-line);
+}
+
+/*
+ * `.hero > *` gives every hero child `z-index: var(--z-raised)`, which makes
+ * this frame a stacking context — and a stacking context traps the fullscreen
+ * map's `--z-modal` inside it, painting a "fullscreen" map underneath the
+ * header. The map already puts this class on the body while it is fullscreen,
+ * so the frame is lifted for exactly as long as it needs to be.
+ */
+body.map-is-fullscreen .hero__map {
+  z-index: var(--z-modal);
 }
 
 /* ── Category entry points ─────────────────────────────────────────────────── */

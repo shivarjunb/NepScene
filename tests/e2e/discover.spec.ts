@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { serveMapCatalog, stubMapsSdk } from './mapStub'
 
 /**
  * #41 — the discovery feed.
@@ -88,6 +89,58 @@ test('the homepage renders the hero and four populated rows', async ({ page }) =
   // Populated, not merely present.
   const rails = page.locator('.rail__track')
   expect(await rails.count()).toBeGreaterThanOrEqual(4)
+})
+
+/*
+ * The hero slot. It held a labelled placeholder until the map core landed
+ * (#36), so what these two settle is that the real map is mounted in it and
+ * that the hero's own layout does not break the map — the frame around it is
+ * the one place `.nepal-map` is styled by anything other than map.css.
+ */
+test('the hero mounts the real map, and it loads by viewport', async ({ page }) => {
+  await stubMapsSdk(page)
+  const catalog = await serveMapCatalog(page)
+  await serveCatalogue(page, FULL)
+  await page.goto('/')
+
+  await expect(page.locator('.hero .nepal-map')).toBeVisible()
+  await expect(page.getByText(/2 listings in view/)).toBeVisible()
+
+  // Bounded, exactly as on /map. A hero map that fell back to the unbounded
+  // feed would put the pattern the Catalog API replaced on the busiest page.
+  expect(catalog.requested()).toHaveLength(1)
+  expect(catalog.requested()[0]).toMatch(/^[\d.-]+,[\d.-]+,[\d.-]+,[\d.-]+$/)
+})
+
+test('full screen from the hero covers the header instead of painting under it', async ({ page }) => {
+  await stubMapsSdk(page)
+  await serveMapCatalog(page)
+  await serveCatalogue(page, FULL)
+  await page.goto('/')
+  await expect(page.locator('.hero .nepal-map')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Full screen' }).click()
+  await expect(page.locator('.nepal-map--fullscreen')).toBeVisible()
+
+  // The hero shortens the map, and that rule is more specific than the
+  // fullscreen one unless it excludes it — which reads as a 22rem map pinned
+  // to the top of an otherwise empty viewport.
+  const height = (await page.locator('.nepal-map').boundingBox())!.height
+  expect(height).toBe(page.viewportSize()!.height)
+
+  /*
+   * `.hero > *` gives the frame a z-index, which makes it a stacking context,
+   * which caps everything inside it at the hero's level — under the sticky
+   * header. Nothing about the map's own CSS shows that, and it is invisible
+   * on /map where the frame does not exist, so it is asked here as the
+   * question a reader would ask: is the header covered?
+   */
+  const covered = await page.locator('.site-header').evaluate((header) => {
+    const box = header.getBoundingClientRect()
+    const at = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+    return Boolean(at?.closest('.nepal-map'))
+  })
+  expect(covered).toBe(true)
 })
 
 test('rows select by rule — the weekend row holds only Friday and Saturday', async ({ page }) => {
