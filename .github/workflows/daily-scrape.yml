@@ -1,0 +1,43 @@
+name: Daily scrapes
+
+on:
+  schedule:
+    # 00:15 UTC = 06:00 Asia/Kathmandu.
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-scrapes
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ticketsanjal-scraper/package-lock.json
+      - name: Install scraper dependencies
+        run: npm ci --prefix ticketsanjal-scraper
+      - name: Install Chromium and Linux dependencies
+        working-directory: ticketsanjal-scraper
+        run: npx playwright install --with-deps chromium
+      - name: Test daily runner
+        run: node --test scripts/tests/scrape-all.test.mjs
+      - name: Run all public scrapers
+        run: npm run scrape:all
+      - name: Save results and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: daily-scrapes-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scrape-output/
+          retention-days: 30
+          if-no-files-found: warn

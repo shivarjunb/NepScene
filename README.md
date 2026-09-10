@@ -140,3 +140,30 @@ test plan before it is picked up.
 
 Milestones run M0 through M5. The full backlog — 8 epics, 43 features and 1 spike —
 is indexed in [docs/BACKLOG.md](docs/BACKLOG.md).
+# Daily scrapes
+
+The `Daily scrapes` GitHub Actions workflow runs Ticket Sanjal, Khalti, Kata Jaam,
+and Taragaon every day at **06:00 Nepal time** (00:15 UTC). It uses a GitHub-hosted
+Ubuntu runner, so your computer can be off. The schedule becomes active when
+`.github/workflows/daily-scrape.yml` is on the repository's default branch.
+GitHub may delay scheduled runs; this is not an exact-time guarantee.
+
+Use **Actions → Daily scrapes → Run workflow** for a manual run. Download the
+`daily-scrapes-…` artifact from the run page for JSON snapshots, per-source logs,
+and `summary.json`. Artifacts are retained for 30 days, including partial results
+when a source fails. Each source has a 15-minute timeout and the remaining sources
+still run after a failure; any failure marks the workflow unsuccessful.
+
+These jobs save public scrape results. Kata Jaam and Taragaon run with
+`--scrape-only`; database imports and publication are separate operations.
+WaahTickets is a database importer, so it is not included in this public scraping job.
+
+To run the same batch locally:
+
+```bash
+npm ci --prefix ticketsanjal-scraper
+(cd ticketsanjal-scraper && npx playwright install --with-deps chromium)
+npm run scrape:all
+```
+
+Local results are saved under `scrape-output/<timestamp>/` and ignored by Git.

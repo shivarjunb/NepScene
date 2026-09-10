@@ -18,3 +18,10 @@ tsc.log
 
 # Agent git worktrees — a second checkout of this repo, never a commit of it.
 .claude/worktrees/
+
+.katajaam-*
+.taragaon-*
+.khalti-scrape
+--apply
+ticketsanjal-scraper/ticketsanjal-output
+scrape-output/
