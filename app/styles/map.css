@@ -127,3 +127,146 @@ body.map-is-fullscreen {
   from { opacity: 0; transform: translate(-50%, calc(-100% - var(--space-5))); }
   to   { opacity: 1; transform: translate(-50%, calc(-100% - var(--space-9))); }
 }
+
+/* ── The venue stack (#37) ───────────────────────────────────────────────────
+
+   The picker behind a grouped pin. It shares the popup's anchor and its
+   overlay surface, so opening a stack and opening a card feel like one
+   gesture landing in the same place rather than two different surfaces. */
+
+.venue-stack {
+  display: flex;
+  flex-direction: column;
+  width: min(20rem, 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.venue-stack__head {
+  position: relative;
+  padding: var(--space-5) var(--space-8) var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.venue-stack__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-extrabold);
+  line-height: var(--leading-snug);
+}
+
+.venue-stack__count {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+}
+
+.venue-stack__close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.venue-stack__close:hover {
+  color: var(--text-primary);
+}
+
+.venue-stack__list {
+  /* A venue with twenty listings must not grow a card taller than the map it
+     is drawn over. Ten rows fit; the rest scroll. */
+  max-height: 17rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.venue-stack__row {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.venue-stack__list li:last-child .venue-stack__row {
+  border-bottom: 0;
+}
+
+.venue-stack__row:hover,
+.venue-stack__row:focus-visible {
+  background: var(--surface-sunken);
+}
+
+/* The scannable column: fixed width, so ten dates line up rather than each
+   starting wherever the previous title ended. */
+.venue-stack__chip {
+  flex: 0 0 auto;
+  width: 3.25rem;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--chip-ground);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.venue-stack__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.venue-stack__name {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.venue-stack__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+}
+
+.venue-stack__live {
+  color: var(--success);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The category's own colour, as a dot rather than as text — coloured text at
+   this size fails contrast against the overlay for half the twelve. */
+.venue-stack__category::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-inline-end: 0.4em;
+  border-radius: var(--radius-full);
+  background: var(--pin-color, var(--accent));
+  vertical-align: baseline;
+}

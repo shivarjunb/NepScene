@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadGoogleMaps, MapsUnavailableError } from '../lib/googleMaps'
 import { Alert, Button, Spinner } from '../components/primitives'
 import { parsePopupConfig } from '../../api/author/popupConfig'
 import { ListingPopup } from './ListingPopup'
 import { pinDataUri, PIN_SIZE } from './pinMarker'
 import type { MapPin } from './markers'
+import { groupByVenue, type VenueGroup } from './venueGrouping'
+import { VenueStack } from './VenueStack'
 import { within, type Bounds } from './viewport'
 import { useViewportListings } from './useViewportListings'
 
@@ -12,10 +14,11 @@ import { useViewportListings } from './useViewportListings'
  * The public map (#36).
  *
  * Ported from WaahTickets' `NepalMap`, which was 488 lines holding four jobs:
- * the map, venue grouping, a distance ring and the commerce card. Three of
- * those are somebody else's feature here — grouping is #37, distance is #38,
- * and the commerce never comes across at all (docs/SCOPE.md) — so what is left
- * is the map, and it is short enough to read in one sitting.
+ * the map, venue grouping, a distance ring and the commerce card. Two of those
+ * are somebody else's feature here — distance is #38 and the commerce never
+ * comes across at all (docs/SCOPE.md) — and grouping (#37) lives in
+ * `venueGrouping.ts`, which has rules in it and therefore tests, rather than
+ * inside the component's lifecycle. What is left here is the map.
  *
  * Two things changed on the way in that are worth naming.
  *
@@ -52,9 +55,25 @@ export function NepalMap({ onOpen }: Props) {
   const [unavailable, setUnavailable] = useState<string | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [viewport, setViewport] = useState<Bounds | null>(null)
-  const [selected, setSelected] = useState<{ pin: MapPin; x: number; y: number } | null>(null)
+  /**
+   * What is open over the map: one listing's popup, or a venue's stack. Never
+   * both — they occupy the same anchor, and a stack behind a popup is a
+   * card the viewer cannot reach.
+   */
+  const [selected, setSelected] = useState<
+    | { kind: 'listing'; pin: MapPin; x: number; y: number }
+    | { kind: 'stack'; group: VenueGroup; x: number; y: number }
+    | null
+  >(null)
 
   const { pins, loading, error, wide } = useViewportListings(viewport)
+
+  /**
+   * One marker per *place*, not per listing (#37). Six listings at one venue
+   * used to be six pins stacked exactly on top of each other, of which five
+   * were unclickable and none of them said so.
+   */
+  const groups = useMemo(() => groupByVenue(pins), [pins])
 
   /**
    * Pins are kept across pans, so what is held and what is on screen are two
@@ -155,12 +174,12 @@ export function NepalMap({ onOpen }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [fullscreen, selected])
 
-  /** Where a pin sits in container pixels, or null if it is not on screen. */
-  const positionOf = useCallback((pin: MapPin) => {
+  /** Where a point sits in container pixels, or null if it is not on screen. */
+  const positionOf = useCallback((at: { lat: number; lng: number }) => {
     const projection = overlayRef.current?.getProjection()
     if (!projection) return null
     const point = projection.fromLatLngToContainerPixel(
-      new google.maps.LatLng(pin.lat, pin.lng),
+      new google.maps.LatLng(at.lat, at.lng),
     )
     return point ? { x: point.x, y: point.y } : null
   }, [])
@@ -171,7 +190,10 @@ export function NepalMap({ onOpen }: Props) {
     if (!map || !ready) return
 
     const live = markersRef.current
-    const wanted = new Set(pins.map((pin) => pin.id))
+    // Keyed on the group *and* its count: a venue that gains a listing while
+    // the map is open has to redraw, because its bubble now says a different
+    // number. Keying on the venue alone would leave a stale count on screen.
+    const wanted = new Map(groups.map((group) => [`${group.key}:${group.count}`, group]))
 
     // Only what left the set is torn down. Rebuilding every marker on every
     // pan is what makes a map flicker, and it closes the popup mid-read.
@@ -182,27 +204,42 @@ export function NepalMap({ onOpen }: Props) {
       }
     }
 
-    for (const pin of pins) {
-      if (live.has(pin.id)) continue
+    for (const [id, group] of wanted) {
+      if (live.has(id)) continue
       const marker = new google.maps.Marker({
         map,
-        position: { lat: pin.lat, lng: pin.lng },
-        title: pin.popup.title,
+        position: { lat: group.lat, lng: group.lng },
+        // What a screen reader and a hover tooltip get. A grouped pin says
+        // how many, because "Jazz at the House" would be a lie about the
+        // other five.
+        title: group.count > 1
+          ? `${group.primary.popup.venue ?? group.primary.popup.title} — ${group.count} listings`
+          : group.primary.popup.title,
         icon: {
-          url: pinDataUri(pin.pin),
+          url: pinDataUri(group.primary.pin, group.count),
           scaledSize: new google.maps.Size(PIN_SIZE, PIN_SIZE),
           // The teardrop's point is the bottom-centre of the box, and that is
           // the part that means "here".
           anchor: new google.maps.Point(PIN_SIZE / 2, PIN_SIZE),
         },
+        // A busier place draws in front of a quieter one where they overlap,
+        // so the pin carrying six listings is not hidden behind one carrying
+        // one.
+        zIndex: group.count,
       })
       marker.addListener('click', () => {
-        const at = positionOf(pin)
-        if (at) setSelected({ pin, ...at })
+        const at = positionOf(group)
+        if (!at) return
+        // One listing opens its card directly. Making a single listing go
+        // through a list of one would be a step that never told anybody
+        // anything.
+        setSelected(group.count === 1
+          ? { kind: 'listing', pin: group.primary, ...at }
+          : { kind: 'stack', group, ...at })
       })
-      live.set(pin.id, marker)
+      live.set(id, marker)
     }
-  }, [pins, ready, positionOf])
+  }, [groups, ready, positionOf])
 
   // Everything goes when the component does; the SDK holds its own references
   // and a marker left with a map is a leak that survives navigation.
@@ -262,22 +299,33 @@ export function NepalMap({ onOpen }: Props) {
           className="nepal-map__popup"
           style={{ left: selected.x, top: selected.y }}
         >
-          {/* The author's configuration, not the default — `parsePopupConfig`
-              falls back to the default for a null, so the customisation the
-              wizard previewed (#32) is what the public map draws. */}
-          <ListingPopup
-            listing={selected.pin.popup}
-            config={parsePopupConfig(selected.pin.popupConfig)}
-            onOpen={onOpen}
-          />
-          <button
-            type="button"
-            className="nepal-map__popup-close"
-            onClick={() => setSelected(null)}
-            aria-label="Close"
-          >
-            ×
-          </button>
+          {selected.kind === 'stack' ? (
+            <VenueStack
+              group={selected.group}
+              venueName={selected.group.primary.popup.venue}
+              onSelect={(pin) => setSelected({ kind: 'listing', pin, x: selected.x, y: selected.y })}
+              onClose={() => setSelected(null)}
+            />
+          ) : (
+            <>
+              {/* The author's configuration, not the default — `parsePopupConfig`
+                  falls back to the default for a null, so the customisation the
+                  wizard previewed (#32) is what the public map draws. */}
+              <ListingPopup
+                listing={selected.pin.popup}
+                config={parsePopupConfig(selected.pin.popupConfig)}
+                onOpen={onOpen}
+              />
+              <button
+                type="button"
+                className="nepal-map__popup-close"
+                onClick={() => setSelected(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -48,14 +48,45 @@ const listing = (
   ...over,
 })
 
+const venue = (id: string, slug: string, name: string, area: string, city: string) =>
+  ({ id, slug, name, area, city })
+
+const PURPLE_HAZE = venue('v_purple', 'purple-haze', 'Purple Haze', 'Thamel', 'Kathmandu')
+const PATAN = venue('v_patan', 'patan-durbar', 'Patan Durbar Square', 'Mangal Bazaar', 'Lalitpur')
+const LAKESIDE = venue('v_lakeside', 'lakeside', 'Lakeside', 'Baidam', 'Pokhara')
+
+/**
+ * Two listings at Purple Haze and one at Patan — so Kathmandu is three
+ * listings and *two* pins, which is what makes the grouping (#37) visible
+ * end to end rather than only in a unit test.
+ */
 export const KATHMANDU_LISTINGS = [
-  listing({ id: 'rock-night', title: 'Rock Night', latitude: THAMEL.lat, longitude: THAMEL.lng }),
-  listing({ id: 'art-week', title: 'Art Week', latitude: 27.70, longitude: 85.32 }),
+  listing({
+    id: 'rock-night', title: 'Rock Night', venue: PURPLE_HAZE,
+    latitude: THAMEL.lat, longitude: THAMEL.lng,
+    starts_at: '2027-03-14T13:15:00.000Z',
+  }),
+  listing({
+    id: 'late-set', title: 'Late Set', venue: PURPLE_HAZE,
+    latitude: THAMEL.lat, longitude: THAMEL.lng,
+    // Later than Rock Night, so the tuned order has something to order.
+    starts_at: '2027-03-21T15:00:00.000Z',
+  }),
+  listing({
+    id: 'art-week', title: 'Art Week', venue: PATAN,
+    latitude: 27.70, longitude: 85.32,
+  }),
 ]
 
 export const POKHARA_LISTINGS = [
-  listing({ id: 'lakeside-live', title: 'Lakeside Live', latitude: POKHARA.lat, longitude: POKHARA.lng }),
+  listing({
+    id: 'lakeside-live', title: 'Lakeside Live', venue: LAKESIDE,
+    latitude: POKHARA.lat, longitude: POKHARA.lng,
+  }),
 ]
+
+/** What a grouped pin's marker is titled, and therefore what a spec clicks. */
+export const PURPLE_HAZE_PIN = 'Purple Haze, Thamel — 2 listings'
 
 /**
  * Serves `/api/catalog/search` from whichever region the bbox covers, and
@@ -137,7 +168,14 @@ export async function stubMapsSdk(page: Page) {
         markerListeners.set(this, [...(markerListeners.get(this) ?? []), handler])
         return { remove: () => {} }
       }
-      setMap() {}
+      setMap(map: unknown) {
+        // The real SDK drops a marker off the map when it is handed null, and
+        // the component relies on that to tear one down. A stub that kept it
+        // would let a stale count survive a redraw and nothing would notice.
+        if (map !== null) return
+        const at = markers.indexOf(this)
+        if (at >= 0) markers.splice(at, 1)
+      }
       getPosition() {
         return new FakeLatLng(this.options.position.lat, this.options.position.lng)
       }

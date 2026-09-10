@@ -41,21 +41,73 @@ const GLYPHS: Record<string, string> = {
 
 export const PIN_SIZE = 40
 
+/** The teardrop, whose point is at (20, 37) and whose body is centred on (20, 14). */
+const TEARDROP = 'M20 3c-6.1 0-11 4.9-11 11 0 8 11 23 11 23s11-15 11-23c0-6.1-4.9-11-11-11z'
+
 /**
  * A teardrop in the category's colour with its glyph knocked out in white.
  *
  * The white outline is not decoration: a pin is drawn over map tiles whose
  * colour nobody controls, and every one of the twelve category colours is
  * illegible against *some* terrain without it.
+ *
+ * `count` is how many listings the pin stands for (#37). Above one it grows a
+ * stacked shadow behind it and a count bubble in front — both drawn inside the
+ * same 40×40 box, so a grouped pin and a single one share an anchor and the
+ * map does not shift the point that means "here" depending on how busy the
+ * venue is.
  */
-export function pinSvg(pin: PinAppearance): string {
+export function pinSvg(pin: PinAppearance, count = 1): string {
   const glyph = GLYPHS[pin.icon] ?? GLYPHS.MapPin
+  const grouped = count > 1
+
+  // Drawn first so it sits behind. Offset up and right, which reads as depth
+  // in a top-down view; offsetting downward would read as a second pin at a
+  // different place.
+  const stack = grouped
+    ? `<path d="${TEARDROP}" transform="translate(3 -3)" fill="${pin.color}"`
+      + ' stroke="#ffffff" stroke-width="2.5" opacity="0.55"/>'
+    : ''
+
+  const bubble = grouped ? countBubble(countLabel(count)) : ''
+
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 40 40">`
-    + `<path d="M20 3c-6.1 0-11 4.9-11 11 0 8 11 23 11 23s11-15 11-23c0-6.1-4.9-11-11-11z"`
+    + stack
+    + `<path d="${TEARDROP}"`
     + ` fill="${pin.color}" stroke="#ffffff" stroke-width="2.5"/>`
     + `<g transform="translate(11 5) scale(0.75)" fill="none" stroke="#ffffff"`
     + ` stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`
+    + bubble
     + '</svg>'
+}
+
+/**
+ * Past 99 the bubble stops being a number and becomes a shape. Kept in step
+ * with `bubbleLabel` in venueGrouping.ts, which is the same decision made for
+ * the DOM; a test asserts they agree.
+ */
+export function countLabel(count: number): string {
+  return count > 99 ? '99+' : String(count)
+}
+
+/**
+ * The bubble, in the top-right of the box.
+ *
+ * Slate rather than the category colour: the bubble is a count, not a
+ * category, and tinting it would make two grouped pins of different
+ * categories look like they carried different *kinds* of number. The white
+ * ring separates it from the teardrop it overlaps.
+ */
+function countBubble(label: string): string {
+  // "99+" needs a wider bubble than "3" and a smaller face to sit in it.
+  const wide = label.length > 2
+  const fontSize = wide ? 8.5 : 10
+  return `<g transform="translate(30.5 8.5)">`
+    + `<circle r="${wide ? 9 : 8}" fill="#0f172a" stroke="#ffffff" stroke-width="2"/>`
+    + `<text x="0" y="0" text-anchor="middle" dominant-baseline="central"`
+    + ` font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"`
+    + ` font-size="${fontSize}" font-weight="700" fill="#ffffff">${label}</text>`
+    + '</g>'
 }
 
 /**
@@ -63,5 +115,5 @@ export function pinSvg(pin: PinAppearance): string {
  * base64: it stays readable in devtools, and the payload is smaller than the
  * 33% base64 adds.
  */
-export const pinDataUri = (pin: PinAppearance): string =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(pin))}`
+export const pinDataUri = (pin: PinAppearance, count = 1): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(pin, count))}`
