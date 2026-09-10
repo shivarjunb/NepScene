@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ApiError, badRequest } from '../lib/http'
-import { hashPassword, randomToken, sha256Hex, verifyPassword } from './password'
+import { MAX_ITERATIONS, hashPassword, randomToken, sha256Hex, verifyPassword } from './password'
 import { permissionsFor } from './roles'
 import { rateLimit } from './rateLimit'
 import { requireAuth, type AuthVariables } from './middleware'
@@ -115,7 +115,14 @@ identityRoutes.post('/login', async (c) => {
 
   // Same error and roughly the same work whether the account exists or not:
   // a different response here enumerates who has an account.
-  const stored = user?.password_hash ?? 'pbkdf2$sha256$210000$AAAAAAAAAAAAAAAAAAAAAA==$AAAA'
+  //
+  // The iteration count has to be MAX_ITERATIONS, not a number typed in here.
+  // A literal above the runtime's ceiling makes this branch — and only this
+  // branch — throw NotSupportedError, so an unknown address answers 500 while
+  // a known one answers 401. That is a louder account oracle than the one the
+  // dummy hash exists to prevent, and it is invisible locally, where workerd
+  // enforces no ceiling at all.
+  const stored = user?.password_hash ?? `pbkdf2$sha256$${MAX_ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA==$AAAA`
   const ok = await verifyPassword(password, stored)
   if (!user || !ok || user.is_active !== 1) {
     throw new ApiError(401, 'invalid_credentials', 'Email or password is wrong')
