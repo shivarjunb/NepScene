@@ -156,14 +156,15 @@ test('full screen is a class on the page, not the browser’s own fullscreen', a
   await expect(page.locator('.nepal-map--fullscreen')).toHaveCount(0)
 })
 
-test('with no map key at all, the page says so and points somewhere useful', async ({ page }) => {
+test('with no map key at all, the page says so and lists what would have been on it', async ({ page }) => {
   // No SDK stub: this is a preview build with no key, which is a real and
-  // supported state (docs/DEVOPS.md > Google Maps keys).
+  // supported state (docs/DEVOPS.md > Google Maps keys). It used to be a dead
+  // end that pointed at the feed; it is the equivalent list now (#40).
   await serveMapCatalog(page)
   await page.goto('/map')
 
   await expect(page.getByText(/map is not available/i)).toBeVisible()
-  await expect(page.getByRole('link', { name: /listings feed/i })).toBeVisible()
+  await expect(page.locator('.map-list__row')).toHaveCount(3)
 })
 
 test('nothing scrolls sideways at 320px, popup included', async ({ page }) => {

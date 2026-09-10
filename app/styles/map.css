@@ -335,3 +335,145 @@ body.map-is-fullscreen {
   background: var(--pin-color, var(--accent));
   vertical-align: baseline;
 }
+
+/* ── The equivalent list (#40) ───────────────────────────────────────────────
+
+   Not a fallback stylesheet: this is a peer surface, and it is what renders
+   when the Maps API is blocked, rate-limited or keyless. It occupies the
+   map's own box so switching does not reflow the page around it. */
+
+.nepal-map--list .nepal-map__list {
+  position: relative;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+.nepal-map--list.nepal-map--fullscreen .nepal-map__list {
+  max-height: 100%;
+}
+
+.map-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-5);
+  list-style: none;
+}
+
+.map-list__venue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.map-list__place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* The category's colour, which is the one thing a pin carried that a text row
+   otherwise loses. Decorative, so it is aria-hidden in the markup. */
+.map-list__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--pin-color, var(--accent));
+}
+
+.map-list__count {
+  color: var(--text-secondary);
+  font-weight: var(--weight-normal);
+}
+
+.map-list__listings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-list__row {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.map-list__row:hover {
+  border-color: var(--border-strong);
+}
+
+.map-list__chip {
+  flex: 0 0 auto;
+  width: 3.25rem;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--chip-ground);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.map-list__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.map-list__title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.map-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+}
+
+.map-list__live {
+  color: var(--success);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.map-list__empty {
+  margin: 0;
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* A control drawn over map tiles has no controlled background behind its ring,
+   so the ring gets a ring: the outline in the accent, a white or midnight halo
+   under it. Without this the focus indicator is invisible over roughly half of
+   Nepal at satellite zoom, in whichever theme. */
+.nepal-map__controls :focus-visible,
+.nepal-map__distance:focus-visible {
+  box-shadow: 0 0 0 4px var(--surface);
+}

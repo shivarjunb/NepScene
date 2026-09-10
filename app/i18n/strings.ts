@@ -62,6 +62,8 @@ export const STRINGS = {
   'map.nearMe': { en: 'Near me', ne: 'मेरो नजिक' },
   'map.locating': { en: 'Finding you…', ne: 'खोज्दै…' },
   'map.centred': { en: 'Centred on you', ne: 'तपाईंमा केन्द्रित' },
+  'map.showList': { en: 'List', ne: 'सूची' },
+  'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },
   'map.denied': {

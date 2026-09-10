@@ -8,7 +8,9 @@ import { meDataUri, ME_SIZE, pinDataUri, PIN_SIZE } from './pinMarker'
 import type { MapPin } from './markers'
 import { groupByVenue, type VenueGroup } from './venueGrouping'
 import { VenueStack } from './VenueStack'
-import { sameBounds, within, type Bounds } from './viewport'
+import { MapList } from './MapList'
+import { useFocusTrap } from '../hooks/useFocusTrap'
+import { padBounds, sameBounds, within, type Bounds } from './viewport'
 import { useViewportListings } from './useViewportListings'
 import type { ResolvedLocation } from './useLocation'
 import { haversineKm, boundingBox } from '../../api/lib/geo'
@@ -43,6 +45,13 @@ const OPENING_CENTRE = { lat: 27.7172, lng: 85.324 }
 const OPENING_ZOOM = 12
 /** Close enough that "near me" means streets rather than districts. */
 const PRECISE_ZOOM = 14
+
+/**
+ * Half the span of the box the list falls back to when there is no map to
+ * take a viewport from (#40). Roughly a city and its outskirts — the same
+ * ground `OPENING_ZOOM` would have shown.
+ */
+const FALLBACK_SPAN = 0.09
 
 /**
  * The distance chips (#38), ported unchanged. 2km is walking, 5km is a short
@@ -87,6 +96,11 @@ export function NepalMap({ onOpen, location }: Props) {
   /** The selected distance chip, in km, or null for "everywhere in view". */
   const [radiusKm, setRadiusKm] = useState<number | null>(null)
   /**
+   * Which surface is showing (#40). The list is not a lesser mode — it is the
+   * equivalent path, and it is what renders when the Maps API does not.
+   */
+  const [view, setView] = useState<'map' | 'list'>('map')
+  /**
    * What is open over the map: one listing's popup, or a venue's stack. Never
    * both — they occupy the same anchor, and a stack behind a popup is a
    * card the viewer cannot reach.
@@ -97,7 +111,24 @@ export function NepalMap({ onOpen, location }: Props) {
     | null
   >(null)
 
-  const { pins: fetched, loading, error, wide } = useViewportListings(viewport)
+  /**
+   * What the query is scoped to.
+   *
+   * Normally the map's own viewport. When the Maps API failed there is no map
+   * to have a viewport, and the list still has to show something — so a box is
+   * drawn around wherever location resolution got to. Same query, same
+   * bounding, same rows: the fallback is not a different data path.
+   */
+  const effectiveViewport = viewport ?? (unavailable
+    ? padBounds({
+        south: (centreRef.current ?? OPENING_CENTRE).lat - FALLBACK_SPAN,
+        north: (centreRef.current ?? OPENING_CENTRE).lat + FALLBACK_SPAN,
+        west: (centreRef.current ?? OPENING_CENTRE).lng - FALLBACK_SPAN,
+        east: (centreRef.current ?? OPENING_CENTRE).lng + FALLBACK_SPAN,
+      }, 0)
+    : null)
+
+  const { pins: fetched, loading, error, wide } = useViewportListings(effectiveViewport)
 
   // Read by the map constructor, which runs once and cannot see later state.
   centreRef.current = location?.centre ?? null
@@ -129,7 +160,22 @@ export function NepalMap({ onOpen, location }: Props) {
    * Pins are kept across pans, so what is held and what is on screen are two
    * different numbers. The status line means the second one.
    */
-  const inView = viewport ? pins.filter((pin) => within(viewport, pin)).length : 0
+  const inView = effectiveViewport
+    ? pins.filter((pin) => within(effectiveViewport, pin)).length
+    : 0
+
+  /**
+   * The list shows what is *on screen*, not everything ever loaded — otherwise
+   * "the list view offers the same results as the map" stops being true the
+   * first time somebody pans, because the map drops pins off its edges and
+   * the list would not.
+   */
+  const visibleGroups = useMemo(
+    () => (effectiveViewport
+      ? groupByVenue(pins.filter((pin) => within(effectiveViewport, pin)))
+      : []),
+    [pins, effectiveViewport],
+  )
 
   // ── Build the map, once ────────────────────────────────────────────────────
   useEffect(() => {
@@ -280,6 +326,20 @@ export function NepalMap({ onOpen, location }: Props) {
     ))
   }, [ready, radiusKm, location?.precise, location?.centre])
 
+  /**
+   * Focus moves into whatever opened over the map, and back to the map when it
+   * closes (#40).
+   *
+   * Without this a keyboard user who opens a popup is still focused on the
+   * control they came from, and a screen reader announces nothing — the card
+   * appears silently, off to one side, for someone who cannot see it appear.
+   * `useFocusTrap` also restores focus on close, which is the half that stops
+   * every dismissal sending them back to the top of the page.
+   */
+  const popupRef = useRef<HTMLDivElement>(null)
+  const closeSelected = useCallback(() => setSelected(null), [])
+  useFocusTrap(popupRef, selected !== null, closeSelected)
+
   /** Where a point sits in container pixels, or null if it is not on screen. */
   const positionOf = useCallback((at: { lat: number; lng: number }) => {
     const projection = overlayRef.current?.getProjection()
@@ -390,26 +450,59 @@ export function NepalMap({ onOpen, location }: Props) {
     overlayRef.current?.setMap(null)
   }, [])
 
-  if (unavailable) {
-    return (
-      <Alert tone="warning" title="The map is not available">
-        {unavailable} Everything on it is also in <a href="/">the listings feed</a>.
-      </Alert>
-    )
-  }
+  /**
+   * The Maps API can be blocked, rate-limited, or absent from a build that has
+   * no key. None of those is a reason to stop being a discovery product, so
+   * the list takes over (#40) — explained, not apologised for, and with the
+   * same listings on it the pins would have carried.
+   */
+  const showList = view === 'list' || unavailable !== null
 
   return (
     <div
       ref={rootRef}
-      className={`nepal-map${fullscreen ? ' nepal-map--fullscreen' : ''}`}
+      className={`nepal-map${fullscreen ? ' nepal-map--fullscreen' : ''}${showList ? ' nepal-map--list' : ''}`}
     >
-      <div ref={containerRef} className="nepal-map__canvas" role="application" aria-label="Map of listings" />
+      {unavailable ? (
+        <Alert tone="warning" title="The map is not available">
+          {unavailable} Everything that would have been on it is listed below.
+        </Alert>
+      ) : (
+        <div ref={containerRef} className="nepal-map__canvas" role="application" aria-label="Map of listings" hidden={view === 'list'} />
+      )}
 
-      {!ready && (
+      {!ready && !unavailable && view === 'map' && (
         <div className="nepal-map__veil"><Spinner /> <span>Loading the map…</span></div>
       )}
 
+      {showList && (
+        <div className="nepal-map__list">
+          <MapList
+            groups={visibleGroups}
+            onOpen={onOpen}
+            emptyLabel={radiusKm !== null
+              ? `Nothing within ${radiusKm} km of you.`
+              : 'Nothing listed in this area yet.'}
+          />
+        </div>
+      )}
+
       <div className="nepal-map__controls">
+        {/* The list is a peer of the map, not a fallback hidden behind a
+            failure — somebody who finds pins hard to work with should be able
+            to choose the list on a working map, and the criterion is that
+            both offer the same filters and the same results. Hidden when the
+            Maps API failed, because then there is nothing to switch back to. */}
+        {!unavailable && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setView((current) => (current === 'map' ? 'list' : 'map'))}
+            aria-pressed={view === 'list'}
+          >
+            {view === 'list' ? t('map.showMap') : t('map.showList')}
+          </Button>
+        )}
         {location && (
           <Button
             type="button"
@@ -488,8 +581,17 @@ export function NepalMap({ onOpen, location }: Props) {
 
       {selected && (
         <div
+          ref={popupRef}
           className="nepal-map__popup"
           style={{ left: selected.x, top: selected.y }}
+          // A card that opens over the map and traps focus is a dialog, and
+          // saying so is what makes a screen reader announce it on arrival
+          // rather than leaving the reader to discover it.
+          role="dialog"
+          aria-modal="true"
+          aria-label={selected.kind === 'stack'
+            ? `Listings at ${selected.group.primary.popup.venue ?? 'this place'}`
+            : selected.pin.popup.title}
         >
           {selected.kind === 'stack' ? (
             <VenueStack
