@@ -29,6 +29,23 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 const scan = (page: Page) => new AxeBuilder({ page }).withTags(TAGS).analyze()
 
 /**
+ * The page has actually painted its content.
+ *
+ * Waiting for `main` is not enough: the shell is server-rendered, so `main`
+ * exists before the SPA has rendered anything into it — and an axe scan of an
+ * empty box passes, as does a heading count of zero. Waiting for the `h1` is
+ * the cheapest thing that means "this page has content", and it is what every
+ * page here has.
+ *
+ * `networkidle` would be the obvious alternative and is wrong: the map page
+ * issues tile requests that never settle.
+ */
+const settled = async (page: Page) => {
+  await expect(page.locator('main')).toBeVisible()
+  await expect(page.locator('main h1').first()).toBeVisible()
+}
+
+/**
  * Every page type, named by what makes it structurally different from the
  * others rather than by its URL — a second listing page would find nothing a
  * first one did not.
@@ -43,7 +60,9 @@ const PAGES: [name: string, path: string][] = [
   ['a listing page', '/listings/kathmandu-rock-night'],
   ['a venue page', '/venues/purple-haze-rock-bar'],
   ['an organizer page', '/organizers/himalayan-sound'],
-  ['an artist page', '/artists/1974-ad'],
+  // Kutumba plays twice in the demo seed, which is what clears
+  // ARTIST_PAGE_MINIMUM. An artist below it deliberately has no page (#44).
+  ['an artist page', '/artists/kutumba'],
   ['the accessibility statement', '/accessibility'],
   ['a page that does not exist', '/nothing-is-here'],
   ['the design system', '/design-system'],
@@ -54,11 +73,7 @@ for (const [name, path] of PAGES) {
     test(`${name} passes axe in the ${theme} theme`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: theme })
       await page.goto(at(path))
-      // The shell is server-rendered, so `main` exists before hydration. Waiting
-      // for it rather than for `networkidle` means the scan runs against a page
-      // that has actually painted without waiting on the map's tile requests,
-      // which never settle.
-      await expect(page.locator('main')).toBeVisible()
+      await settled(page)
 
       const results = await scan(page)
       expect(
@@ -76,7 +91,7 @@ for (const [name, path] of PAGES) {
 test('no page carries a serious or critical issue under any rule', async ({ page }) => {
   for (const [name, path] of PAGES) {
     await page.goto(at(path))
-    await expect(page.locator('main')).toBeVisible()
+    await settled(page)
 
     const results = await new AxeBuilder({ page }).analyze()
     const bad = results.violations.filter(
@@ -96,7 +111,7 @@ test('no page carries a serious or critical issue under any rule', async ({ page
 test.describe('focus on navigation', () => {
   test('moves to the new page, not back to the top of the document', async ({ page }) => {
     await page.goto(at('/'))
-    await expect(page.locator('main')).toBeVisible()
+    await settled(page)
 
     await page.getByRole('link', { name: 'Venues', exact: true }).first().click()
     await expect(page).toHaveURL(/\/venues$/)
@@ -128,7 +143,7 @@ test.describe('focus on navigation', () => {
 test('every page has exactly one h1 and skips no heading level', async ({ page }) => {
   for (const [name, path] of PAGES) {
     await page.goto(at(path))
-    await expect(page.locator('main')).toBeVisible()
+    await settled(page)
 
     const levels = await page.locator('main :is(h1,h2,h3,h4,h5,h6)').evaluateAll(
       (nodes) => nodes.map((node) => Number(node.tagName[1])),

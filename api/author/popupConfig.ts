@@ -1,3 +1,4 @@
+import { swallowed } from '../lib/observability'
 /**
  * What a listing's map popup shows, and in what order (#32).
  *
@@ -73,7 +74,12 @@ const isFieldKey = (value: unknown): value is PopupFieldKey =>
  */
 export function parsePopupConfig(raw: unknown): PopupConfig {
   const candidate = typeof raw === 'string'
-    ? (() => { try { return JSON.parse(raw) } catch { return null } })()
+    ? (() => {
+        try { return JSON.parse(raw) } catch (cause) {
+          swallowed('popup_config_parse', cause)
+          return null
+        }
+      })()
     : raw
 
   const entries = candidate && typeof candidate === 'object' && Array.isArray((candidate as { fields?: unknown }).fields)

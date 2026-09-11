@@ -21,6 +21,15 @@ async function probe(run: () => Promise<string | undefined>): Promise<Probe> {
     const detail = await withTimeout(run(), PROBE_TIMEOUT_MS)
     return { ok: true, ms: Date.now() - started, ...(detail ? { detail } : {}) }
   } catch (err) {
+    // swallow-guard:allow — the caught error *is* this function's output. A
+    // probe's whole job is to turn a failure into a reported state, and the
+    // detail below is what /api/health answers with.
+    //
+    // Worth naming, because this is one character away from the WaahTickets
+    // shape the guard exists for: F2 put a failure into a response header
+    // nobody read. The difference is that something reads this one — the
+    // deploy smoke test and the uptime check both fail on `ok: false` — and
+    // if that ever stopped being true, this would be a silent catch again.
     return {
       ok: false,
       ms: Date.now() - started,

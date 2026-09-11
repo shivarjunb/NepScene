@@ -37,6 +37,13 @@ jobs:
       - name: Committed credential guard
         run: node scripts/check-secrets.mjs
 
+      # An error caught and not reported is worse than one that crashes: it
+      # removes the signal without removing the problem (#50). Fails rather
+      # than warns — a silent catch is either a bug or a one-line allow with a
+      # reason, and both belong to the author.
+      - name: Silent catch guard
+        run: node scripts/check-silent-catches.mjs
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22

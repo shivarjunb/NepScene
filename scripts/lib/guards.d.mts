@@ -42,3 +42,12 @@ export declare function schemaDrift(
   pending: { name: string; sql: string }[],
   live: LiveSchema,
 ): DriftConflict[]
+
+/** A catch block that neither rethrows nor reports (#50). */
+export interface SilentCatch {
+  file: string
+  /** 1-indexed line the handler opens on. */
+  line: number
+  text: string
+}
+export declare function silentCatches(text: string, file: string): SilentCatch[]

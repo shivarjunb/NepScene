@@ -131,6 +131,7 @@ ahead — see [docs/BACKLOG.md](docs/BACKLOG.md).
 | [docs/DEVOPS.md](docs/DEVOPS.md) | Environments, pipelines, releases, on-call |
 | [docs/WAYS_OF_WORKING.md](docs/WAYS_OF_WORKING.md) | Epic/Feature/Task model, definition of done |
 | [docs/TESTING.md](docs/TESTING.md) | What to test at which level, the factories, and the harness |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | Finding an incident from a request id, and the three likeliest failures |
 | [docs/BACKLOG.md](docs/BACKLOG.md) | The full backlog, critical path and deferred decisions |
 
 ## Planning

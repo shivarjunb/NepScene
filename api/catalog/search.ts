@@ -13,6 +13,7 @@ import { whenBuckets } from './when'
 import { parseCentre, parseFeedFilters, withRoundTrips, SEARCH_PARAMS } from './shared'
 import type { Facet, ListingSummary, SearchFacets, Suggestion } from './types'
 import { haversineKm } from '../lib/geo'
+import { swallowed } from '../lib/observability'
 
 /**
  * Search (#42) — a rebuild, not a port. WaahTickets filtered an
@@ -380,7 +381,11 @@ function rankOffset(url: URL): number {
     if (!decoded.startsWith(RANK_CURSOR_PREFIX)) return 0
     const offset = Number(decoded.slice(RANK_CURSOR_PREFIX.length))
     return Number.isInteger(offset) && offset >= 0 && offset < SEARCH_CANDIDATES ? offset : 0
-  } catch {
+  } catch (cause) {
+    // A cursor we did not issue, or one that has been truncated. Starting from
+    // the beginning is the right behaviour; a rate of these is a sign that
+    // something is generating them (#50).
+    swallowed('search_cursor_decode', cause)
     return 0
   }
 }

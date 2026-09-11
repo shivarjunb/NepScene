@@ -222,9 +222,14 @@ INSERT INTO listing_tags (listing_id, tag_slug) VALUES
   ('lst_birding',       'outdoors'),
   ('lst_running',       'heritage');
 
+-- Kutumba plays twice, which is what puts them over ARTIST_PAGE_MINIMUM (2)
+-- and makes /artists/kutumba a page that exists. Without a second billing for
+-- someone, the artist page is a route the demo catalogue can never reach —
+-- and a page type nobody can open is a page type nobody tests.
 INSERT INTO listing_artists (listing_id, artist_id, billing_order) VALUES
   ('lst_rocknight', 'art_1974ad',  0),
   ('lst_rocknight', 'art_kutumba', 1),
+  ('lst_acoustic',  'art_kutumba', 0),
   ('lst_bipul',     'art_bipul',   0);
 
 -- Every published listing has a publication in its history. Without this the
