@@ -94,8 +94,14 @@ jobs:
       # into on demand — and `rendering.spec.ts` needs the seeded local D1 that
       # `wrangler dev` serves. A preview deployment is the right target for a
       # smoke journey, which `scripts/smoke.mjs` is, and the wrong one for these.
+      # Three engines, not one (#48). The audience is overwhelmingly Android
+      # Chrome with meaningful iOS Safari usage, and Safari is where the map,
+      # geolocation and theme handling most often diverge — so Chromium alone
+      # tests the browser this repository was developed in and nothing else.
+      # Only `journeys.spec.ts` runs on WebKit and Firefox; see
+      # playwright.config.ts for why the cost is not spent evenly.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit firefox
 
       # `rendering.spec.ts` runs against `wrangler dev --local`, which reads the
       # local D1 in `.wrangler/state`. On a fresh runner that is empty, and on
