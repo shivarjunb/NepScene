@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Listing } from '../../app/lib/catalog'
 import { mergePins, toMapPin, toMapPins, toPopupListing } from '../../app/map/markers'
+import { aCategoryRef, aPlacedListing, aVenue } from '../factories'
 
 /**
  * #36's unit criterion: "listing to map-marker transformation preserves
@@ -12,34 +13,19 @@ import { mergePins, toMapPin, toMapPins, toPopupListing } from '../../app/map/ma
  * pin is passed through from the API untouched, and these are the tests that
  * say so out loud.
  */
-const listing = (over: Partial<Listing> = {}): Listing => ({
+const listing = (over: Partial<Listing> = {}): Listing => aPlacedListing({
   id: 'listing-1',
   slug: 'jazz-at-the-house',
   title: 'Jazz at the House',
-  title_ne: null,
   summary: 'A quartet, twice through.',
-  summary_ne: null,
   listing_type: 'ticketed_internal',
-  source: 'organizer',
   starts_at: '2026-10-02T13:15:00.000Z',
-  ends_at: null,
-  is_all_day: false,
-  timezone: 'Asia/Kathmandu',
-  cover_image_url: null,
-  external_url: null,
-  is_featured: false,
-  map_popup_config: null,
-  latitude: 27.7154,
-  longitude: 85.3105,
+  venue: aVenue({ id: 'v1', slug: 'jazz-house', name: 'Jazz Upstairs', area: 'Lazimpat' }),
   pin: { icon: 'Music', color: '#e91e63', category: 'concerts' },
-  venue: { id: 'v1', slug: 'jazz-house', name: 'Jazz Upstairs', area: 'Lazimpat', city: 'Kathmandu' },
-  organizer: null,
   categories: [
-    { slug: 'concerts', name: 'Concerts', name_ne: null, color: '#e91e63', icon: 'Music', is_primary: true },
-    { slug: 'nightlife', name: 'Nightlife', name_ne: null, color: '#06b6d4', icon: 'Moon', is_primary: false },
+    aCategoryRef(),
+    aCategoryRef({ slug: 'nightlife', name: 'Nightlife', color: '#06b6d4', icon: 'Moon', is_primary: false }),
   ],
-  cover: null,
-  offer: null,
   ...over,
 })
 

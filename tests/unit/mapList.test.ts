@@ -4,6 +4,7 @@ import { toMapPins, type MapPin } from '../../app/map/markers'
 import { groupByVenue } from '../../app/map/venueGrouping'
 import { within, type Bounds } from '../../app/map/viewport'
 import { haversineKm } from '../../api/lib/geo'
+import { aPlacedListing, aVenue } from '../factories'
 
 /**
  * #40's unit criterion: "list view and map view return identical result sets
@@ -23,30 +24,12 @@ import { haversineKm } from '../../api/lib/geo'
 const KATHMANDU: Bounds = { west: 85.20, south: 27.62, east: 85.42, north: 27.80 }
 const CENTRE = { lat: 27.7154, lng: 85.3105 }
 
-const listing = (over: Partial<Listing> & { id: string }): Listing => ({
-  slug: over.id,
-  title: over.id,
-  title_ne: null,
-  summary: null,
-  summary_ne: null,
-  listing_type: 'free',
-  source: 'organizer',
-  starts_at: '2026-10-02T13:15:00.000Z',
-  ends_at: null,
-  is_all_day: false,
-  timezone: 'Asia/Kathmandu',
-  cover_image_url: null,
-  external_url: null,
-  is_featured: false,
-  map_popup_config: null,
+const listing = (over: Partial<Listing> & { id: string }): Listing => aPlacedListing({
   latitude: CENTRE.lat,
   longitude: CENTRE.lng,
-  pin: { icon: 'Music', color: '#e91e63', category: 'concerts' },
-  venue: { id: 'v1', slug: 'v1', name: 'Purple Haze', area: 'Thamel', city: 'Kathmandu' },
-  organizer: null,
+  venue: aVenue({ id: 'v1', slug: 'v1' }),
+  starts_at: '2026-10-02T13:15:00.000Z',
   categories: [],
-  cover: null,
-  offer: null,
   ...over,
 })
 

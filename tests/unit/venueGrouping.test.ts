@@ -4,6 +4,7 @@ import { toMapPin, toMapPins, type MapPin } from '../../app/map/markers'
 import {
   bubbleLabel, compareInStack, groupByVenue, groupKey, rankOf,
 } from '../../app/map/venueGrouping'
+import { aPlacedListing, aVenue } from '../factories'
 
 /**
  * #37's unit criteria, and the fifteen tests ported from WaahTickets'
@@ -240,31 +241,14 @@ describe('the count bubble', () => {
 
 // ── The rank a listing arrives with ──────────────────────────────────────────
 
-const listing = (over: Partial<Listing> = {}): Listing => ({
+const listing = (over: Partial<Listing> = {}): Listing => aPlacedListing({
   id: 'listing-1',
   slug: 'jazz-at-the-house',
   title: 'Jazz at the House',
-  title_ne: null,
-  summary: null,
-  summary_ne: null,
   listing_type: 'ticketed_internal',
-  source: 'organizer',
   starts_at: '2026-10-02T11:00:00.000Z',
-  ends_at: null,
-  is_all_day: false,
-  timezone: 'Asia/Kathmandu',
-  cover_image_url: null,
-  external_url: null,
-  is_featured: false,
-  map_popup_config: null,
-  latitude: 27.7154,
-  longitude: 85.3105,
-  pin: { icon: 'Music', color: '#e91e63', category: 'concerts' },
-  venue: { id: 'v1', slug: 'jazz-house', name: 'Jazz Upstairs', area: 'Lazimpat', city: 'Kathmandu' },
-  organizer: null,
+  venue: aVenue({ id: 'v1', slug: 'jazz-house', name: 'Jazz Upstairs', area: 'Lazimpat' }),
   categories: [],
-  cover: null,
-  offer: null,
   ...over,
 })
 

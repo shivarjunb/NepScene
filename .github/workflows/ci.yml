@@ -83,6 +83,41 @@ jobs:
         # so a coverage drop fails here rather than being noticed later.
         run: npm run test:coverage
 
+      # 187 browser specs that, until now, gated nothing — they existed and no
+      # merge ever ran them (#47: "Playwright runs on every PR"; #48: "a journey
+      # failure blocks merge").
+      #
+      # Against the two local servers `playwright.config.ts` already starts, not
+      # against the preview deployment. Most specs stub the catalogue at the
+      # network boundary on purpose — an empty catalogue, a failed fetch and a
+      # blocked Maps API are not states a shared preview database can be put
+      # into on demand — and `rendering.spec.ts` needs the seeded local D1 that
+      # `wrangler dev` serves. A preview deployment is the right target for a
+      # smoke journey, which `scripts/smoke.mjs` is, and the wrong one for these.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # `rendering.spec.ts` runs against `wrangler dev --local`, which reads the
+      # local D1 in `.wrangler/state`. On a fresh runner that is empty, and on
+      # this self-hosted one it is whatever the last job left — so it is rebuilt
+      # explicitly rather than inherited. `db:reset` drops it and replays the
+      # migrations plus the demo seed, which is also what a developer runs.
+      - name: Seed the local D1 for the end-to-end run
+        run: npm run db:reset
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload the Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
       - name: Coverage summary
         if: always()
         run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"

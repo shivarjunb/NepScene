@@ -1,23 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { Listing, Offer } from '../../app/lib/catalog'
 import { offerLine, startDay, startTime, venueLine } from '../../app/lib/format'
+import { aListing, anOffer } from '../factories'
 
 /** #41 — the card has to render every listing type, including those with no price. */
 
-const listing = (over: Partial<Listing> = {}): Listing => ({
-  id: 'x', slug: 'x', title: 'x', summary: null,
-  title_ne: null, summary_ne: null,
-  listing_type: 'ticketed_internal', source: 'organizer',
-  starts_at: '2026-09-11T13:15:00Z', ends_at: null, is_all_day: false,
-  timezone: 'Asia/Kathmandu', cover_image_url: null, external_url: null,
-  is_featured: false, map_popup_config: null, latitude: null, longitude: null,
-  pin: { icon: 'MapPin', color: '#64748b', category: null }, cover: null, venue: null, organizer: null, categories: [], offer: null, ...over,
+// Ticketed by default here, unlike the factory: this file is about rendering a
+// *price*, and a free listing has none to render.
+const listing = (over: Partial<Listing> = {}): Listing => aListing({
+  id: 'x', listing_type: 'ticketed_internal', starts_at: '2026-09-11T13:15:00Z', ...over,
 })
 
-const offer = (over: Partial<Offer> = {}): Offer => ({
-  purchasable: true, price_from: 80000, currency: 'NPR', url: null,
-  provider: 'waahtickets', sold_out: false, checked_at: null, ...over,
-})
+const offer = (over: Partial<Offer> = {}): Offer => anOffer({ url: null, ...over })
 
 describe('an offer is rendered, never computed', () => {
   it('turns a paisa snapshot into rupees and nothing else', () => {

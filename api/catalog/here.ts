@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
-import { DEFAULT_CITY, inNepal, resolveCity } from '../lib/cities'
+import { inNepal, matchCity, resolveCity } from '../lib/cities'
 import type { Here } from './types'
 
 /**
@@ -43,6 +43,16 @@ hereRoutes.get('/here', (c) => {
   // default exists for.
   const cf = (c.req.raw as { cf?: IncomingRequestCfProperties }).cf
 
+  return Response.json(resolveHere(cf), { headers: { 'cache-control': CACHE_CONTROL } })
+})
+
+/**
+ * What the edge told us, turned into an answer. Pure, and exported, because it
+ * is the part with rules in it and `request.cf` cannot be produced inside a
+ * test — `vitest-pool-workers` serves requests with no `cf` at all, so an
+ * endpoint test can only ever exercise the default branch.
+ */
+export function resolveHere(cf: Partial<IncomingRequestCfProperties> | undefined): Here {
   const lat = numberOf(cf?.latitude)
   const lng = numberOf(cf?.longitude)
   const named = typeof cf?.city === 'string' ? cf.city : null
@@ -50,26 +60,35 @@ hereRoutes.get('/here', (c) => {
   // which for smaller Nepali towns it often is.
   const region = typeof cf?.region === 'string' ? cf.region : null
 
-  const known = named !== null || (lat !== null && lng !== null)
+  const placed = lat !== null && lng !== null
   const city = resolveCity(named ?? region, lat, lng)
+
+  /**
+   * Whether the edge actually told us something, or we fell back.
+   *
+   * Asked of `matchCity` rather than inferred from `city`, because
+   * `resolveCity` returns Kathmandu both when it recognised Kathmandu and when
+   * it recognised nothing. A visitor in Thamel and a visitor in Delhi both come
+   * out named Kathmandu, and inferring recognition from that told the second
+   * one we knew where they were — and the first one we did not.
+   */
+  const identified = matchCity(named ?? region) !== null || (placed && inNepal(lat, lng))
 
   // The city's own centroid, not the IP's coordinate. A geo-IP point is
   // accurate to somewhere between a suburb and a province, and opening the map
   // on it would put the viewer in a field outside town while telling them they
   // are in Pokhara. The centroid at least agrees with the headline.
-  const body: Here = {
+  return {
     city: city.name,
     city_ne: city.name_ne,
     lat: city.lat,
     lng: city.lng,
-    source: known && city !== DEFAULT_CITY ? 'ip'
-      : known && lat !== null && lng !== null && inNepal(lat, lng) ? 'ip'
-      : 'default',
-    in_nepal: lat !== null && lng !== null ? inNepal(lat, lng) : city !== DEFAULT_CITY || named !== null,
+    source: identified ? 'ip' : 'default',
+    // Unknown counts as "not in Nepal" only for the purpose of explaining the
+    // default; a coordinate is the authority whenever there is one.
+    in_nepal: placed ? inNepal(lat, lng) : identified,
   }
-
-  return Response.json(body, { headers: { 'cache-control': CACHE_CONTROL } })
-})
+}
 
 /** `cf.latitude` arrives as a string, and sometimes not at all. */
 function numberOf(value: unknown): number | null {

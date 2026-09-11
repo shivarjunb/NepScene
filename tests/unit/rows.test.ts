@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Bootstrap, Category, Listing } from '../../app/lib/catalog'
 import { buildRows, entryCategories, nepalDay, weekendDays } from '../../app/lib/rows'
+import { aCategory, aListing, aVenue } from '../factories'
 
 /**
  * #41 — the row rules. These are the whole reason the homepage does not need a
@@ -8,37 +9,16 @@ import { buildRows, entryCategories, nepalDay, weekendDays } from '../../app/lib
  * eyeballed on staging.
  */
 
-const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Listing => ({
-  slug: over.id,
-  title: over.id,
-  title_ne: null,
-  summary: null,
-  summary_ne: null,
-  listing_type: 'ticketed_internal',
-  source: 'organizer',
-  ends_at: null,
-  is_all_day: false,
-  timezone: 'Asia/Kathmandu',
-  cover_image_url: null,
-  external_url: null,
-  is_featured: false,
-  map_popup_config: null,
-  latitude: null,
-  longitude: null,
-  pin: { icon: 'MapPin', color: '#64748b', category: null },
-  cover: null,
-  venue: null,
-  organizer: null,
-  categories: [],
-  offer: null,
-  ...over,
-})
+const listing = (over: Partial<Listing> & { id: string; starts_at: string }): Listing =>
+  // These rows are about *when* and *where*, so the type is pinned here rather
+  // than taken from the factory's free default: a ticketed listing is what the
+  // "free entry" row has to exclude.
+  aListing({ listing_type: 'ticketed_internal', ...over })
 
-const venue = (city: string) => ({ id: city, slug: city, name: `${city} Hall`, area: null, city })
+const venue = (city: string) => aVenue({ id: city, slug: city, name: `${city} Hall`, area: null, city })
 
-const category = (slug: string, count = 1): Category => ({
-  slug, name: slug, name_ne: null, color: null, icon: null, upcoming_listing_count: count,
-})
+const category = (slug: string, count = 1): Category =>
+  aCategory({ slug, name: slug, color: null, icon: null, upcoming_listing_count: count })
 
 // A Monday. The weekend that follows is Friday the 11th and Saturday the 12th.
 const MONDAY = new Date('2026-09-07T06:00:00Z')

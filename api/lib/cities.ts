@@ -84,16 +84,26 @@ export function inNepal(lat: number, lng: number): boolean {
  * is contained by nothing but is itself an alias.
  */
 export function resolveCity(name: string | null | undefined, lat: number | null, lng: number | null): NepalCity {
+  return matchCity(name)
+    ?? (lat !== null && lng !== null && inNepal(lat, lng) ? nearestCity(lat, lng) : DEFAULT_CITY)
+}
+
+/**
+ * The name half, on its own, returning null when nothing matched.
+ *
+ * Separate from `resolveCity` because "recognised Kathmandu" and "recognised
+ * nothing" produce the same *city* and must not produce the same *answer*: a
+ * visitor in Thamel and a visitor in Delhi both end up named Kathmandu, and a
+ * caller that inferred recognition from the result would tell the second one
+ * we know where they are. `api/catalog/here.ts` needs the difference.
+ */
+export function matchCity(name: string | null | undefined): NepalCity | null {
   const lower = (name ?? '').trim().toLowerCase()
-  if (lower) {
-    for (const city of NEPAL_CITIES) {
-      if (city.aliases.some((alias) => lower.includes(alias) || alias.includes(lower))) return city
-    }
+  if (!lower) return null
+  for (const city of NEPAL_CITIES) {
+    if (city.aliases.some((alias) => lower.includes(alias) || alias.includes(lower))) return city
   }
-
-  if (lat !== null && lng !== null && inNepal(lat, lng)) return nearestCity(lat, lng)
-
-  return DEFAULT_CITY
+  return null
 }
 
 /** The closest of the twenty by great-circle distance. Never null. */

@@ -61,13 +61,48 @@ export default defineConfig({
       include: ['api/**/*.ts'],
       // Route composition and wire types have no behaviour to cover.
       exclude: ['api/catalog/routes.ts', 'api/catalog/types.ts', 'api/env.ts'],
-      // Ratcheted to the measured floor. A drop fails the build; when coverage
-      // rises, raise these with it (docs/DEVOPS.md).
+      /**
+       * Thresholds weighted by risk (#47), not one number for everything.
+       *
+       * The principle is the audit's finding about WaahTickets: 100 unit
+       * tests, 17 files, and not one of them touching the order lifecycle —
+       * which is where all three critical defects lived. A single global
+       * threshold lets exactly that happen, because presentation code is easy
+       * to cover and subsidises the part nobody wants to test.
+       *
+       * So the risky directories carry higher bars than the global one. For
+       * NepScene the risk is: the catalogue read path (every public page is
+       * built from it), the authoring write path (the only place untrusted
+       * input becomes a row), and identity (the only place a permission
+       * decision is made).
+       *
+       * Every number is the measured floor rounded down, so it fails on a
+       * regression rather than aspiring. When coverage rises, raise them with
+       * it (docs/DEVOPS.md).
+       */
       thresholds: {
         statements: 94,
         branches: 81,
         functions: 97,
         lines: 96,
+
+        // The read path behind every public page.
+        'api/catalog/**': {
+          statements: 95, branches: 84, functions: 97, lines: 96,
+        },
+        // Where untrusted input becomes a row. `validate.ts` lives here.
+        'api/author/**': {
+          statements: 93, branches: 84, functions: 96, lines: 96,
+        },
+        // Where every permission decision is made.
+        'api/identity/**': {
+          statements: 93, branches: 75, functions: 98, lines: 95,
+        },
+        // Server rendering: a failure here is a blank page for a crawler,
+        // which is invisible to everyone who already has the JavaScript.
+        'api/render/**': {
+          statements: 96, branches: 85, functions: 94, lines: 98,
+        },
       },
     },
   },
