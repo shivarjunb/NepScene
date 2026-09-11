@@ -71,6 +71,13 @@ jobs:
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
+      # After the build, because it weighs what the build produced. A ratchet
+      # rather than a target: it fails on a weight *regression*, and the gap to
+      # #39's 1.5s-on-3G criterion is recorded in the script rather than
+      # enforced, because a check nobody can pass gets turned off.
+      - name: Performance budget
+        run: npm run budget
+
       - name: Test with coverage
         # Thresholds live in vitest.config.ts and are set at the measured floor,
         # so a coverage drop fails here rather than being noticed later.

@@ -189,9 +189,22 @@ function offerFor(listing: Listing): PopupListing['offer'] {
  *
  * Rebuilding is what makes a map flicker on every drag, and it is also what
  * closes the popup the viewer was reading.
+ *
+ * `limit` bounds what is kept (#39). A `Map` preserves insertion order and
+ * re-setting an existing key does *not* move it, so the oldest pins are at the
+ * front — but a pin the current viewport just returned is re-set on every
+ * page, which would leave it looking old. So a re-set is deleted first: what
+ * survives an overflow is what has been seen most recently, which is what the
+ * viewer is looking at.
  */
-export function mergePins(existing: MapPin[], incoming: MapPin[]): MapPin[] {
+export function mergePins(
+  existing: MapPin[], incoming: MapPin[], limit = Infinity,
+): MapPin[] {
   const byId = new Map(existing.map((pin) => [pin.id, pin]))
-  for (const pin of incoming) byId.set(pin.id, pin)
-  return [...byId.values()]
+  for (const pin of incoming) {
+    byId.delete(pin.id)
+    byId.set(pin.id, pin)
+  }
+  if (byId.size <= limit) return [...byId.values()]
+  return [...byId.values()].slice(byId.size - limit)
 }

@@ -138,3 +138,40 @@ export function meSvg(): string {
 
 export const meDataUri = (): string =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(meSvg())}`
+
+/**
+ * A cluster bubble (#39).
+ *
+ * Not a teardrop: a teardrop points at one place, and a cluster is a statement
+ * about an area. Sized by what it holds, so a screen of bubbles reads as a
+ * density map rather than as a field of identical circles — but sized in three
+ * steps rather than continuously, because a continuous scale makes two bubbles
+ * of 40 and 44 look meaningfully different when they are not.
+ */
+export const CLUSTER_SIZES = [44, 54, 64]
+
+export function clusterSize(count: number): number {
+  if (count >= 500) return CLUSTER_SIZES[2]!
+  if (count >= 100) return CLUSTER_SIZES[1]!
+  return CLUSTER_SIZES[0]!
+}
+
+export function clusterSvg(count: number): string {
+  const size = clusterSize(count)
+  const label = count > 9999 ? '9999+' : String(count)
+  // Shrinks as the label lengthens, so "1234" fits the same circle "12" does.
+  const fontSize = size / (2.2 + label.length * 0.42)
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
+    // The soft outer ring is what makes a bubble readable over map tiles whose
+    // colour nobody controls — the same reason the pin has a white outline.
+    + `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" fill="#1d4ed8" opacity="0.25"/>`
+    + `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 7}" fill="#1d4ed8" stroke="#ffffff" stroke-width="2.5"/>`
+    + `<text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="central"`
+    + ` font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"`
+    + ` font-size="${fontSize.toFixed(1)}" font-weight="700" fill="#ffffff">${label}</text>`
+    + '</svg>'
+}
+
+export const clusterDataUri = (count: number): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(clusterSvg(count))}`

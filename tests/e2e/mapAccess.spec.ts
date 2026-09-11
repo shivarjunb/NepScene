@@ -19,16 +19,24 @@ import {
 const HERE = { city: 'Kathmandu', lat: THAMEL.lat, lng: THAMEL.lng, source: 'ip' as const }
 
 async function openMap(page: Page, options: { maps?: boolean } = {}) {
-  if (options.maps !== false) await stubMapsSdk(page)
+  const maps = options.maps !== false
+  if (maps) await stubMapsSdk(page)
   await stubGeolocation(page, 'granted', THAMEL)
   await serveHere(page, HERE)
   await serveBootstrap(page)
   await serveMapCatalog(page)
   await page.goto('/map')
-  // The first `idle` has fired and the markers are drawn. Every spec below
-  // acts on them, so waiting here rather than in each one keeps them honest
-  // about what they are asserting.
-  await expect(page.getByText(/listings? in view|map is not available/i)).toBeVisible()
+  // The listings have landed — from the map's own viewport, or from the box
+  // the list falls back to when there is no map. Every spec below acts on
+  // them, so waiting here rather than in each one keeps them honest about what
+  // they are asserting.
+  //
+  // The two cases are waited on separately rather than with one alternation.
+  // Both surfaces carry a status line, so a pattern matching either the alert
+  // or the count matches *both* in the no-map case, and strict mode rightly
+  // refuses — intermittently, depending on which rendered first.
+  if (!maps) await expect(page.getByText(/map is not available/i)).toBeVisible()
+  await expect(page.locator('.nepal-map__hint')).toContainText(/listings? in view/)
 }
 
 test('the list shows the same listings the pins do', async ({ page }) => {

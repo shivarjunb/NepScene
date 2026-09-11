@@ -4,13 +4,16 @@ import { Alert, Button, Spinner } from '../components/primitives'
 import { useT } from '../i18n'
 import { parsePopupConfig } from '../../api/author/popupConfig'
 import { ListingPopup } from './ListingPopup'
-import { meDataUri, ME_SIZE, pinDataUri, PIN_SIZE } from './pinMarker'
+import {
+  clusterDataUri, clusterSize, meDataUri, ME_SIZE, pinDataUri, PIN_SIZE,
+} from './pinMarker'
+import { planMarkers, type Cluster } from './clustering'
 import type { MapPin } from './markers'
 import { groupByVenue, type VenueGroup } from './venueGrouping'
 import { VenueStack } from './VenueStack'
 import { MapList } from './MapList'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { padBounds, sameBounds, within, type Bounds } from './viewport'
+import { PAD_RATIO, padBounds, sameBounds, within, type Bounds } from './viewport'
 import { useViewportListings } from './useViewportListings'
 import type { ResolvedLocation } from './useLocation'
 import { haversineKm, boundingBox } from '../../api/lib/geo'
@@ -47,6 +50,13 @@ const OPENING_ZOOM = 12
 const PRECISE_ZOOM = 14
 
 /**
+ * How long a gesture is allowed to keep settling before its viewport is
+ * committed (#39). Long enough to swallow the pauses inside a flick-flick-pinch
+ * sequence, short enough that a deliberate single pan does not feel laggy.
+ */
+const IDLE_DEBOUNCE_MS = 250
+
+/**
  * Half the span of the box the list falls back to when there is no map to
  * take a viewport from (#40). Roughly a city and its outskirts — the same
  * ground `OPENING_ZOOM` would have shown.
@@ -60,6 +70,11 @@ const FALLBACK_SPAN = 0.09
  * than an arbitrary round number.
  */
 export const DISTANCE_CHIPS_KM = [2, 5, 10, 20, 100]
+
+/** What one marker on the map stands for: a place, or an area of places. */
+type Drawable =
+  | { kind: 'group'; group: VenueGroup }
+  | { kind: 'cluster'; cluster: Cluster }
 
 type Props = {
   /** Where a popup's "See the listing" goes. */
@@ -88,6 +103,10 @@ export function NepalMap({ onOpen, location }: Props) {
   const movedRef = useRef(false)
   /** The latest centre, for the one-shot map constructor to read at build time. */
   const centreRef = useRef<{ lat: number; lng: number } | null>(null)
+  /** The pending debounced viewport commit, if a gesture is still settling. */
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Whether a viewport has ever been committed. The first one is immediate. */
+  const committedRef = useRef(false)
 
   const [ready, setReady] = useState(false)
   const [unavailable, setUnavailable] = useState<string | null>(null)
@@ -164,6 +183,24 @@ export function NepalMap({ onOpen, location }: Props) {
     ? pins.filter((pin) => within(effectiveViewport, pin)).length
     : 0
 
+  /** "3 listings" — the noun the status line's every phrasing shares. */
+  const countLabel = inView === 1
+    ? t('map.listingCountOne')
+    : t('map.listingCount', { count: inView })
+
+  /**
+   * What actually gets a marker (#39).
+   *
+   * Virtualised to the padded viewport, then clustered if that is still too
+   * many. Padded rather than exact so a pin does not pop into existence as its
+   * point crosses the screen edge, which reads as the map stuttering rather
+   * than as the pin arriving.
+   */
+  const plan = useMemo(
+    () => planMarkers(groups, effectiveViewport ? padBounds(effectiveViewport, PAD_RATIO / 2) : null),
+    [groups, effectiveViewport],
+  )
+
   /**
    * The list shows what is *on screen*, not everything ever loaded — otherwise
    * "the list view offers the same results as the map" stops being true the
@@ -231,10 +268,34 @@ export function NepalMap({ onOpen, location }: Props) {
         const next = {
           north: ne.lat(), east: ne.lng(), south: sw.lat(), west: sw.lng(),
         }
-        // Same rectangle, same object — otherwise the fetch effect restarts,
-        // aborting a request that was already on its way for this very box and
-        // issuing it again. `idle` fires for more than pans.
-        setViewport((current) => (sameBounds(current, next) ? current : next))
+
+        const commit = () => {
+          // Same rectangle, same object — otherwise the fetch effect restarts,
+          // aborting a request that was already on its way for this very box
+          // and issuing it again. `idle` fires for more than pans.
+          setViewport((current) => (sameBounds(current, next) ? current : next))
+        }
+
+        // The first view is not debounced: nothing is on screen yet, and
+        // making the map wait a quarter-second before its first request would
+        // be paying the debounce's cost with none of its benefit.
+        if (!committedRef.current) {
+          committedRef.current = true
+          commit()
+          return
+        }
+
+        // **The gesture debounce (#39).** `idle` is the SDK's own debounce and
+        // handles a single drag, but a *sequence* — three flicks, a pinch, a
+        // double-tap zoom — settles several times in under a second, each
+        // settling on a different box that `needsFetch` would honestly say
+        // needs fetching. Coalescing them means a gesture costs one request
+        // rather than one per pause within it.
+        if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current)
+        idleTimerRef.current = setTimeout(() => {
+          idleTimerRef.current = null
+          commit()
+        }, IDLE_DEBOUNCE_MS)
       })
       // A drag is the gesture that means "show me somewhere else"; a popup
       // anchored to a pin that is now off screen is just a floating card.
@@ -359,7 +420,11 @@ export function NepalMap({ onOpen, location }: Props) {
     // Keyed on the group *and* its count: a venue that gains a listing while
     // the map is open has to redraw, because its bubble now says a different
     // number. Keying on the venue alone would leave a stale count on screen.
-    const wanted = new Map(groups.map((group) => [`${group.key}:${group.count}`, group]))
+    // Clusters are keyed the same way, on cell and count.
+    const wanted = new Map<string, Drawable>([
+      ...plan.groups.map((group) => [`g:${group.key}:${group.count}`, { kind: 'group', group }] as const),
+      ...plan.clusters.map((cluster) => [`c:${cluster.key}:${cluster.count}`, { kind: 'cluster', cluster }] as const),
+    ])
 
     // Only what left the set is torn down. Rebuilding every marker on every
     // pan is what makes a map flicker, and it closes the popup mid-read.
@@ -370,8 +435,40 @@ export function NepalMap({ onOpen, location }: Props) {
       }
     }
 
-    for (const [id, group] of wanted) {
+    for (const [id, drawable] of wanted) {
       if (live.has(id)) continue
+
+      if (drawable.kind === 'cluster') {
+        const { cluster } = drawable
+        const size = clusterSize(cluster.count)
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat: cluster.lat, lng: cluster.lng },
+          title: `${cluster.count} listings in this area`,
+          icon: {
+            url: clusterDataUri(cluster.count),
+            scaledSize: new google.maps.Size(size, size),
+            // A bubble describes an area, so its centre is its position —
+            // unlike a teardrop, whose point is.
+            anchor: new google.maps.Point(size / 2, size / 2),
+          },
+          zIndex: cluster.count,
+        })
+        // Zoom to what it contains rather than by a fixed step: one press
+        // opens the cluster, however deep it was.
+        marker.addListener('click', () => {
+          movedRef.current = true
+          setSelected(null)
+          map.fitBounds(new google.maps.LatLngBounds(
+            new google.maps.LatLng(cluster.bounds.south, cluster.bounds.west),
+            new google.maps.LatLng(cluster.bounds.north, cluster.bounds.east),
+          ))
+        })
+        live.set(id, marker)
+        continue
+      }
+
+      const { group } = drawable
       const marker = new google.maps.Marker({
         map,
         position: { lat: group.lat, lng: group.lng },
@@ -405,7 +502,7 @@ export function NepalMap({ onOpen, location }: Props) {
       })
       live.set(id, marker)
     }
-  }, [groups, ready, positionOf])
+  }, [plan, ready, positionOf])
 
   // ── "You are here", once there is a precise answer ─────────────────────────
   useEffect(() => {
@@ -443,6 +540,7 @@ export function NepalMap({ onOpen, location }: Props) {
   // Everything goes when the component does; the SDK holds its own references
   // and a marker left with a map is a leak that survives navigation.
   useEffect(() => () => {
+    if (idleTimerRef.current !== null) clearTimeout(idleTimerRef.current)
     for (const marker of markersRef.current.values()) marker.setMap(null)
     markersRef.current.clear()
     meMarkerRef.current?.setMap(null)
@@ -562,8 +660,15 @@ export function NepalMap({ onOpen, location }: Props) {
       {/* Status, not decoration: a map that is quietly showing a subset is
           worse than one that says it is. */}
       <div className="nepal-map__status" role="status" aria-live="polite">
-        {wide && <span className="nepal-map__hint">Zoom in to load listings.</span>}
-        {loading && !wide && <span className="nepal-map__hint">Loading listings…</span>}
+        {wide && <span className="nepal-map__hint">{t('map.zoomIn')}</span>}
+        {loading && !wide && (
+          <span className="nepal-map__hint">
+            {/* Progressive rendering (#39) means the map is usable before the
+                last page lands, and a status saying only "loading" would hide
+                that. Once anything is drawn, the count leads. */}
+            {inView > 0 ? t('map.loadingSoFar', { count: countLabel }) : t('map.loading')}
+          </span>
+        )}
         {error && <span className="nepal-map__hint nepal-map__hint--error">{error}</span>}
         {!loading && !wide && !error && (
           <span className="nepal-map__hint">
@@ -572,9 +677,15 @@ export function NepalMap({ onOpen, location }: Props) {
               // empty map that blames the area is how somebody concludes there
               // is nothing on and leaves.
               ? radiusKm !== null
-                ? `Nothing within ${radiusKm} km of you.`
-                : 'Nothing listed in this area yet.'
-              : `${inView} listing${inView === 1 ? '' : 's'}${radiusKm !== null ? ` within ${radiusKm} km` : ' in view'}`}
+                ? t('map.nothingWithin', { km: radiusKm })
+                : t('map.nothingHere')
+              // A clustered view is showing areas, not places, and a viewer
+              // who does not know that reads the bubbles as venues.
+              : plan.kind === 'clusters'
+                ? t('map.clustered', { count: countLabel })
+                : radiusKm !== null
+                  ? t('map.within', { count: countLabel, km: radiusKm })
+                  : t('map.inView', { count: countLabel })}
           </span>
         )}
       </div>

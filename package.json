@@ -25,6 +25,7 @@
     "db:admin": "node scripts/create-admin.mjs",
     "test:e2e": "playwright test",
     "brand": "node scripts/generate-brand-assets.mjs",
+    "budget": "node scripts/check-budget.mjs",
     "ci:guards": "node scripts/check-migrations.mjs && node scripts/check-scope.mjs && node scripts/check-secrets.mjs",
     "smoke": "node scripts/smoke.mjs"
   },

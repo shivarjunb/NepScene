@@ -244,6 +244,14 @@ export async function stubMapsSdk(page: Page) {
           centre = { lat, lng }
           fire('idle', undefined)
         },
+        /** A burst of gestures inside one debounce window. */
+        __flurry: (steps: number) => {
+          for (let i = 0; i < steps; i += 1) {
+            centre = { lat: centre.lat + SPAN * 1.5, lng: centre.lng }
+            fire('idle', undefined)
+          }
+        },
+        __markerCount: () => markers.length,
         __nudge: () => {
           // A twentieth of the span: well inside the padded box, so the app
           // should decide this costs no request at all.

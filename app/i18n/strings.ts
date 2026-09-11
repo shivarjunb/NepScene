@@ -66,6 +66,26 @@ export const STRINGS = {
   'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },
+  'map.zoomIn': { en: 'Zoom in to load listings.', ne: 'सूची लोड गर्न जुम इन गर्नुहोस्।' },
+  'map.loading': { en: 'Loading listings…', ne: 'सूची लोड हुँदैछ…' },
+  /**
+   * Progressive rendering (#39): the first page is on the map while the next
+   * is in flight, and a status that said only "loading" would hide that the
+   * map is already usable.
+   */
+  'map.loadingSoFar': { en: '{count} so far…', ne: 'अहिलेसम्म {count}…' },
+  'map.loadFailed': { en: 'Listings could not be loaded', ne: 'सूची लोड हुन सकेन' },
+  'map.nothingHere': { en: 'Nothing listed in this area yet.', ne: 'यस क्षेत्रमा अहिलेसम्म केही छैन।' },
+  'map.nothingWithin': { en: 'Nothing within {km} km of you.', ne: 'तपाईंबाट {km} किमी भित्र केही छैन।' },
+  'map.inView': { en: '{count} in view', ne: 'दृश्यमा {count}' },
+  'map.within': { en: '{count} within {km} km', ne: '{km} किमी भित्र {count}' },
+  'map.clustered': {
+    en: '{count} in view — zoom in to see places',
+    ne: 'दृश्यमा {count} — ठाउँहरू हेर्न जुम इन गर्नुहोस्',
+  },
+  /** "3 listings" / "1 listing", the noun every count above shares. */
+  'map.listingCount': { en: '{count} listings', ne: '{count} सूची' },
+  'map.listingCountOne': { en: '1 listing', ne: '१ सूची' },
   'map.denied': {
     en: 'Location is off, so this is {city}. Turn it on in your browser to sort by how far away things are.',
     ne: 'स्थान बन्द छ, त्यसैले यो {city} हो। दूरीअनुसार छान्न ब्राउजरमा स्थान खोल्नुहोस्।',
