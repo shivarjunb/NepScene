@@ -16,7 +16,7 @@ export function ComponentGallery() {
   return (
     <div className="stack">
       <section>
-        <h3>Buttons</h3>
+        <h2 className="gallery__heading">Buttons</h2>
         <div className="row">
           {(['primary', 'secondary', 'ghost', 'danger'] as const).map((variant) => (
             <Button key={variant} variant={variant}>{variant}</Button>
@@ -32,7 +32,7 @@ export function ComponentGallery() {
       </section>
 
       <section>
-        <h3>Form controls</h3>
+        <h2 className="gallery__heading">Form controls</h2>
         <div className="grid-2">
           <Field label="Event name" hint="Shown on the card and the map pin">
             {({ id, describedBy }) => (
@@ -59,7 +59,7 @@ export function ComponentGallery() {
       </section>
 
       <section>
-        <h3>Badges and chips</h3>
+        <h2 className="gallery__heading">Badges and chips</h2>
         <div className="row">
           {(['neutral', 'accent', 'success', 'warning', 'danger'] as const).map((tone) => (
             <Badge key={tone} tone={tone}>{tone}</Badge>
@@ -73,7 +73,7 @@ export function ComponentGallery() {
       </section>
 
       <section>
-        <h3>Alerts</h3>
+        <h2 className="gallery__heading">Alerts</h2>
         <div className="stack-sm">
           {(['info', 'success', 'warning', 'danger'] as const).map((tone) => (
             <Alert key={tone} tone={tone} title={tone}>
@@ -84,7 +84,7 @@ export function ComponentGallery() {
       </section>
 
       <section>
-        <h3>Surfaces, loading and overlay</h3>
+        <h2 className="gallery__heading">Surfaces, loading and overlay</h2>
         <div className="grid-2">
           <Card><strong>Flat card</strong><p className="muted">On a raised surface.</p></Card>
           <Card raised><strong>Raised card</strong><p className="muted">With elevation.</p></Card>
@@ -101,7 +101,7 @@ export function ComponentGallery() {
       </section>
 
       <section>
-        <h3>Tabs</h3>
+        <h2 className="gallery__heading">Tabs</h2>
         <Tabs
           label="Gallery example"
           tabs={[

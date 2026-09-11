@@ -22,18 +22,34 @@ import type { MapPin } from './markers'
  * surface rather than an apology.
  */
 
-export function MapList({ groups, onOpen, emptyLabel }: {
+export function MapList({ groups, onOpen, emptyLabel, heading }: {
   groups: VenueGroup[]
   onOpen: (slug: string) => void
   /** What "nothing here" means right now — filtered out, or nothing on. */
   emptyLabel: string
+  /**
+   * The list's own heading (#49).
+   *
+   * Not decoration. Without it the venue names below were the first headings
+   * under the page's `h1`, which made the map page run h1 → h3 and gave a
+   * screen-reader user navigating by heading no way to tell where the list
+   * started. It is visually hidden because the surface it sits on already
+   * announces itself to anyone who can see it.
+   */
+  heading: string
 }) {
   if (groups.length === 0) {
-    return <p className="map-list__empty">{emptyLabel}</p>
+    return (
+      <section aria-label={heading}>
+        <p className="map-list__empty">{emptyLabel}</p>
+      </section>
+    )
   }
 
   return (
-    <ul className="map-list">
+    <section className="map-list__section" aria-labelledby="map-list-heading">
+      <h2 id="map-list-heading" className="visually-hidden">{heading}</h2>
+      <ul className="map-list">
       {groups.map((group) => (
         <li key={group.key} className="map-list__venue">
           {/* The venue is a heading, not a row: the listings under it are its
@@ -59,7 +75,8 @@ export function MapList({ groups, onOpen, emptyLabel }: {
           </ul>
         </li>
       ))}
-    </ul>
+      </ul>
+    </section>
   )
 }
 

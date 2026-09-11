@@ -41,6 +41,96 @@ export const STRINGS = {
   'footer.privacy': { en: 'Privacy', ne: 'गोपनीयता' },
   'footer.designSystem': { en: 'Design system', ne: 'डिजाइन प्रणाली' },
   'footer.label': { en: 'Footer', ne: 'फुटर' },
+  'footer.accessibility': { en: 'Accessibility', ne: 'पहुँच' },
+
+  // ── The accessibility statement (#49) ────────────────────────────────────
+  // Every claim below is backed by something that runs, and is written to be
+  // read by somebody for whom the site has *already* not worked — so it names
+  // the gaps rather than making a compliance claim.
+  'a11y.title': { en: 'Accessibility', ne: 'पहुँच' },
+  'a11y.lead': {
+    en: 'What is verified, how, and what is not. Last reviewed 11 September 2026.',
+    ne: 'के जाँचिएको छ, कसरी, र के छैन। अन्तिम समीक्षा ११ सेप्टेम्बर २०२६।',
+  },
+  'a11y.standardTitle': { en: 'The standard we work to', ne: 'हामीले पछ्याउने मापदण्ड' },
+  'a11y.standardBody': {
+    en: 'NepScene targets WCAG 2.1 level AA. We do not claim full conformance, '
+      + 'because parts of that claim can only be made after testing with real '
+      + 'screen readers and we have not finished doing so. What follows '
+      + 'separates what is checked automatically on every change from what is not.',
+    ne: 'NepScene ले WCAG 2.1 स्तर AA लक्ष्य राख्छ। हामी पूर्ण अनुरूपताको दाबी गर्दैनौं, '
+      + 'किनभने त्यसको केही भाग वास्तविक स्क्रिन रिडरसँग परीक्षण गरेपछि मात्र दाबी गर्न सकिन्छ '
+      + 'र हामीले त्यो सकेका छैनौं।',
+  },
+  'a11y.verifiedTitle': { en: 'Checked on every change', ne: 'हरेक परिवर्तनमा जाँचिन्छ' },
+  'a11y.verifiedAxe': {
+    en: 'Every page type is scanned with axe against WCAG 2.1 A and AA rules, in both '
+      + 'the light and the dark theme. A new violation fails the build.',
+    ne: 'हरेक पृष्ठ प्रकार axe मार्फत WCAG 2.1 A र AA नियमविरुद्ध, उज्यालो र अँध्यारो दुवै '
+      + 'थिममा जाँचिन्छ। नयाँ उल्लङ्घनले बिल्ड असफल बनाउँछ।',
+  },
+  'a11y.verifiedKeyboard': {
+    en: 'The core journeys — finding an event, searching, creating one, reviewing one — '
+      + 'are completed by keyboard alone in automated tests.',
+    ne: 'मुख्य यात्राहरू — कार्यक्रम खोज्ने, सिर्जना गर्ने, समीक्षा गर्ने — स्वचालित '
+      + 'परीक्षणमा किबोर्डले मात्र पूरा गरिन्छ।',
+  },
+  'a11y.verifiedContrast': {
+    en: 'Every colour pair in the design tokens is checked against AA contrast ratios, '
+      + 'computed from the stylesheet itself rather than eyeballed.',
+    ne: 'डिजाइन टोकनका हरेक रङ जोडी AA कन्ट्रास्ट अनुपातविरुद्ध जाँचिन्छ।',
+  },
+  'a11y.verifiedMotion': {
+    en: 'If your system asks for reduced motion, animations are not played — not '
+      + 'shortened, not played.',
+    ne: 'तपाईंको प्रणालीले कम गति मागेको छ भने एनिमेसन चल्दैन।',
+  },
+  'a11y.verifiedFocus': {
+    en: 'Focus is visible on every control in both themes, moves into dialogs when they '
+      + 'open, and returns to what opened them when they close.',
+    ne: 'फोकस दुवै थिममा हरेक नियन्त्रणमा देखिन्छ, संवाद खुल्दा भित्र जान्छ, र बन्द हुँदा '
+      + 'फर्कन्छ।',
+  },
+  'a11y.mapTitle': { en: 'The map', ne: 'नक्सा' },
+  'a11y.mapBody': {
+    en: 'A map is a visual interface, and finding out what is on is the whole point of '
+      + 'this site — so the map is never the only way to do it. Every map view has a '
+      + 'list beside it showing the same listings, with the same filters and the same '
+      + 'results, reachable from the List button. If the map fails to load for any '
+      + 'reason, that list is what the page shows.',
+    ne: 'नक्सा दृश्यात्मक हो, र के भइरहेको छ भन्ने थाहा पाउनु नै यो साइटको उद्देश्य हो — '
+      + 'त्यसैले नक्सा कहिल्यै एक मात्र बाटो होइन। हरेक नक्सा दृश्यसँगै उही सूची हुन्छ।',
+  },
+  'a11y.gapsTitle': { en: 'Known gaps', ne: 'थाहा भएका कमीहरू' },
+  'a11y.gapsLead': {
+    en: 'These are not yet done. They are listed because finding one of them yourself '
+      + 'and not knowing whether we know is worse than reading it here.',
+    ne: 'यी अझै भएका छैनन्। तपाईंले आफैं भेट्टाउनु र हामीलाई थाहा छ कि छैन नजान्नुभन्दा '
+      + 'यहाँ पढ्नु राम्रो हो।',
+  },
+  'a11y.gapScreenReader': {
+    en: 'We have not completed manual testing with VoiceOver, NVDA or TalkBack. '
+      + 'Automated checks catch a great deal but they do not catch everything a real '
+      + 'screen-reader user hits.',
+    ne: 'VoiceOver, NVDA वा TalkBack सँग म्यानुअल परीक्षण पूरा भएको छैन।',
+  },
+  'a11y.gapNepali': {
+    en: 'The public site is in Nepali and English. The event creation form and the '
+      + 'moderation queue are English only.',
+    ne: 'सार्वजनिक साइट नेपाली र अंग्रेजीमा छ। कार्यक्रम फाराम र मध्यस्थता सूची अंग्रेजीमा मात्र छ।',
+  },
+  'a11y.gapMapCanvas': {
+    en: 'The map canvas itself is not navigable by screen reader. This is deliberate — '
+      + 'the list is the equivalent path — but it does mean the pins are not announced.',
+    ne: 'नक्सा क्यानभास आफैं स्क्रिन रिडरले नेभिगेट गर्न मिल्दैन। सूची नै समकक्ष बाटो हो।',
+  },
+  'a11y.contactTitle': { en: 'Something not working?', ne: 'केही काम गरेन?' },
+  'a11y.contactBody': {
+    en: 'Tell us what you were trying to do and what happened. It is the fastest way '
+      + 'for a gap to get fixed, and we would rather hear it than not.',
+    ne: 'तपाईंले के गर्न खोज्नुभएको थियो र के भयो भन्नुहोस्।',
+  },
+  'a11y.contactLink': { en: 'Open an issue on GitHub', ne: 'GitHub मा issue खोल्नुहोस्' },
   'language.label': { en: 'Language', ne: 'भाषा' },
   'language.english': { en: 'English', ne: 'English' },
   'language.nepali': { en: 'नेपाली', ne: 'नेपाली' },
@@ -63,6 +153,7 @@ export const STRINGS = {
   'map.locating': { en: 'Finding you…', ne: 'खोज्दै…' },
   'map.centred': { en: 'Centred on you', ne: 'तपाईंमा केन्द्रित' },
   'map.showList': { en: 'List', ne: 'सूची' },
+  'map.listHeading': { en: 'Listings in view', ne: 'दृश्यमा भएका सूचीहरू' },
   'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },

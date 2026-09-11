@@ -578,6 +578,7 @@ export function NepalMap({ onOpen, location }: Props) {
           <MapList
             groups={visibleGroups}
             onOpen={onOpen}
+            heading={t('map.listHeading')}
             emptyLabel={radiusKm !== null
               ? `Nothing within ${radiusKm} km of you.`
               : 'Nothing listed in this area yet.'}

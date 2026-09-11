@@ -29,7 +29,7 @@ export function TokenReference() {
     <div className="stack">
       {COLOUR_GROUPS.map((group) => (
         <section key={group.title}>
-          <h3>{group.title}</h3>
+          <h2 className="gallery__heading">{group.title}</h2>
           <div className="swatches">
             {group.tokens.map((token) => (
               <div key={token} className="swatch">
@@ -42,7 +42,7 @@ export function TokenReference() {
       ))}
 
       <section>
-        <h3>Spacing</h3>
+        <h2 className="gallery__heading">Spacing</h2>
         {SPACING.map((token) => (
           <div key={token} className="ruler">
             <div className="ruler__bar" style={{ width: `var(${token})` }} />
@@ -52,7 +52,7 @@ export function TokenReference() {
       </section>
 
       <section>
-        <h3>Type scale</h3>
+        <h2 className="gallery__heading">Type scale</h2>
         {TYPE.map((token) => (
           <p key={token} style={{ fontSize: `var(${token})`, margin: 0 }}>
             {token} — काठमाडौंमा के भइरहेको छ
@@ -61,7 +61,7 @@ export function TokenReference() {
       </section>
 
       <section>
-        <h3>Radii and elevation</h3>
+        <h2 className="gallery__heading">Radii and elevation</h2>
         <div className="swatches">
           {RADII.map((token) => (
             <div key={token} className="swatch">
@@ -79,7 +79,7 @@ export function TokenReference() {
       </section>
 
       <section>
-        <h3>Layers</h3>
+        <h2 className="gallery__heading">Layers</h2>
         <Card>
           <p className="muted">
             Component CSS uses these names and never a number. WaahTickets

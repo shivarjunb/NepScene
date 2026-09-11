@@ -13,6 +13,7 @@ import { OrganizersIndex, VenuesIndex } from './pages/PlaceIndex'
 import { VenuePage } from './pages/VenuePage'
 import { OrganizerPage } from './pages/OrganizerPage'
 import { ArtistPage } from './pages/ArtistPage'
+import { AccessibilityPage } from './pages/Accessibility'
 
 /**
  * Every path the shell links to, in one table.
@@ -81,6 +82,12 @@ export const ROUTES: Route[] = [
     path: '/privacy',
     title: 'Privacy',
     summary: 'What NepScene stores, why, and for how long.',
+  },
+  {
+    path: '/accessibility',
+    title: 'Accessibility',
+    summary: 'What is verified, how, and what is not yet.',
+    element: <AccessibilityPage />,
   },
   {
     path: '/design-system',

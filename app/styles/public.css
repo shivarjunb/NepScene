@@ -192,10 +192,25 @@
 
 .listing-page__head { display: grid; gap: var(--space-2); max-width: 48rem; }
 
+/* The same fix as `.listing-card__category`, for the same reason: the
+ * category's database colour is a pin colour, and pin colours are not text
+ * colours. See the note there. */
 .listing-page__category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--card-accent, var(--accent));
+  color: var(--text-secondary);
+}
+
+.listing-page__category::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--card-accent, var(--accent));
 }
 
 .listing-page__title { font-size: var(--text-3xl); line-height: var(--leading-tight); }
@@ -375,7 +390,17 @@
 
 /* Past listings are context, not the offer. Dimming them keeps the page's
    answer to "what's on" visually first without hiding the history. */
-.place-page__past { opacity: 0.85; }
+/* Deliberately no `opacity` (#49).
+ *
+ * This was `opacity: 0.85`, which is the cheap way to say "these are over" and
+ * costs more than it looks: opacity composites the whole subtree against the
+ * page, so every token inside it — including `--text-secondary`, which passes
+ * AA at full strength — drops below 4.5:1. A dimmed section is a section a
+ * reader with low vision cannot read.
+ *
+ * Nothing is lost by removing it. These listings already sit under a heading
+ * that says they are past, which is the accessible way to say so and the only
+ * way a screen reader was ever going to hear it. */
 
 .place-index { list-style: none; padding: 0; display: grid; }
 
