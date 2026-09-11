@@ -70,8 +70,8 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 |---|---|
 | [#36](../../issues/36) | Port the map core and finish the Google Maps migration |
 | [#37](../../issues/37) | Venue grouping and multi-listing pins |
-| [#38](../../issues/38) | Geolocation, distance filtering and the hero map |
-| [#39](../../issues/39) | Map performance at catalogue scale |
+| [#38](../../issues/38) | Geolocation, distance filtering and the hero map · *IP geolocation is `request.cf`, not a third party* |
+| [#39](../../issues/39) | Map performance at catalogue scale · *the 3G paint budget is recorded, not met — see below* |
 | [#40](../../issues/40) | Map accessibility and a non-map fallback |
 | [#81](../../issues/81) | Occurrence model and the read path · *from the #35 decision* |
 | [#82](../../issues/82) | Authoring recurring and multi-date events · *from the #35 decision* |
@@ -95,12 +95,41 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 **[#8] Quality, accessibility and operational readiness**
 | # | Feature |
 |---|---|
-| [#47](../../issues/47) | Test strategy and harness |
+| [#47](../../issues/47) | Test strategy and harness · *Playwright now gates merges; see [TESTING.md](TESTING.md)* |
 | [#48](../../issues/48) | End-to-end journey coverage |
 | [#49](../../issues/49) | Accessibility compliance to WCAG 2.1 AA |
 | [#50](../../issues/50) | Observability and alerting |
 | [#51](../../issues/51) | Performance budgets and load testing |
 | [#52](../../issues/52) | Launch readiness |
+
+---
+
+## Waiting on you
+
+Everything else in the open backlog can be finished without leaving the repo.
+These cannot — each needs a decision, a purchase, or a console only you can
+sign in to. They are listed in the order they block other work.
+
+| # | What is needed from you | What is already done |
+|---|---|---|
+| [#60](../../issues/60) | **Register a domain.** `nepscene.com` did not resolve as of 2026-09-02, so this is a purchase before it is an engineering task. | Nothing in code blocks it; the workflow constants and the docs are the change, and they are a ten-minute edit once the zone exists. |
+| [#36](../../issues/36) / [#13](../../issues/13) | **Four Google Maps keys**, one per environment, each restricted by HTTP referrer, with a quota alert before the free tier runs out. Needs the Google Cloud console. | The code path is done and the keyless state is a supported one — preview builds and the Playwright server run without a key, and `map.spec.ts` asserts what a viewer sees when there is none. |
+| [#13](../../issues/13) | **Two rehearsals**: push a fake credential and confirm protection blocks it, and rotate a secret end to end against the runbook. | Every scope item is built. Both remaining criteria are things only someone with repository and Cloudflare access can perform. |
+| [#19](../../issues/19) | **Look at the social cards** on Facebook, X and WhatsApp, and say whether NepScene and WaahTickets read as related but distinct. | The mark, the wordmark, the favicon set, the accent and the card template all exist and pass contrast. What is left is a human judgement nobody can automate. |
+| [#50](../../issues/50) | **Alert destinations and dashboards** — where an alert should go, and who is on the other end. Needs the Cloudflare account. | The instrumentation side is code and is not blocked; see the issue. |
+| [#51](../../issues/51) | **Load testing against staging**, which costs real requests against real infrastructure. | Query performance at 10,000 listings is measured in `tests/integration/mapScale.test.ts`, and the bundle ratchet runs in CI. |
+| [#52](../../issues/52) | **Legal review** of the privacy policy and terms, a **rollback rehearsal**, a **restore rehearsal**, and the **go decision**. | Nothing else; #52 is last by construction. |
+
+### One thing to know rather than do
+
+`scripts/check-budget.mjs` enforces a *ratchet* on bundle weight — it fails on a
+regression. It does **not** enforce #39's "interactive paint under 1.5 seconds
+on 3G", which needs roughly 40KB gzipped and we ship 116.7KB. The script prints
+that gap on every run rather than quietly redefining the target as met. Closing
+it is route-level code splitting: the authoring wizard, the moderation queue and
+the component gallery are on every first paint today and are needed by almost
+nobody on one. That is a piece of work, not an oversight, and it is not
+scheduled.
 
 ---
 
