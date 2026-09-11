@@ -1,5 +1,6 @@
 import type { Context } from 'hono'
 import type { Env } from '../env'
+import { swallowed } from './observability'
 
 /**
  * Catalog responses are cached in the colo that served them (`caches.default`),
@@ -28,9 +29,12 @@ export async function catalogVersion(env: Env): Promise<string> {
     // cacheTtl keeps this in the colo's KV cache; the memo above keeps it out
     // of the request path entirely for 30s at a time.
     value = (await env.SETTINGS.get(VERSION_KEY, { cacheTtl: 60 })) ?? '1'
-  } catch {
+  } catch (cause) {
     // KV is optional on the read path. A version we cannot read degrades to
     // serving the previous version's cache for up to one TTL — never an error.
+    // Counted anyway: sustained failure means every publish is invisible for a
+    // minute longer than anyone expects, and nothing else would say so (#50).
+    swallowed('catalog_version_read', cause)
   }
   memo = { value, at: now }
   return value

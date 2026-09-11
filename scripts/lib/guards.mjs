@@ -337,3 +337,61 @@ export function schemaDrift(pending, live) {
   }
   return conflicts
 }
+
+/**
+ * Every caught error is either rethrown or counted (#50).
+ *
+ * The motivating case is F2 in the WaahTickets audit: paid orders producing no
+ * tickets, because the failure was swallowed into a response header nobody
+ * read. It was invisible for as long as it existed. An error that is caught and
+ * not reported is worse than one that crashes, because it removes the signal
+ * without removing the problem.
+ *
+ * Swallowing is often right — a KV read that fails should not lock everyone out
+ * of sign-in — so the rule is not "never swallow". It is **never swallow
+ * silently**: a catch block that does not rethrow must call `swallowed()`,
+ * which puts a structured line where a dashboard can count it.
+ *
+ * This is what stops that being a convention that decays. A convention lasts
+ * until the first tired afternoon; a failing build lasts.
+ *
+ * Recognised as reporting: `swallowed(`, `logEvent(`, `requestFailed(`, any
+ * `throw`, and an explicit `// swallow-guard:allow` with a reason after it.
+ */
+const REPORTERS = /\b(swallowed|logEvent|requestFailed|console\.(error|warn))\s*\(|\bthrow\b/
+
+export function silentCatches(text, file) {
+  const hits = []
+  const lines = text.split('\n')
+
+  for (const [index, line] of lines.entries()) {
+    // `catch {` or `catch (anything) {` — the opening of a handler.
+    if (!/\bcatch\s*(\([^)]*\))?\s*\{/.test(line)) continue
+
+    // The body runs from this line's brace to its match. Counting braces is
+    // enough here: these are handler bodies, not arbitrary text, and a brace
+    // inside a string inside a catch block would be a remarkable thing to find.
+    let depth = 0
+    let body = ''
+    let closed = false
+    for (let i = index; i < lines.length && i < index + 60; i += 1) {
+      const text_ = i === index ? lines[i].slice(lines[i].indexOf('catch')) : lines[i]
+      for (const ch of text_) {
+        if (ch === '{') depth += 1
+        else if (ch === '}') {
+          depth -= 1
+          if (depth === 0) { closed = true; break }
+        }
+      }
+      body += `${lines[i]}\n`
+      if (closed) break
+    }
+
+    if (/swallow-guard:allow/.test(body)) continue
+    if (REPORTERS.test(body)) continue
+
+    hits.push({ file, line: index + 1, text: line.trim() })
+  }
+
+  return hits
+}

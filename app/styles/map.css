@@ -58,6 +58,71 @@
   top: var(--space-3);
   right: var(--space-3);
   z-index: var(--z-raised);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ── Distance chips (#38) ────────────────────────────────────────────────────
+
+   Top-left, opposite the controls: a filter is a statement about what is on
+   the map, and it belongs with the map's other statement — the status line —
+   rather than in the pile of buttons that change the map's mode. */
+
+.nepal-map__distances {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-raised);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  /* Never under the controls, however narrow the map gets. */
+  max-width: calc(100% - 12rem);
+}
+
+.nepal-map__distance {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.nepal-map__distance:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.nepal-map__distance[aria-pressed='true'] {
+  border-color: var(--accent-border);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* Not an alert: the map behind this is working and showing a whole city. What
+   changed is only that distance filtering is unavailable. */
+.nepal-map__denied {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  top: var(--space-3);
+  z-index: var(--z-raised);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-sm);
 }
 
 .nepal-map__status {
@@ -126,4 +191,289 @@ body.map-is-fullscreen {
 @keyframes nepal-map-popup-in {
   from { opacity: 0; transform: translate(-50%, calc(-100% - var(--space-5))); }
   to   { opacity: 1; transform: translate(-50%, calc(-100% - var(--space-9))); }
+}
+
+/* ── The venue stack (#37) ───────────────────────────────────────────────────
+
+   The picker behind a grouped pin. It shares the popup's anchor and its
+   overlay surface, so opening a stack and opening a card feel like one
+   gesture landing in the same place rather than two different surfaces. */
+
+.venue-stack {
+  display: flex;
+  flex-direction: column;
+  width: min(20rem, 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.venue-stack__head {
+  position: relative;
+  padding: var(--space-5) var(--space-8) var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.venue-stack__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-extrabold);
+  line-height: var(--leading-snug);
+}
+
+.venue-stack__count {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+}
+
+.venue-stack__close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.venue-stack__close:hover {
+  color: var(--text-primary);
+}
+
+.venue-stack__list {
+  /* A venue with twenty listings must not grow a card taller than the map it
+     is drawn over. Ten rows fit; the rest scroll. */
+  max-height: 17rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.venue-stack__row {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-bottom: 1px solid var(--border-hairline);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.venue-stack__list li:last-child .venue-stack__row {
+  border-bottom: 0;
+}
+
+.venue-stack__row:hover,
+.venue-stack__row:focus-visible {
+  background: var(--surface-sunken);
+}
+
+/* The scannable column: fixed width, so ten dates line up rather than each
+   starting wherever the previous title ended. */
+.venue-stack__chip {
+  flex: 0 0 auto;
+  width: 3.25rem;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--chip-ground);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.venue-stack__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.venue-stack__name {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  overflow-wrap: anywhere;
+}
+
+.venue-stack__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+}
+
+.venue-stack__live {
+  color: var(--success);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The category's own colour, as a dot rather than as text — coloured text at
+   this size fails contrast against the overlay for half the twelve. */
+.venue-stack__category::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-inline-end: 0.4em;
+  border-radius: var(--radius-full);
+  background: var(--pin-color, var(--accent));
+  vertical-align: baseline;
+}
+
+/* ── The equivalent list (#40) ───────────────────────────────────────────────
+
+   Not a fallback stylesheet: this is a peer surface, and it is what renders
+   when the Maps API is blocked, rate-limited or keyless. It occupies the
+   map's own box so switching does not reflow the page around it. */
+
+.nepal-map--list .nepal-map__list {
+  position: relative;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+.nepal-map--list.nepal-map--fullscreen .nepal-map__list {
+  max-height: 100%;
+}
+
+.map-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-5);
+  list-style: none;
+}
+
+.map-list__venue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.map-list__place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* The category's colour, which is the one thing a pin carried that a text row
+   otherwise loses. Decorative, so it is aria-hidden in the markup. */
+.map-list__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--pin-color, var(--accent));
+}
+
+.map-list__count {
+  color: var(--text-secondary);
+  font-weight: var(--weight-normal);
+}
+
+.map-list__listings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-list__row {
+  display: flex;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.map-list__row:hover {
+  border-color: var(--border-strong);
+}
+
+.map-list__chip {
+  flex: 0 0 auto;
+  width: 3.25rem;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--chip-ground);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.map-list__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.map-list__title {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.map-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-3xs);
+}
+
+.map-list__live {
+  color: var(--success);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.map-list__empty {
+  margin: 0;
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+/* A control drawn over map tiles has no controlled background behind its ring,
+   so the ring gets a ring: the outline in the accent, a white or midnight halo
+   under it. Without this the focus indicator is invisible over roughly half of
+   Nepal at satellite zoom, in whichever theme. */
+.nepal-map__controls :focus-visible,
+.nepal-map__distance:focus-visible {
+  box-shadow: 0 0 0 4px var(--surface);
 }

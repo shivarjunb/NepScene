@@ -1,4 +1,5 @@
 import { NepalMap } from '../map/NepalMap'
+import { useLocation } from '../map/useLocation'
 import { navigate } from '../router'
 
 /**
@@ -9,6 +10,8 @@ import { navigate } from '../router'
  * for a popup to send the reader.
  */
 export function MapPage() {
+  const location = useLocation()
+
   return (
     <div className="layout stack">
       <header className="stack stack--tight">
@@ -19,7 +22,7 @@ export function MapPage() {
         </p>
       </header>
 
-      <NepalMap onOpen={(slug) => navigate(`/listings/${slug}`)} />
+      <NepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
     </div>
   )
 }

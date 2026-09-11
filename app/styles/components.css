@@ -359,6 +359,26 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
 
 .hero .hero__title { text-shadow: 0 4px 34px var(--scrim); }
 
+/* The reveal (#38). The heading is keyed on the city, so React replaces the
+   node when location resolution renames it and this plays on the new one.
+   Under `prefers-reduced-motion` nothing is declared at all — the criterion is
+   that reduced motion suppresses the intro, and the way to suppress an
+   animation is not to give it one. */
+.hero__title-reveal {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__title-reveal {
+    animation: hero-title-reveal var(--duration-slow) var(--ease-out) both;
+  }
+}
+
+@keyframes hero-title-reveal {
+  from { opacity: 0; transform: translateY(0.35em); }
+  to   { opacity: 1; transform: none; }
+}
+
 .hero__lead {
   max-width: 32.5rem;
   color: var(--on-dark-muted);
@@ -659,10 +679,34 @@ body.map-is-fullscreen .hero__map {
   flex: 1;
 }
 
+/* The category's own colour, as a dot rather than as text (#49).
+ *
+ * `--card-accent` is the category's colour from the database — the same twelve
+ * the map pins use. Those are chosen to stay distinguishable over map tiles,
+ * not to pass 4.5:1 as small text on a white card, and most of them do not:
+ * concerts (#e91e63) lands at 4.34 and the green at 2.27. Painting the label
+ * in it made every card on every page a contrast failure.
+ *
+ * The colour is worth keeping — it is what ties a card to its pin — so it
+ * moves to a dot, where it is decoration and carries no contrast requirement,
+ * and the text takes a token that passes. This is the same treatment
+ * `.venue-stack__category` already used; the card simply had not followed it. */
 .listing-card__category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: var(--text-xs);
   font-weight: var(--weight-black);
-  color: var(--card-accent);
+  color: var(--text-secondary);
+}
+
+.listing-card__category::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  background: var(--card-accent, var(--accent));
 }
 
 .listing-card__title {
@@ -718,4 +762,16 @@ body.map-is-fullscreen .hero__map {
   .grid { grid-template-columns: 1fr; }
   .listing-card--row { width: 82vw; flex-basis: 82vw; }
   .rail__head { align-items: flex-start; }
+}
+
+/* The design-system gallery's section headings (#49).
+ *
+ * They were `h3` directly under the page's `h1`, which skips a level — the tab
+ * panel between them is a panel, not a heading, so a screen reader navigating
+ * by heading went h1 → h3 and lost the structure. They are `h2` now and keep
+ * the `h3` size, because the visual hierarchy was right and only the semantics
+ * were wrong. */
+.gallery__heading {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
 }

@@ -146,6 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <li><Link href="/submit">{t('footer.submit')}</Link></li>
               <li><Link href="/dashboard">{t('footer.dashboard')}</Link></li>
               <li><Link href="/privacy">{t('footer.privacy')}</Link></li>
+              <li><Link href="/accessibility">{t('footer.accessibility')}</Link></li>
               <li><Link href="/design-system">{t('footer.designSystem')}</Link></li>
             </ul>
           </nav>

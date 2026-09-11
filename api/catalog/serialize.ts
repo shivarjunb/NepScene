@@ -4,6 +4,7 @@ import type {
 } from './types'
 import { resolvePin } from './pin'
 import { FORMAT_ORDER, MIME_BY_FORMAT, type Format } from '../media/pipeline'
+import { swallowed } from '../lib/observability'
 
 /** Public URL for an R2 object. Derived, never stored (see migration 0001). */
 export function mediaUrl(r2Key: string): string {
@@ -17,7 +18,11 @@ function parseJsonArray<T>(raw: unknown): T[] {
   try {
     const parsed: unknown = JSON.parse(raw)
     return Array.isArray(parsed) ? (parsed as T[]) : []
-  } catch {
+  } catch (cause) {
+    // A column that should hold JSON and does not. The row still renders
+    // without it, which is why this is a degrade rather than a 500 — and why
+    // it would otherwise be invisible (#50).
+    swallowed('serialize_json_array', cause)
     return []
   }
 }
@@ -268,7 +273,8 @@ function parseJsonObject(raw: unknown): unknown | null {
   if (typeof raw !== 'string' || raw === '') return null
   try {
     return JSON.parse(raw)
-  } catch {
+  } catch (cause) {
+    swallowed('serialize_json_object', cause)
     return null
   }
 }

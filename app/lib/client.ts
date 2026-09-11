@@ -1,7 +1,8 @@
 import type {
   ArtistSummary, Bootstrap, Listing, ListingDetail, OrganizerSummary, Page, PlacePage,
-  SearchResult, Suggestion, VenueDetail, VenueSummary,
+  Here, SearchResult, Suggestion, VenueDetail, VenueSummary,
 } from './catalog'
+
 
 /**
  * The browser's half of the Catalog API.
@@ -54,6 +55,15 @@ const query = (params: Record<string, string | undefined>) => {
  */
 export const fetchBootstrap = (signal?: AbortSignal) =>
   get<Bootstrap>('/bootstrap', signal)
+
+/**
+ * Where the visitor appears to be, from their IP (#38).
+ *
+ * Same origin, which is the whole point: WaahTickets asked `ip-api.com` over
+ * plain HTTP, which a browser on an HTTPS page blocks outright. See
+ * `api/catalog/here.ts`.
+ */
+export const fetchHere = (signal?: AbortSignal) => get<Here>('/here', signal)
 
 export const fetchListings = (
   params: Record<string, string | undefined>, signal?: AbortSignal,

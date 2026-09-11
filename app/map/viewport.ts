@@ -60,6 +60,21 @@ export function bboxParam(bounds: Bounds): string {
   return [bounds.west, bounds.south, bounds.east, bounds.north].map(round).join(',')
 }
 
+/**
+ * Are these the same rectangle?
+ *
+ * `idle` fires for reasons other than a pan — a resize, a programmatic
+ * `setCenter` to where the map already is, the SDK settling after tiles load —
+ * and each one hands back bounds. Storing a fresh object for identical numbers
+ * restarts every effect that watches the viewport, which aborts an in-flight
+ * fetch and issues it again. So identity is compared on the numbers.
+ */
+export function sameBounds(a: Bounds | null, b: Bounds): boolean {
+  return a !== null
+    && a.west === b.west && a.east === b.east
+    && a.south === b.south && a.north === b.north
+}
+
 /** Is `inner` wholly inside `outer`? Touching edges count as inside. */
 export function contains(outer: Bounds, inner: Bounds): boolean {
   return outer.west <= inner.west

@@ -5,6 +5,7 @@ import {
   loadVenue, loadVenues, type PageData,
 } from './data'
 import { robots, sitemapIndex, sitemapSegment } from './sitemap'
+import { swallowed } from '../lib/observability'
 
 /**
  * Which URLs the Worker renders, and which it leaves to the static asset (#45).
@@ -47,9 +48,10 @@ export function matchRenderRoute(pathname: string): Match | null {
     let decoded: string
     try {
       decoded = decodeURIComponent(slug)
-    } catch {
+    } catch (cause) {
       // A malformed escape is not a slug we have. Let the SPA render its own
       // not-found page rather than answering 500 from here.
+      swallowed('render_slug_decode', cause, { prefix: route.prefix })
       return null
     }
     return { load: (env) => route.load(env, decoded) }

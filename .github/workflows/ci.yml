@@ -37,6 +37,13 @@ jobs:
       - name: Committed credential guard
         run: node scripts/check-secrets.mjs
 
+      # An error caught and not reported is worse than one that crashes: it
+      # removes the signal without removing the problem (#50). Fails rather
+      # than warns — a silent catch is either a bug or a one-line allow with a
+      # reason, and both belong to the author.
+      - name: Silent catch guard
+        run: node scripts/check-silent-catches.mjs
+
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -71,10 +78,58 @@ jobs:
         env:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
+      # After the build, because it weighs what the build produced. A ratchet
+      # rather than a target: it fails on a weight *regression*, and the gap to
+      # #39's 1.5s-on-3G criterion is recorded in the script rather than
+      # enforced, because a check nobody can pass gets turned off.
+      - name: Performance budget
+        run: npm run budget
+
       - name: Test with coverage
         # Thresholds live in vitest.config.ts and are set at the measured floor,
         # so a coverage drop fails here rather than being noticed later.
         run: npm run test:coverage
+
+      # 187 browser specs that, until now, gated nothing — they existed and no
+      # merge ever ran them (#47: "Playwright runs on every PR"; #48: "a journey
+      # failure blocks merge").
+      #
+      # Against the two local servers `playwright.config.ts` already starts, not
+      # against the preview deployment. Most specs stub the catalogue at the
+      # network boundary on purpose — an empty catalogue, a failed fetch and a
+      # blocked Maps API are not states a shared preview database can be put
+      # into on demand — and `rendering.spec.ts` needs the seeded local D1 that
+      # `wrangler dev` serves. A preview deployment is the right target for a
+      # smoke journey, which `scripts/smoke.mjs` is, and the wrong one for these.
+      # Three engines, not one (#48). The audience is overwhelmingly Android
+      # Chrome with meaningful iOS Safari usage, and Safari is where the map,
+      # geolocation and theme handling most often diverge — so Chromium alone
+      # tests the browser this repository was developed in and nothing else.
+      # Only `journeys.spec.ts` runs on WebKit and Firefox; see
+      # playwright.config.ts for why the cost is not spent evenly.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit firefox
+
+      # `rendering.spec.ts` runs against `wrangler dev --local`, which reads the
+      # local D1 in `.wrangler/state`. On a fresh runner that is empty, and on
+      # this self-hosted one it is whatever the last job left — so it is rebuilt
+      # explicitly rather than inherited. `db:reset` drops it and replays the
+      # migrations plus the demo seed, which is also what a developer runs.
+      - name: Seed the local D1 for the end-to-end run
+        run: npm run db:reset
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload the Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
       - name: Coverage summary
         if: always()

@@ -249,3 +249,20 @@ export type Page<T> = {
   data: T[]
   page: { limit: number; has_more: boolean; next_cursor: string | null }
 }
+
+/**
+ * Where a request appears to be coming from, as `/api/catalog/here` answers it
+ * (#38). Declared here rather than in the handler so the browser can import
+ * the shape without importing a Hono app.
+ */
+export type Here = {
+  city: string
+  /** The same city in Devanagari (#46), so a Nepali headline is not half-English. */
+  city_ne: string
+  lat: number
+  lng: number
+  /** How the answer was reached, so the client can tell a guess from a default. */
+  source: 'ip' | 'default'
+  /** Nepal or not. A visitor abroad gets the default and should know why. */
+  in_nepal: boolean
+}

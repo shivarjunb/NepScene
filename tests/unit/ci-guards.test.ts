@@ -6,6 +6,7 @@ import {
   credentialHits,
   migrationCreates,
   schemaDrift,
+  silentCatches,
 } from '../../scripts/lib/guards.mjs'
 import {
   parseTscErrors,
@@ -262,5 +263,80 @@ describe('schema drift guard', () => {
       columns: { listings: ['id', 'starts_at'] },
     }
     expect(schemaDrift([{ name: '0008_draft_start_optional.sql', sql: M0008 }], live)).toEqual([])
+  })
+})
+
+
+/**
+ * The silent-catch guard (#50).
+ *
+ * The rule exists because of F2 in the WaahTickets audit: paid orders
+ * producing no tickets, because the failure was swallowed into a response
+ * header nobody read — invisible for as long as it existed. Swallowing is
+ * often right; swallowing *silently* never is.
+ *
+ * These are the fixtures that keep the guard from becoming decoration: one
+ * that must be caught, one of each way of reporting, and the shape that is
+ * most likely to be a false positive.
+ */
+describe('silent catch guard', () => {
+  const check = (source: string) => silentCatches(source, 'x.ts')
+
+  it('catches a bare swallow', () => {
+    expect(check('try { risky() } catch { return null }')).toHaveLength(1)
+  })
+
+  it('catches a swallow that binds the error and ignores it', () => {
+    // Worse than the bare one, because it looks like it is doing something.
+    expect(check('try { risky() } catch (err) {\n  return fallback\n}')).toHaveLength(1)
+  })
+
+  it('accepts a catch that rethrows', () => {
+    expect(check('try { risky() } catch { throw badRequest("x", "y") }')).toEqual([])
+  })
+
+  it('accepts a catch that reports through swallowed()', () => {
+    expect(check('try { risky() } catch (cause) {\n  swallowed("thing", cause)\n  return null\n}'))
+      .toEqual([])
+  })
+
+  it('accepts a catch that logs a structured event', () => {
+    expect(check('try { risky() } catch (cause) {\n  logEvent("error", "thing", {})\n  return null\n}'))
+      .toEqual([])
+  })
+
+  it('accepts an explicit allow', () => {
+    // The escape hatch, for the case where the caught error is the output —
+    // a health probe turning a failure into a reported state.
+    expect(check('try { risky() } catch (err) {\n  // swallow-guard:allow — it is the output\n  return { ok: false }\n}'))
+      .toEqual([])
+  })
+
+  it('finds every silent catch in a file, not just the first', () => {
+    const source = [
+      'try { a() } catch { return 1 }',
+      'try { b() } catch { throw e }',
+      'try { c() } catch { return 3 }',
+    ].join('\n')
+    expect(check(source).map((hit: { line: number }) => hit.line)).toEqual([1, 3])
+  })
+
+  it('reads the whole handler body, not only its first line', () => {
+    // A guard that stopped at the opening brace would pass anything whose
+    // report is on the second line, which is where every real one is.
+    const source = 'try { a() } catch (cause) {\n  const x = 1\n  swallowed("r", cause)\n  return x\n}'
+    expect(check(source)).toEqual([])
+  })
+
+  it('does not fire on the word catch outside a handler', () => {
+    // `.catch(` on a promise is not a `catch {` block, and neither is a
+    // variable that happens to be named after one.
+    expect(check('promise.catch(noop)')).toEqual([])
+    expect(check('const catchAll = 1')).toEqual([])
+  })
+
+  it('reports the line the handler opens on', () => {
+    const source = 'const a = 1\nconst b = 2\ntry { c() } catch { return null }'
+    expect(check(source)[0]!.line).toBe(3)
   })
 })

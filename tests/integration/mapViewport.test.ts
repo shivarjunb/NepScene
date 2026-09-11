@@ -2,6 +2,8 @@ import { SELF } from 'cloudflare:test'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { seedCatalogue } from '../helpers/seed'
 import { bboxParam, padBounds, type Bounds } from '../../app/map/viewport'
+import { toMapPins } from '../../app/map/markers'
+import { groupByVenue } from '../../app/map/venueGrouping'
 
 /**
  * #36's integration criteria, through real HTTP against a real D1:
@@ -133,5 +135,63 @@ describe('a viewport the API cannot honestly answer', () => {
     const bbox = bboxParam(padBounds(KATHMANDU))
     const { body } = await get(`/api/catalog/listings?bbox=${bbox}&limit=50`)
     expect(slugs(body)).toContain('lakeside-live')
+  })
+})
+
+
+/**
+ * #37's integration criterion: "seeded shared venues produce the expected
+ * single pins".
+ *
+ * This runs the real API response through the real grouping rather than
+ * through a fixture, because the thing most likely to break grouping is not
+ * the sort — it is the serializer quietly dropping `venue.id`, at which point
+ * every listing falls to the coordinate key and the map looks *almost* right.
+ */
+describe('shared venues become one pin each', () => {
+  it('groups the two Kathmandu listings into one Purple Haze pin', async () => {
+    const { body } = await mapRequest(KATHMANDU)
+    const groups = groupByVenue(toMapPins(body.data))
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.key).toBe('ven_thamel')
+    expect(groups[0]!.count).toBe(2)
+    expect(groups[0]!.pins.map((pin) => pin.slug).sort()).toEqual(['art-week', 'rock-night'])
+  })
+
+  it('groups the two Pokhara listings into one Lakeside pin', async () => {
+    const { body } = await mapRequest(POKHARA)
+    const groups = groupByVenue(toMapPins(body.data))
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.key).toBe('ven_pokhara')
+    expect(groups[0]!.count).toBe(2)
+  })
+
+  it('puts the running listing at the top of its stack, ahead of the featured one', async () => {
+    // Art Week is running right now (`runningStart`/`runningEnd`); Rock Night
+    // is featured. Live wins — that is the tuned order, end to end.
+    const { body } = await mapRequest(KATHMANDU)
+    const [group] = groupByVenue(toMapPins(body.data))
+
+    expect(group!.primary.slug).toBe('art-week')
+    expect(group!.primary.rank.live).toBe(true)
+    expect(group!.pins[1]!.rank.featured).toBe(true)
+  })
+
+  it('keeps the two venues apart when both are in view', async () => {
+    const NEPAL: Bounds = { west: 83.5, south: 27.4, east: 85.6, north: 28.4 }
+    const { body } = await mapRequest(NEPAL)
+    const groups = groupByVenue(toMapPins(body.data))
+
+    expect(groups.map((group) => group.key).sort()).toEqual(['ven_pokhara', 'ven_thamel'])
+    expect(groups.every((group) => group.count === 2)).toBe(true)
+  })
+
+  it('carries the venue id the grouping keys on', async () => {
+    // The failure this catches: a serializer change that drops `venue.id`
+    // sends every pin to the coordinate fallback, and nothing else notices.
+    const { body } = await mapRequest(KATHMANDU)
+    expect(toMapPins(body.data).every((pin) => pin.venueId !== null)).toBe(true)
   })
 })

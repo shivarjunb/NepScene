@@ -3,7 +3,8 @@ import {
   DEFAULT_POPUP_FIELDS, defaultPopupConfig, isDefaultPopupConfig, parsePopupConfig,
   POPUP_FIELDS, serialisePopupConfig,
 } from '../../api/author/popupConfig'
-import { pinDataUri, pinSvg } from '../../app/map/pinMarker'
+import { countLabel, pinDataUri, pinSvg, PIN_SIZE } from '../../app/map/pinMarker'
+import { bubbleLabel } from '../../app/map/venueGrouping'
 import { DEFAULT_PIN, resolvePin } from '../../api/catalog/pin'
 
 /**
@@ -157,6 +158,46 @@ describe('the pin is a function of the category', () => {
     const uri = pinDataUri(DEFAULT_PIN)
     expect(uri.startsWith('data:image/svg+xml;charset=utf-8,')).toBe(true)
     expect(decodeURIComponent(uri.split(',')[1]!)).toBe(pinSvg(DEFAULT_PIN))
+  })
+})
+
+describe('a grouped pin carries its count (#37)', () => {
+  it('draws no bubble and no stack for a single listing', () => {
+    const svg = pinSvg(DEFAULT_PIN, 1)
+    expect(svg).not.toContain('<text')
+    expect(svg).not.toContain('translate(3 -3)')
+  })
+
+  it('draws the count and the stacked shadow above one', () => {
+    const svg = pinSvg({ icon: 'Music', color: '#e91e63', category: 'concerts' }, 6)
+    expect(svg).toContain('>6</text>')
+    expect(svg).toContain('translate(3 -3)')
+  })
+
+  it('caps the label at 99+ rather than growing the bubble without limit', () => {
+    expect(pinSvg(DEFAULT_PIN, 99)).toContain('>99</text>')
+    expect(pinSvg(DEFAULT_PIN, 100)).toContain('>99+</text>')
+    expect(countLabel(1000)).toBe('99+')
+  })
+
+  it('agrees with the DOM bubble label, which makes the same decision', () => {
+    for (const count of [2, 12, 99, 100, 4000]) {
+      expect(countLabel(count)).toBe(bubbleLabel(count))
+    }
+  })
+
+  it('keeps a grouped pin in the same box, so the anchor does not move', () => {
+    // A pin that grew when a venue got busier would slide the point that
+    // means "here" away from the door it is describing.
+    for (const count of [1, 3, 250]) {
+      expect(pinSvg(DEFAULT_PIN, count)).toContain('viewBox="0 0 40 40"')
+      expect(pinSvg(DEFAULT_PIN, count)).toContain(`width="${PIN_SIZE}"`)
+    }
+  })
+
+  it('passes the count through the data URI', () => {
+    const uri = pinDataUri(DEFAULT_PIN, 4)
+    expect(decodeURIComponent(uri.split(',')[1]!)).toBe(pinSvg(DEFAULT_PIN, 4))
   })
 })
 

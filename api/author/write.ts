@@ -11,6 +11,7 @@ import { requirePermission, type AuthVariables } from '../identity/middleware'
 import { loadEditableListing } from './access'
 import { LISTING_TYPES, validateListing, type ListingInput, type ListingType } from './validate'
 import { parsePopupConfig, serialisePopupConfig } from './popupConfig'
+import { swallowed } from '../lib/observability'
 
 /**
  * Create, read-for-edit and update (#30). The status verbs live in
@@ -371,7 +372,10 @@ authorWriteRoutes.get('/listings/:id', requirePermission('listing:edit_own'), as
 
 function parseConfig(raw: unknown): unknown {
   if (typeof raw !== 'string' || raw === '') return null
-  try { return JSON.parse(raw) } catch { return null }
+  try { return JSON.parse(raw) } catch (cause) {
+    swallowed('author_json_parse', cause)
+    return null
+  }
 }
 
 // ─── PATCH /api/author/listings/:id ──────────────────────────────────────────

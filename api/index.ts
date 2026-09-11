@@ -16,6 +16,7 @@ import type { AuthVariables } from './identity/middleware'
 import { healthRoutes } from './health/routes'
 import { mediaRoutes } from './media/routes'
 import { ApiError, errorResponse, requestId } from './lib/http'
+import { logEvent, requestFailed, setRequestId } from './lib/observability'
 import { MovedPermanently } from './render/data'
 import { handleSeoRoute, matchRenderRoute } from './render/routes'
 import { scheduled } from './scheduled'
@@ -30,10 +31,19 @@ const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
  */
 app.use('/api/*', async (c, next) => {
   const id = requestId(c)
-  await next()
-  // Set on the finished response, not the context: catalog handlers return a
-  // Response built by the cache wrapper, which replaces anything staged here.
-  c.res.headers.set('x-request-id', id)
+  // Published so anything that logs during this request carries the same id —
+  // which is what makes an error findable from the response the reporter saw
+  // (#50). Cleared afterwards so a log line from outside a request cannot
+  // inherit a stale one and point at the wrong trace.
+  setRequestId(id)
+  try {
+    await next()
+  } finally {
+    // Set on the finished response, not the context: catalog handlers return a
+    // Response built by the cache wrapper, which replaces anything staged here.
+    c.res?.headers.set('x-request-id', id)
+    setRequestId(null)
+  }
 })
 
 // Catalog is public and read-only; browsers may call it from anywhere.
@@ -61,10 +71,40 @@ app.route('/api/author', authorMediaRoutes)
 app.route('/api/author', moderationRoutes)
 app.route('/api/author', dashboardRoutes)
 
-app.notFound((c) =>
-  errorResponse(new ApiError(404, 'not_found', 'No such endpoint'), requestId(c)),
-)
-app.onError((err, c) => errorResponse(err, requestId(c)))
+/**
+ * Counted like any other failure (#50).
+ *
+ * Hono routes a miss here rather than through `onError`, so a 404 was the one
+ * error class that reached a client without being recorded — and it is the one
+ * most likely to mean something: a spike of them is a broken link somewhere
+ * public, or a client built against an endpoint that has moved.
+ */
+app.notFound((c) => {
+  requestFailed(404, 'not_found', {
+    method: c.req.method,
+    path: new URL(c.req.url).pathname,
+  })
+  return errorResponse(new ApiError(404, 'not_found', 'No such endpoint'), requestId(c))
+})
+/**
+ * Every error that reaches a client is counted before it is rendered (#50).
+ *
+ * Not to preserve the signal — a 500 is already visible to whoever got it —
+ * but so the *rate* is something an alert can be attached to. A single 500 is
+ * a bad afternoon for one person; fifty in a minute is an incident, and
+ * nothing distinguishes them from inside a response body.
+ */
+app.onError((err, c) => {
+  const known = err instanceof ApiError
+  requestFailed(known ? err.status : 500, known ? err.code : 'internal_error', {
+    method: c.req.method,
+    path: new URL(c.req.url).pathname,
+    // The message only for errors we raised deliberately. An unexpected one
+    // can carry anything, including a fragment of a row.
+    message: known ? err.message : undefined,
+  })
+  return errorResponse(err, requestId(c))
+})
 
 /**
  * The public site, server-rendered (#45).
@@ -109,7 +149,14 @@ async function handlePage(request: Request, env: Env, ctx: ExecutionContext): Pr
         headers: { 'content-type': 'text/html; charset=utf-8' },
       })
     }
-    console.error('render failed', url.pathname, error)
+    // Structured, and carrying the correlation id, so this is findable from
+    // the `x-request-id` a reader can be asked for (#50). It is an `error`
+    // rather than a `swallowed`: the page still renders, but a crawler got the
+    // empty shell, which is a real regression rather than a graceful degrade.
+    logEvent('error', 'render_failed', {
+      path: url.pathname,
+      cause: error instanceof Error ? error.message : String(error),
+    })
     ctx.passThroughOnException?.()
     return env.ASSETS.fetch(request)
   }
@@ -129,7 +176,17 @@ export default {
     // renders or an asset it hands straight back. The split is here rather
     // than in Hono's router so that a page never picks up API middleware.
     if (url.pathname.startsWith('/api/')) return app.fetch(request, env, ctx)
-    return handlePage(request, env, ctx)
+
+    // Pages do not go through the Hono middleware that publishes this, so they
+    // set it themselves — otherwise a swallowed error during a render would be
+    // logged with no correlation id at all, which is the half of #50 that makes
+    // the other half usable.
+    setRequestId(request.headers.get('cf-ray') ?? crypto.randomUUID())
+    try {
+      return await handlePage(request, env, ctx)
+    } finally {
+      setRequestId(null)
+    }
   },
   scheduled,
 }

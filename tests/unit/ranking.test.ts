@@ -4,41 +4,22 @@ import {
 } from '../../api/catalog/ranking'
 import { parseTerms } from '../../api/catalog/terms'
 import type { ListingSummary } from '../../api/catalog/types'
+import { aListing, FIXED_NOW, inDays } from '../factories'
 
 /**
  * #42's ranking criteria, stated as orderings over known inputs. This is the
  * whole reason ranking is a pure function in the Worker rather than an ORDER BY
  * expression spliced into a query string.
  */
-const NOW = new Date('2026-09-10T06:00:00Z')
-const inDays = (days: number) => new Date(NOW.getTime() + days * 86_400_000).toISOString()
+const NOW = FIXED_NOW
 
-const listing = (over: Partial<ListingSummary> & { id: string }): ListingSummary => ({
-  slug: over.id,
-  title: over.id,
-  title_ne: null,
-  summary: null,
-  summary_ne: null,
-  listing_type: 'ticketed_internal',
-  source: 'organizer',
-  starts_at: inDays(7),
-  ends_at: null,
-  is_all_day: false,
-  timezone: 'Asia/Kathmandu',
-  cover_image_url: null,
-  external_url: null,
-  is_featured: false,
-  map_popup_config: null,
-  latitude: null,
-  longitude: null,
-  pin: { icon: 'MapPin', color: '#64748b', category: null },
-  venue: null,
-  organizer: null,
-  categories: [],
-  cover: null,
-  offer: null,
-  ...over,
-})
+/**
+ * `ListingSummary` is the Worker's name for what the browser calls `Listing`;
+ * the two are the same wire shape declared on either side of the boundary
+ * (see the note at the top of app/lib/catalog.ts), so one factory serves both.
+ */
+const listing = (over: Partial<ListingSummary> & { id: string }): ListingSummary =>
+  aListing({ listing_type: 'ticketed_internal', starts_at: inDays(7), ...over }) as ListingSummary
 
 const order = (listings: ListingSummary[], query: string, extra = {}) =>
   rankListings(listings, { terms: parseTerms(query), now: NOW, ...extra })

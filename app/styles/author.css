@@ -160,6 +160,29 @@
 .wizard__type span { display: flex; flex-direction: column; gap: var(--space-1); }
 .wizard__type small { color: var(--text-secondary); font-size: var(--text-xs); }
 
+/* A tinted surface invalidates contrast measured against the plain one (#49).
+ *
+ * `--text-secondary` is slate-500, which clears 4.5:1 on `--surface` and lands
+ * at 4.26 on `--accent-surface` — so selecting a card quietly pushed its
+ * description below AA. The same trap as `.place-page__past`: the token pair
+ * was checked, the *rendered* pair was not.
+ *
+ * Slate-600 on the tint is 6.78:1, and on the dark theme's accent surface the
+ * secondary token already clears it — so only the selected state changes, and
+ * only in light. */
+.wizard__type:has(input:checked) small { color: var(--palette-slate-600); }
+
+:root[data-theme='dark'] .wizard__type:has(input:checked) small,
+:root:not([data-theme='light']) .wizard__type:has(input:checked) small {
+  color: var(--text-secondary);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .wizard__type:has(input:checked) small {
+    color: var(--palette-slate-600);
+  }
+}
+
 /* ── Chips and tags ────────────────────────────────────────────────────────*/
 
 .wizard__chips { display: flex; flex-wrap: wrap; gap: var(--space-3); }

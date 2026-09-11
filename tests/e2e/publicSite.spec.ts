@@ -360,7 +360,7 @@ test('the language choice survives a reload and a navigation', async ({ page }) 
   await serve(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'नेपाली' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'नेपालभरि के-के भइरहेको छ' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'काठमाडौं वरिपरि के-के भइरहेको छ' })).toBeVisible()
 
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('lang', 'ne')

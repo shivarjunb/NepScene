@@ -1,4 +1,5 @@
 import type { Env } from '../env'
+import { swallowed } from '../lib/observability'
 
 /**
  * A fixed-window counter in KV, used on credential endpoints only. It is
@@ -19,8 +20,12 @@ export async function rateLimit(
   let count: number
   try {
     count = Number(await env.SETTINGS.get(kvKey)) || 0
-  } catch {
+  } catch (cause) {
     // KV unavailable: fail open rather than locking everyone out of sign-in.
+    // Counted, because failing open means sign-in is unthrottled — which is
+    // fine for a minute and is an incident for an hour, and nothing else
+    // distinguishes the two (#50).
+    swallowed('rate_limit_kv_read', cause, { key_prefix: key.split(':')[0] ?? 'unknown' })
     return { allowed: true, remaining: limit, retryAfterSeconds: 0 }
   }
 
