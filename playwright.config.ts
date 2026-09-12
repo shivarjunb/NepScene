@@ -21,6 +21,14 @@ const WORKER_PORT = 8788
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+  // The CI runner is the developer's own 8 GB laptop (#96), shared with the
+  // IDE and whatever else is open. At the default four workers across three
+  // engines, `wrangler dev` has dropped mid-run three times ("Network
+  // connection lost" in its log, 80–95 s in) and every test after it failed
+  // on a refused connection; the same suite at four workers on the same
+  // machine idle passes in ninety seconds. Two workers trades a minute for
+  // not sharing the machine's memory with a fourth browser.
+  workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? 'github' : 'list',
   // Creates the two accounts the journey specs sign in as, with a password
   // generated per run so none is ever committed. See the file for why the
