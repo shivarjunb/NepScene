@@ -33,7 +33,10 @@
   },
   "include": ["api", "tests"],
   // Browser specs have their own config; they need DOM types this one forbids.
-  // The server renderer is the other exception: it imports browser components
-  // (#45) and is typechecked by tsconfig.ssr.json, which has both libraries.
-  "exclude": ["tests/e2e"]
+  // So does the one unit test of a component module: `deferred()` renders an
+  // `Alert` when its chunk fails to arrive, and that import reaches the rest
+  // of the primitives, whose effects touch `document`. It is typechecked by
+  // tsconfig.app.json instead, where the DOM lib belongs, and still runs in
+  // workerd with the rest (vitest.config.ts `include`).
+  "exclude": ["tests/e2e", "tests/unit/deferred.test.ts"]
 }
