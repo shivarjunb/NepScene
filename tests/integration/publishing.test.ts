@@ -43,13 +43,47 @@ beforeEach(async () => {
 })
 
 describe('publication workflow', () => {
-  it('refuses to let a draft skip review', async () => {
+  it('lets an editor publish a finished draft in one move', async () => {
+    // The review is the editor, not the pending_review state: an import that
+    // is complete should not need a Submit click before its Publish click.
     const { cookie } = await signIn('editor@example.np', 'editor')
     const response = await act(cookie, 'lst_draft', 'publish')
 
+    expect(response.status).toBe(200)
+    expect(await statusOf('lst_draft')).toBe('published')
+
+    const audit = await env.DB.prepare(
+      `SELECT details FROM audit_log WHERE entity_id = 'lst_draft' AND action = 'published'`,
+    ).first<{ details: string }>()
+    expect(JSON.parse(audit!.details).from).toBe('draft')
+  })
+
+  it('still refuses to publish a draft that is not finished, and says which fields', async () => {
+    const { cookie } = await signIn('editor@example.np', 'editor')
+    await env.DB.prepare(`DELETE FROM listing_categories WHERE listing_id = 'lst_draft'`).run()
+
+    const response = await act(cookie, 'lst_draft', 'publish')
     expect(response.status).toBe(400)
-    expect(((await response.json()) as any).error.code).toBe('invalid_transition')
+
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('incomplete_listing')
+    expect(body.error.fields.map((f: any) => f.field)).toContain('category_slugs')
     expect(await statusOf('lst_draft')).toBe('draft')
+  })
+
+  it('refuses a move the state machine has no edge for, in words an editor can act on', async () => {
+    const { cookie } = await signIn('editor@example.np', 'editor')
+    await env.DB.prepare(`UPDATE listings SET status = 'archived' WHERE id = 'lst_draft'`).run()
+
+    const response = await act(cookie, 'lst_draft', 'publish')
+    expect(response.status).toBe(400)
+
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('invalid_transition')
+    expect(body.error.message).toBe(
+      'It is archived, and only a draft, pending review or rejected listing can be published',
+    )
+    expect(await statusOf('lst_draft')).toBe('archived')
   })
 
   it('walks the legal path: draft to review to published', async () => {

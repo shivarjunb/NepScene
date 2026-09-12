@@ -163,6 +163,42 @@ describe('bulk actions', () => {
     expect(body.refused.map((row: any) => row.id).sort())
       .toEqual(['lst_nonexistent', 'lst_soon'])
     expect(await statusOf('lst_soon')).toBe('published')
+
+    // A refusal names the listing and says something an editor can act on,
+    // not the names of two internal states.
+    const soon = body.refused.find((row: any) => row.id === 'lst_soon')
+    expect(soon.title).toBe('Rock Night')
+    expect(soon.reason).toBe('It is already published')
+    expect(body.refused.find((row: any) => row.id === 'lst_nonexistent').title).toBeNull()
+  })
+
+  it('publishes a finished draft straight from the queue, and lists what an unfinished one is missing', async () => {
+    const { cookie } = await signIn('editor-imports@example.np', 'editor')
+    // Two imports, as they land: drafts. One is complete; the other has no
+    // category, which is the usual state of a scraped event.
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO listings (id, slug, title, listing_type, source, status, venue_id,
+                               starts_at, created_at, updated_at)
+         SELECT 'lst_import', 'imported-gig', 'Imported Gig', 'free', 'import', 'draft',
+                venue_id, starts_at, created_at, updated_at FROM listings WHERE id = 'lst_draft'`,
+      ),
+    ])
+
+    const body = await (await api('/queue/actions', cookie, {
+      action: 'publish', ids: ['lst_draft', 'lst_import'],
+    })).json() as any
+
+    expect(body.applied).toEqual(['lst_draft'])
+    expect(await statusOf('lst_draft')).toBe('published')
+
+    expect(body.refused).toHaveLength(1)
+    const [refusal] = body.refused
+    expect(refusal.id).toBe('lst_import')
+    expect(refusal.title).toBe('Imported Gig')
+    expect(refusal.reason).toBe('Some things still need filling in before this can be published')
+    expect(refusal.fields.map((f: any) => f.field)).toContain('category_slugs')
+    expect(await statusOf('lst_import')).toBe('draft')
   })
 
   it('will not reject in bulk without a reason either', async () => {
