@@ -10,7 +10,8 @@ import { createContext, useContext, useEffect, useRef, useState,
  * sells: there are no nested layouts, every dynamic route is one `/thing/:slug`
  * segment, and filters live in the query string on purpose so a refined view
  * can be linked and shared. What is left of the case for a router is code
- * splitting, which belongs to the bundle rather than to the routing model.
+ * splitting, which belongs to the bundle rather than to the routing model —
+ * and landed that way, as `deferred()` routes in `routes.tsx` (#39).
  *
  * It exists because the shell's navigation (#18) was lying: before it, every
  * link in the header and footer full-page-reloaded back into the design system,

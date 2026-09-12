@@ -1,11 +1,7 @@
 import type { ReactNode } from 'react'
 import { Placeholder, type Planned } from './pages/Placeholder'
 import { NotFound } from './pages/NotFound'
-import { DesignSystem } from './pages/DesignSystem'
 import { Discover } from './pages/Discover'
-import { SubmitPage } from './author/SubmitPage'
-import { QueuePage } from './moderation/QueuePage'
-import { DashboardPage } from './author/DashboardPage'
 import { ListingPage } from './pages/Listing'
 import { MapPage } from './pages/MapPage'
 import { SearchPage } from './pages/Search'
@@ -14,6 +10,43 @@ import { VenuePage } from './pages/VenuePage'
 import { OrganizerPage } from './pages/OrganizerPage'
 import { ArtistPage } from './pages/ArtistPage'
 import { AccessibilityPage } from './pages/Accessibility'
+import { Spinner } from './components/primitives'
+import { deferred } from './lib/deferred'
+
+/**
+ * The tools, in their own chunks (#39).
+ *
+ * The wizard, the dashboard, the moderation queue and the component gallery
+ * are most of the application by weight and are opened by almost nobody who
+ * arrives from a search result or a shared link. None of them is server
+ * rendered — the Worker serves the bare shell for these paths — so nothing
+ * about the first paint changes except that it no longer carries them.
+ *
+ * The public pages stay in the entry chunk on purpose: they *are* the first
+ * paint, and a chunk fetched after hydration would arrive later than the
+ * markup it hydrates.
+ */
+const Loading = (
+  <div className="layout" aria-busy="true">
+    <Spinner label="Loading the page" />
+  </div>
+)
+const SubmitPage = deferred(
+  () => import('./author/SubmitPage').then((module) => module.SubmitPage),
+  Loading,
+)
+const DashboardPage = deferred(
+  () => import('./author/DashboardPage').then((module) => module.DashboardPage),
+  Loading,
+)
+const QueuePage = deferred(
+  () => import('./moderation/QueuePage').then((module) => module.QueuePage),
+  Loading,
+)
+const DesignSystem = deferred(
+  () => import('./pages/DesignSystem').then((module) => module.DesignSystem),
+  Loading,
+)
 
 /**
  * Every path the shell links to, in one table.

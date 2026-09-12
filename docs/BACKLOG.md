@@ -71,7 +71,7 @@ criteria and a test plan. See [WAYS_OF_WORKING.md](WAYS_OF_WORKING.md) for the m
 | [#36](../../issues/36) | Port the map core and finish the Google Maps migration |
 | [#37](../../issues/37) | Venue grouping and multi-listing pins |
 | [#38](../../issues/38) | Geolocation, distance filtering and the hero map · *IP geolocation is `request.cf`, not a third party* |
-| [#39](../../issues/39) | Map performance at catalogue scale · *the 3G paint budget is recorded, not met — see below* |
+| [#39](../../issues/39) | Map performance at catalogue scale · *the 3G paint target is recorded, not met; what remains is the renderer, not the app — see below* |
 | [#40](../../issues/40) | Map accessibility and a non-map fallback |
 | [#81](../../issues/81) | Occurrence model and the read path · *from the #35 decision* |
 | [#82](../../issues/82) | Authoring recurring and multi-date events · *from the #35 decision* |
@@ -124,12 +124,16 @@ sign in to. They are listed in the order they block other work.
 
 `scripts/check-budget.mjs` enforces a *ratchet* on bundle weight — it fails on a
 regression. It does **not** enforce #39's "interactive paint under 1.5 seconds
-on 3G", which needs roughly 40KB gzipped and we ship 116.7KB. The script prints
-that gap on every run rather than quietly redefining the target as met. Closing
-it is route-level code splitting: the authoring wizard, the moderation queue and
-the component gallery are on every first paint today and are needed by almost
-nobody on one. That is a piece of work, not an oversight, and it is not
-scheduled.
+on 3G", which needs roughly 40KB gzipped on the first paint. Route splitting
+took the first paint from 120KB to 96.5KB: the wizard, the dashboard, the
+moderation queue, the gallery and the map now arrive only when a page asks for
+them, and NepScene's own code on the first paint is 35KB — inside the target.
+What is left is React DOM, at 55KB gzipped on its own, more than the whole
+target before a line of the app arrives. The script prints that gap on every
+run rather than quietly redefining the target as met. Closing it means a
+smaller renderer — Preact through `preact/compat` is the usual answer, and it
+would need the hydration path (#45) proven again — which is a product decision
+rather than a build setting, and it is not scheduled.
 
 ---
 

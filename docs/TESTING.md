@@ -170,8 +170,9 @@ absorb the same background load and what is left is the shape of the query.
 throttled 3G is the criterion that matters most for the map, and nothing in a
 headless Chromium on a developer's laptop can honestly claim to have measured
 it. It stays a manual line in the test plan. `scripts/check-budget.mjs` measures
-what CI *can* — bytes over the wire — and prints the gap to the real target
-rather than redefining the target as met.
+what CI *can* — bytes over the wire, on the first paint and in the deferred
+chunks separately — and prints the gap to the real target rather than
+redefining the target as met.
 
 ---
 

@@ -7,7 +7,7 @@ import { ListingCard, ListingCardSkeleton } from '../components/ListingCard'
 import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
 import { SearchBox } from '../components/SearchBox'
 import { Alert } from '../components/primitives'
-import { NepalMap } from '../map/NepalMap'
+import { DeferredNepalMap } from '../map/DeferredNepalMap'
 import { useLocation } from '../map/useLocation'
 import { useLanguage, useT } from '../i18n'
 import { categoryName, count } from '../lib/format'
@@ -145,7 +145,7 @@ function Hero() {
         <SearchBox />
       </div>
       <div className="hero__map">
-        <NepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
+        <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
       </div>
     </section>
   )
