@@ -44,10 +44,14 @@ jobs:
       - name: Silent catch guard
         run: node scripts/check-silent-catches.mjs
 
+      # No `cache: npm`. On a hosted runner it saves a cold `~/.npm`; on this
+      # self-hosted one `~/.npm` is already warm and shared with the developer's
+      # own work, so the option was uploading the whole 1 GB directory to
+      # GitHub on every lockfile change and downloading it back onto the machine
+      # it came from — ten of those filled the repository's cache store.
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
 
       - run: npm ci
 
@@ -121,8 +125,14 @@ jobs:
       - name: End-to-end tests
         run: npm run test:e2e
 
+      # Best effort. Artifact uploads are refused whenever the account's
+      # Actions billing is locked — the same lock that put CI on a self-hosted
+      # runner (#96) — and a refused upload must not turn one failure signal
+      # into a second. The report is on the runner's disk either way, under
+      # `_work/NepScene/NepScene/playwright-report`.
       - name: Upload the Playwright report on failure
         if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v5
         with:
           name: playwright-report

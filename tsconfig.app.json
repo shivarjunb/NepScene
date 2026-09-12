@@ -19,5 +19,8 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["app"]
+  // The deferred() test renders a component module on the server; it lives
+  // with the other unit tests but needs this config's DOM lib (tsconfig.json
+  // `exclude` says why).
+  "include": ["app", "tests/unit/deferred.test.ts"]
 }

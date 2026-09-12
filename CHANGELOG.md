@@ -205,6 +205,21 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sight. It reads `git ls-files`, so a gitignored `.dev.vars` is not flagged (#13)
 
 ### Changed
+- **The first paint no longer carries the tools (#39).** The listing wizard, the
+  organizer dashboard, the moderation queue, the component gallery and the map
+  itself each arrive in their own chunk the first time a page asks for them;
+  everything else — the public pages that are the first paint — stays in the
+  entry. First paint drops from 120 KB to 96.5 KB gzipped, and NepScene's own
+  code on it is 35 KB, inside #39's 40 KB target. React DOM is 55 KB on its
+  own, which is why the target is still recorded as unmet rather than
+  redefined: what is left is the choice of renderer, not a build setting.
+  `scripts/check-budget.mjs` reads the built shell to measure what it actually
+  loads before painting, and ratchets the deferred chunks separately so weight
+  cannot leave the first paint by hiding in one. Deferral is `app/lib/deferred.tsx`
+  rather than `React.lazy`: the server renders with `renderToString`, which
+  writes a suspended boundary's fallback and reports the suspension as an error;
+  `deferred()` renders the same fallback on the server and on the first client
+  render, so the map's frame hydrates cleanly on the homepage.
 - The Catalog API's query builder binds every value **once**, by number, and
   matches text against a haystack computed once per row inside a `MATERIALIZED`
   CTE. Both are forced rather than chosen: D1 refuses more than a hundred bound

@@ -1,4 +1,4 @@
-import { NepalMap } from '../map/NepalMap'
+import { DeferredNepalMap } from '../map/DeferredNepalMap'
 import { useLocation } from '../map/useLocation'
 import { navigate } from '../router'
 
@@ -22,7 +22,7 @@ export function MapPage() {
         </p>
       </header>
 
-      <NepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
+      <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
     </div>
   )
 }
