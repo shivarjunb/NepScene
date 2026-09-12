@@ -26,20 +26,29 @@ export const authorListingRoutes = new Hono<{ Bindings: Env; Variables: AuthVari
  * not a trigger.
  *
  *   draft ──> pending_review ──> published ──> archived
- *     ^            │  ^              │
+ *     ^  \         │  ^              │
+ *     │   \        │  │              │
  *     └── rejected ┘  └──────────────┘
  *
- * draft → published is absent on purpose: everything public has been reviewed.
+ * Everything public has been reviewed — but the review is the person holding
+ * `listing:publish`, not the `pending_review` state. An editor who opens a
+ * draft (an import, say) and publishes it has reviewed it, and making them
+ * press Submit so they could then press Publish was a second click that
+ * proved nothing. What *does* travel with the shortcut is the completeness
+ * check: `publish` runs the same one `submit` does, so a half-written draft
+ * still cannot reach the catalogue by any path.
  */
 export type Transition = {
   to: string; from: string[]; permission: Permission; action: string
   /** A move the author must justify to the person it lands on (#33). */
   needsReason?: boolean
+  /** A move out of "private", which is where a half-written listing stops being fine. */
+  checksComplete?: boolean
 }
 
 export const TRANSITIONS: Record<string, Transition> = {
-  submit:    { to: 'pending_review', from: ['draft', 'rejected'], permission: 'listing:edit_own', action: 'submitted_for_review' },
-  publish:   { to: 'published',      from: ['pending_review'],    permission: 'listing:publish',  action: 'published' },
+  submit:    { to: 'pending_review', from: ['draft', 'rejected'], permission: 'listing:edit_own', action: 'submitted_for_review', checksComplete: true },
+  publish:   { to: 'published',      from: ['draft', 'pending_review', 'rejected'], permission: 'listing:publish', action: 'published', checksComplete: true },
   reject:    { to: 'rejected',       from: ['pending_review'],    permission: 'listing:moderate', action: 'rejected', needsReason: true },
   archive:   { to: 'archived',       from: ['draft', 'published'], permission: 'listing:publish', action: 'archived' },
   unpublish: { to: 'draft',          from: ['pending_review', 'published', 'rejected', 'archived'], permission: 'listing:publish', action: 'unpublished' },
@@ -71,6 +80,28 @@ export function readReason(body: unknown): string {
   return reason.slice(0, MAX_REASON)
 }
 
+/**
+ * The sentence a refused move gets. Written for the person who pressed the
+ * button, not for the state machine: "cannot go from draft to published" told
+ * an editor the names of two states and nothing about what to do next.
+ */
+export function refusalMessage(status: string, transition: Transition): string {
+  const plain = (state: string) => state.replace(/_/g, ' ')
+  if (status === transition.to) return `It is already ${plain(transition.to)}`
+  const legal = transition.from.map(plain)
+  const list = legal.length === 1
+    ? legal[0]
+    : `${legal.slice(0, -1).join(', ')} or ${legal[legal.length - 1]}`
+  return `It is ${plain(status)}, and only a ${list} listing can be ${plain(transition.to)}`
+}
+
+/** The sentence an incomplete listing gets when it is refused; the fields ride alongside. */
+export function incompleteMessage(verb: string): string {
+  return verb === 'submit'
+    ? 'Some things still need filling in before this can be reviewed'
+    : 'Some things still need filling in before this can be published'
+}
+
 for (const [verb, transition] of Object.entries(TRANSITIONS)) {
   authorListingRoutes.post(
     `/listings/:id/${verb}`,
@@ -92,15 +123,11 @@ for (const [verb, transition] of Object.entries(TRANSITIONS)) {
       // catalogue is the moment it has to be complete. The errors come back
       // per field so the wizard can send the author to the step that is wrong
       // rather than to a paragraph of prose.
-      if (verb === 'submit') {
+      if (transition.checksComplete) {
         const errors = await validateForSubmission(c.env, listing.id)
         if (errors.length > 0) {
           return c.json({
-            error: {
-              code: 'incomplete_listing',
-              message: 'Some things still need filling in before this can be reviewed',
-              fields: errors,
-            },
+            error: { code: 'incomplete_listing', message: incompleteMessage(verb), fields: errors },
           }, 400)
         }
       }
@@ -161,10 +188,7 @@ for (const [verb, transition] of Object.entries(TRANSITIONS)) {
       ).run()
 
       if ((updated.meta.changes ?? 0) === 0) {
-        throw badRequest(
-          'invalid_transition',
-          `A listing cannot go from ${listing.status} to ${transition.to}`,
-        )
+        throw badRequest('invalid_transition', refusalMessage(listing.status, transition))
       }
 
       await recordAudit(c.env, {

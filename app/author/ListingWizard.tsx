@@ -26,7 +26,23 @@ import { AppearanceStep } from './AppearanceStep'
  * one request rather than a waterfall.
  */
 
-type Props = { account: Account; listingId: string | null }
+/** How a listing left the wizard, for whoever opened it in a dialog. */
+export type WizardOutcome =
+  | { status: 'published'; slug: string }
+  | { status: 'pending_review' }
+
+type Props = {
+  account: Account
+  listingId: string | null
+  /**
+   * Present when the wizard is inside a dialog rather than on `/submit`. The
+   * moderation queue opens it that way (#33): an editor fixing one field on an
+   * import should not be sent to another page and back. With this set the
+   * wizard touches no URL and hands the result to the caller instead of
+   * rendering its own "Published" screen.
+   */
+  onFinished?: (outcome: WizardOutcome) => void
+}
 
 /** Which step a given field lives on, so an error can send the author to it. */
 const STEP_FOR_FIELD: Record<string, StepId> = {
@@ -37,7 +53,7 @@ const STEP_FOR_FIELD: Record<string, StepId> = {
   venue_id: 'where', venue_room: 'where', location_lat: 'where', location_lng: 'where',
 }
 
-export function ListingWizard({ account, listingId: initialId }: Props) {
+export function ListingWizard({ account, listingId: initialId, onFinished }: Props) {
   /**
    * The id this wizard opened with, frozen.
    *
@@ -122,12 +138,13 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
   }, [bootId, storage])
 
   // ── Autosave ──────────────────────────────────────────────────────────────
+  const inDialog = onFinished !== undefined
   const onCreated = useCallback((id: string) => {
     setListingId(id)
     // The URL becomes the draft's address, so a reload lands back on it rather
-    // than starting a second empty listing.
-    navigate(`/submit/${id}`, { replace: true })
-  }, [])
+    // than starting a second empty listing. A dialog has no address to become.
+    if (!inDialog) navigate(`/submit/${id}`, { replace: true })
+  }, [inDialog])
 
   const { state: saveState, saveNow } = useDraft({
     listing, step, listingId, onCreated, storage,
@@ -191,20 +208,28 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
       // rather than what is on screen is how an author sends a listing missing
       // the last thing they typed.
       await saveNow()
-      const submitted = await submitListing(listingId)
-      setStatus('pending_review')
-      setRejection(null)
-      setDuplicate(submitted.duplicate)
+      // A listing already waiting for review is not submitted again — the API
+      // would refuse the no-op — which is the case when an editor opens one
+      // from the queue to fix it before publishing.
+      if (status !== 'pending_review') {
+        const submitted = await submitListing(listingId)
+        setStatus('pending_review')
+        setRejection(null)
+        setDuplicate(submitted.duplicate)
+      }
 
       // An editor publishes in the same motion rather than queueing work for
       // themselves; an organizer's listing waits for one.
+      let slug: string | null = null
       if (canPublish) {
-        const result = await publishListing(submitted.id)
+        const result = await publishListing(listingId)
+        slug = result.slug
         setStatus('published')
         setPublished(result.slug)
       }
       clearDraft(storage, listingId)
       clearDraft(storage, null)
+      onFinished?.(slug ? { status: 'published', slug } : { status: 'pending_review' })
     } catch (error) {
       if (error instanceof AuthorError && error.code === 'incomplete_listing') {
         setSubmitErrors(error.fields)
@@ -240,7 +265,10 @@ export function ListingWizard({ account, listingId: initialId }: Props) {
     )
   }
 
-  if (status === 'pending_review') {
+  // The waiting screen is for the author whose listing is waiting. An editor
+  // opening the same listing is the person it is waiting *for*, and gets the
+  // form — with Publish where Send for review would be.
+  if (status === 'pending_review' && !canPublish) {
     return (
       <Card raised>
         <h1>Sent for review</h1>

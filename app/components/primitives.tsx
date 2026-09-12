@@ -146,8 +146,10 @@ export function Skeleton({ width = '100%', height = '1rem' }: { width?: string; 
 }
 
 // ── Modal ───────────────────────────────────────────────────────────────────
-export function Modal({ open, onClose, title, children, footer }: {
+export function Modal({ open, onClose, title, children, footer, size = 'md' }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode
+  /** `lg` is for a dialog that holds a whole form, such as the listing editor. */
+  size?: 'md' | 'lg'
 }) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
@@ -159,8 +161,8 @@ export function Modal({ open, onClose, title, children, footer }: {
     <div className="modal__scrim" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <div ref={dialogRef} className="modal" role="dialog" aria-modal="true"
-           aria-labelledby={titleId} tabIndex={-1}>
+      <div ref={dialogRef} className={`modal${size === 'lg' ? ' modal--lg' : ''}`}
+           role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
         <div className="modal__header">
           <h2 id={titleId}>{title}</h2>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close dialog">✕</Button>

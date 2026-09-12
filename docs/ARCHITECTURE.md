@@ -373,12 +373,23 @@ next client. The reason is denormalised onto `listings.rejection_reason`
 (migration 0010) and cleared by every move that is not a rejection; the history
 stays in the audit log, which is what an audit log is for.
 
-**Trusted authors do not wait, but they do not skip review either.** An editor
-publishing their own listing submits and publishes in one motion — two
-transitions, both audited — rather than moving `draft → published`, which the
-state machine does not have. The distinction matters when someone asks later
-who reviewed a listing: the answer is always a name and a timestamp, even when
-it is the author's own.
+**The review is the person holding `listing:publish`, not the `pending_review`
+state.** `publish` may start from `draft` (and `rejected`) as well as
+`pending_review`, because an editor who opens an import from the queue and
+publishes it has reviewed it, and making them press Submit so they could then
+press Publish was a second click that proved nothing. What travels with the
+shortcut is the completeness check: `publish` runs the same one `submit` does
+(`checksComplete` on the transition), so a half-written draft cannot reach the
+catalogue by any path — the refusal comes back as `incomplete_listing` with the
+fields, and the bulk action reports it per row the same way. The property that
+matters survives: when someone asks later who published a listing, the audit
+entry is a name, a timestamp and the state it came from.
+
+**A refusal is written for the person who pressed the button.** "A listing
+cannot go from draft to published" named two internal states and nothing to do
+next; `refusalMessage` says what the listing is and what it would need to be,
+and the queue shows refusals in a dialog — listing, reason, fields — with Edit
+opening the wizard over the queue rather than on another page.
 
 **Duplicate detection runs at submission and flags rather than refuses.** The
 asymmetry with the venue check (which refuses) is about who is next. A duplicate

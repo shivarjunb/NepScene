@@ -212,6 +212,13 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
   padding: var(--space-9);
 }
 
+/* A dialog that holds a whole form. The editor's step rail and map picker
+   need the room, and 85dvh is kept so the scrim stays visible as a way out. */
+.modal--lg {
+  width: min(64rem, 100%);
+  max-height: 90dvh;
+}
+
 .modal__header {
   display: flex;
   align-items: flex-start;

@@ -308,9 +308,17 @@ export const fetchQueue = (status = 'pending_review', after?: string | null) =>
     `/api/author/queue?status=${encodeURIComponent(status)}${after ? `&after=${encodeURIComponent(after)}` : ''}`,
   )
 
+export type Refusal = {
+  id: string
+  title: string | null
+  reason: string
+  /** Present when the fix is "finish the listing": which field, and what to do. */
+  fields?: { field: string; message: string }[]
+}
+
 export type BulkResult = {
   applied: string[]
-  refused: { id: string; reason: string }[]
+  refused: Refusal[]
   status: string
 }
 

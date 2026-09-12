@@ -6,7 +6,8 @@ import { auditStatement } from '../lib/audit'
 import { bumpCatalogVersion } from '../lib/cache'
 import { requirePermission, type AuthVariables } from '../identity/middleware'
 import { loadEditableListing } from './access'
-import { readReason, TRANSITIONS } from './listings'
+import { incompleteMessage, readReason, refusalMessage, TRANSITIONS } from './listings'
+import { validateForSubmission } from './write'
 
 /**
  * The moderation queue (#33): the screen an editor works through, and the
@@ -180,22 +181,46 @@ moderationRoutes.post('/queue/actions', requirePermission('listing:moderate'), a
   const placeholders = ids.map((_, i) => `?${i + 1}`).join(', ')
 
   const current = await c.env.DB.prepare(
-    `SELECT id, slug, status FROM listings WHERE id IN (${placeholders})`,
-  ).bind(...ids).all<{ id: string; slug: string; status: string }>()
+    `SELECT id, slug, title, status FROM listings WHERE id IN (${placeholders})`,
+  ).bind(...ids).all<{ id: string; slug: string; title: string; status: string }>()
 
   const known = new Map(current.results.map((row) => [row.id, row]))
   const applied: string[] = []
-  const refused: { id: string; reason: string }[] = []
+  /**
+   * A refusal names the listing and says what to do. `fields` is present when
+   * the answer is "finish it": the queue opens the editor on exactly those,
+   * the same way the wizard does with a refused submission.
+   */
+  const refused: {
+    id: string; title: string | null; reason: string
+    fields?: { field: string; message: string }[]
+  }[] = []
   const statements = []
+
+  // The completeness check reads each listing; running them together rather
+  // than one after another keeps fifty of them at one round trip's latency.
+  const completeness = new Map(await Promise.all(
+    ids
+      .filter((id) => {
+        const row = known.get(id)
+        return transition.checksComplete && row && transition.from.includes(row.status)
+      })
+      .map(async (id) => [id, await validateForSubmission(c.env, id)] as const),
+  ))
 
   for (const id of ids) {
     const row = known.get(id)
     if (!row) {
-      refused.push({ id, reason: 'No such listing' })
+      refused.push({ id, title: null, reason: 'No such listing' })
       continue
     }
     if (!transition.from.includes(row.status)) {
-      refused.push({ id, reason: `A listing cannot go from ${row.status} to ${transition.to}` })
+      refused.push({ id, title: row.title, reason: refusalMessage(row.status, transition) })
+      continue
+    }
+    const missing = completeness.get(id) ?? []
+    if (missing.length > 0) {
+      refused.push({ id, title: row.title, reason: incompleteMessage(verb), fields: missing })
       continue
     }
     applied.push(id)
