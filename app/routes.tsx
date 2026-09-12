@@ -3,6 +3,7 @@ import { Placeholder, type Planned } from './pages/Placeholder'
 import { NotFound } from './pages/NotFound'
 import { Discover } from './pages/Discover'
 import { ListingPage } from './pages/Listing'
+import { ListingDialog } from './pages/ListingDialog'
 import { MapPage } from './pages/MapPage'
 import { SearchPage } from './pages/Search'
 import { OrganizersIndex, VenuesIndex } from './pages/PlaceIndex'
@@ -188,6 +189,18 @@ export function renderRoute(path: string): ReactNode {
   if (dynamic) return dynamic.route.render(dynamic.slug)
 
   return <NotFound path={path} />
+}
+
+/**
+ * What a location opens as when it is shown *over* a page rather than as one
+ * (`navigate(…, { overlay: true })`). Only a listing does, today; anything
+ * else asked to overlay gets nothing, and the address bar is then wrong — so
+ * the only callers are the ones that know they are opening a listing.
+ */
+export function renderOverlay(path: string): ReactNode {
+  const dynamic = dynamicMatch(path)
+  if (dynamic?.route.prefix === '/listings/') return <ListingDialog slug={dynamic.slug} />
+  return null
 }
 
 /** The tab title is the only thing that tells a user which page they are on. */

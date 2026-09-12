@@ -29,13 +29,41 @@ const normalise = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') 
 type Location = { path: string; search: string }
 
 /**
- * Where the browser currently is. Only ever called in a browser — the server
- * passes its location in, because there is no `window` to ask.
+ * A location can carry an *overlay*: a second location shown in a dialog over
+ * the page, which is how a listing opens from a card (#43). The address bar
+ * holds the overlay — `/listings/<slug>`, so the link is shareable and Back
+ * closes it — while `path` and `search` stay those of the page underneath, so
+ * everything that reads the route keeps rendering that page.
+ *
+ * The page underneath is remembered in `history.state`, which is the only
+ * place that survives Back and Forward but not a reload: a reload lands on
+ * the listing's own page, which is what the address says it is.
  */
-const read = (): Location => ({
+type Current = Location & { overlay?: Location }
+
+type OverlayState = { background: Location; depth: number }
+
+const overlayState = (): OverlayState | null => {
+  const state: unknown = window.history.state
+  if (!state || typeof state !== 'object') return null
+  const { background, depth } = state as Partial<OverlayState>
+  if (!background || typeof background.path !== 'string' || typeof background.search !== 'string') return null
+  return { background, depth: typeof depth === 'number' ? depth : 1 }
+}
+
+const here = (): Location => ({
   path: normalise(window.location.pathname),
   search: window.location.search,
 })
+
+/**
+ * Where the browser currently is. Only ever called in a browser — the server
+ * passes its location in, because there is no `window` to ask.
+ */
+const read = (): Current => {
+  const overlay = overlayState()
+  return overlay ? { ...overlay.background, overlay: here() } : here()
+}
 
 /** Splits a URL the server has into the shape the context holds. */
 export function locationOf(url: string): Location {
@@ -43,10 +71,13 @@ export function locationOf(url: string): Location {
   return { path: normalise(parsed.pathname), search: parsed.search }
 }
 
-const RouteContext = createContext<Location>({ path: '/', search: '' })
+const RouteContext = createContext<Current>({ path: '/', search: '' })
 
 /** The path alone — what picks the page. */
 export const useRoute = () => useContext(RouteContext).path
+
+/** The location shown in a dialog over the page, if there is one. */
+export const useOverlay = () => useContext(RouteContext).overlay ?? null
 
 /**
  * The query string, parsed. Filters live here rather than in component state so
@@ -58,7 +89,7 @@ export function useSearch() {
   return new URLSearchParams(useContext(RouteContext).search)
 }
 
-export function navigate(to: string, { replace = false } = {}) {
+export function navigate(to: string, { replace = false, overlay = false } = {}) {
   const target = new URL(to, window.location.href)
   const current = window.location
   // Compares the query too: /?category=film and /?category=comedy are different
@@ -66,10 +97,43 @@ export function navigate(to: string, { replace = false } = {}) {
   if (normalise(target.pathname) === normalise(current.pathname)
       && target.search === current.search) return
 
-  window.history[replace ? 'replaceState' : 'pushState'](null, '', to)
+  if (overlay) {
+    // Opening one overlay from another — a related listing from inside the
+    // dialog — keeps the original page underneath and counts the depth, so
+    // closing goes back to the page rather than to the previous overlay.
+    const open = overlayState()
+    const state: OverlayState = open
+      ? { background: open.background, depth: open.depth + 1 }
+      : { background: here(), depth: 1 }
+    window.history.pushState(state, '', to)
+  } else {
+    // A plain navigation from inside an overlay closes it: the new entry has
+    // no page underneath, so the dialog has nothing to sit over.
+    window.history[replace ? 'replaceState' : 'pushState'](null, '', to)
+  }
   // pushState fires no event of its own; the listener below is what re-renders.
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
+
+/**
+ * Closes the overlay by going back to the page underneath it, however many
+ * overlays deep — which is also exactly what the Back button does from the
+ * first of them, so there is one way out rather than two that differ.
+ */
+export function closeOverlay() {
+  const open = overlayState()
+  if (open) window.history.go(-open.depth)
+}
+
+/**
+ * The element whose click opened the overlay, for focus to return to when it
+ * closes. A focus trap remembers `document.activeElement`, but WebKit does
+ * not focus a link on a mouse click, so from a card in Safari that is the
+ * body. Recorded only for the first overlay: one opened from inside another
+ * is gone by the time the reader is back on the page.
+ */
+let opener: HTMLElement | null = null
+export const overlayOpener = () => opener
 
 export function Router({ initial, children }: { initial?: Location; children: ReactNode }) {
   /**
@@ -78,11 +142,15 @@ export function Router({ initial, children }: { initial?: Location; children: Re
    * server rendered, and reading `window` again during hydration would be the
    * same answer arrived at less reliably.
    */
-  const [location, setLocation] = useState<Location>(() => initial ?? read())
+  const [location, setLocation] = useState<Current>(() => initial ?? read())
 
   useEffect(() => {
     const onPopState = () => setLocation(read())
     window.addEventListener('popstate', onPopState)
+    // A reload of an overlay entry is the listing's own page: the server
+    // rendered that, and it is what the address bar says. Dropping the state
+    // makes the entry agree, so Back from here is a step back, not a close.
+    if (overlayState()) window.history.replaceState(null, '', window.location.href)
     // Catches the case where the browser is already somewhere else by the time
     // the bundle runs — a link followed during the download.
     setLocation(read())
@@ -92,21 +160,28 @@ export function Router({ initial, children }: { initial?: Location; children: Re
   return <RouteContext.Provider value={location}>{children}</RouteContext.Provider>
 }
 
-type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }
+type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string
+  /** Opens the destination in a dialog over this page rather than in its place. */
+  overlay?: boolean
+}
 
 /**
  * An anchor first and a router link second: it keeps a real href, so middle
  * click, ctrl-click and "copy link address" all behave, and only takes over the
- * plain left click that would otherwise reload the document.
+ * plain left click that would otherwise reload the document. An `overlay` link
+ * is still that anchor — a new tab gets the full page — and only the plain
+ * click differs.
  */
-export function Link({ href, onClick, ...rest }: LinkProps) {
+export function Link({ href, onClick, overlay = false, ...rest }: LinkProps) {
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
     onClick?.(event)
     if (event.defaultPrevented) return
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     if (rest.target && rest.target !== '_self') return
     event.preventDefault()
-    navigate(href)
+    if (overlay && !overlayState()) opener = event.currentTarget
+    navigate(href, { overlay })
   }
 
   return <a href={href} onClick={handleClick} {...rest} />

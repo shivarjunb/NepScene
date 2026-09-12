@@ -145,7 +145,7 @@ function Hero() {
         <SearchBox />
       </div>
       <div className="hero__map">
-        <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
+        <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`, { overlay: true })} />
       </div>
     </section>
   )

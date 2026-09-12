@@ -3,8 +3,8 @@ import { AppShell } from './shell/AppShell'
 import { ThemeProvider } from './theme'
 import { LanguageProvider } from './i18n'
 import type { Language } from './i18n/strings'
-import { Router, useRoute, useRouteFocus } from './router'
-import { renderRoute, titleFor } from './routes'
+import { Router, useOverlay, useRoute, useRouteFocus } from './router'
+import { renderOverlay, renderRoute, titleFor } from './routes'
 import { PreloadProvider } from './lib/preloadContext'
 import type { Preloaded } from './lib/preload'
 
@@ -23,13 +23,23 @@ import type { Preloaded } from './lib/preload'
  */
 export function App() {
   const path = useRoute()
+  const overlay = useOverlay()
   useRouteFocus(path)
 
   // An effect, so it does not run on the server — where the title is set on the
-  // document itself, from the same route table (api/render/page.tsx).
-  useEffect(() => { document.title = titleFor(path) }, [path])
+  // document itself, from the same route table (api/render/page.tsx). The tab
+  // names what is in front, which is the overlay when there is one.
+  const shown = overlay?.path ?? path
+  useEffect(() => { document.title = titleFor(shown) }, [shown])
 
-  return <AppShell>{renderRoute(path)}</AppShell>
+  return (
+    <>
+      <AppShell>{renderRoute(path)}</AppShell>
+      {/* The page stays mounted underneath: closing the dialog must return to
+          the row the reader was scanning, scrolled where they left it. */}
+      {overlay && renderOverlay(overlay.path)}
+    </>
+  )
 }
 
 export function Root({ location, language, languageExplicit, preloaded }: {

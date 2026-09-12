@@ -177,7 +177,9 @@ function NoResults({ query, alternatives }: { query: string; alternatives: Sugge
         <ul className="chips" role="list">
           {alternatives.map((alternative) => (
             <li key={`${alternative.kind}:${alternative.slug}`}>
-              <Link className="chips__chip" href={hrefFor(alternative)}>{alternative.label}</Link>
+              <Link className="chips__chip" href={hrefFor(alternative)} overlay={alternative.kind === 'listing'}>
+                {alternative.label}
+              </Link>
             </li>
           ))}
         </ul>

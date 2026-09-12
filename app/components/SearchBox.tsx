@@ -83,7 +83,7 @@ export function SearchBox({ initial = '', autoFocus = false }: {
     // A suggestion that names one thing goes to that thing; one that names a
     // group runs the search. Sending every suggestion to a result page would
     // make picking a listing by name take two clicks to reach it.
-    if (suggestion.kind === 'listing') return navigate(`/listings/${suggestion.slug}`)
+    if (suggestion.kind === 'listing') return navigate(`/listings/${suggestion.slug}`, { overlay: true })
     if (suggestion.kind === 'venue') return navigate(`/venues/${suggestion.slug}`)
     if (suggestion.kind === 'organizer') return navigate(`/organizers/${suggestion.slug}`)
     if (suggestion.kind === 'artist') return navigate(`/artists/${suggestion.slug}`)

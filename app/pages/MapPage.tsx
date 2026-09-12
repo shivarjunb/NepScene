@@ -22,7 +22,7 @@ export function MapPage() {
         </p>
       </header>
 
-      <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`)} />
+      <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`, { overlay: true })} />
     </div>
   )
 }
