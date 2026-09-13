@@ -50,7 +50,10 @@ export function ListingCard({ listing, layout = 'grid' }: {
       // catalogue, so it is set as a custom property here rather than in CSS.
       style={category?.color ? { ['--card-accent' as string]: category.color } : undefined}
     >
-      <Link className="listing-card__link" href={`/listings/${listing.slug}`}>
+      {/* Opens over the page (#43): the row the reader was scanning is still
+          there when they close it. The href is the page's, so a new tab, a
+          middle click and "copy link address" all get the page. */}
+      <Link className="listing-card__link" href={`/listings/${listing.slug}`} overlay>
         <div className="listing-card__poster" aria-hidden="true">
           {/* Over a photograph the date floats on a pill; with no photograph
               the poster already *is* the date, and two of them is one too

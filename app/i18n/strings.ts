@@ -267,6 +267,8 @@ export const STRINGS = {
   'listing.announcement': { en: 'Announcement', ne: 'सूचना' },
   'listing.externalTickets': { en: 'Tickets elsewhere', ne: 'टिकट अन्यत्र' },
   'listing.gallery': { en: 'Pictures', ne: 'तस्बिरहरू' },
+  'listing.close': { en: 'Close the listing', ne: 'सूची बन्द गर्नुहोस्' },
+  'listing.openPage': { en: 'Open as a page', ne: 'पृष्ठको रूपमा खोल्नुहोस्' },
 
   // ── Venues, organizers, artists ──────────────────────────────────────────
   'venues.title': { en: 'Venues', ne: 'स्थलहरू' },

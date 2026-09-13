@@ -268,9 +268,67 @@
   color: var(--text-muted);
 }
 
+/* The description, in the shape the author typed (app/lib/description.ts):
+   paragraphs that keep their line breaks, dashed and numbered lists, and bare
+   URLs as links. A pasted URL is the one thing on the page that cannot wrap
+   on its own, hence `anywhere` — without it a registration link is also a
+   horizontal scrollbar on every phone. */
 .prose { display: grid; gap: var(--space-3); max-width: 42rem; }
 
-.prose p { color: var(--text-secondary); }
+.prose p, .prose li { color: var(--text-secondary); overflow-wrap: anywhere; }
+
+.prose ul, .prose ol {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline-start: 1.25em;
+}
+
+.prose li::marker { color: var(--text-muted); }
+
+/* A link in running text has nothing else to mark it as one, so it gets the
+   accent and an underline — `.link`'s weight would make a pasted URL shout. */
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+.prose a:hover { color: var(--accent-hover); }
+
+/* ── Listing dialog (#43) ─────────────────────────────────────────────────
+   The listing page's content in a sheet over the page it was opened from.
+   `.modal` gives it the scrim, the scroll and the shape; this is what differs
+   from a form in a dialog: tighter padding, since the content has its own
+   rhythm, and a close bar that stays put while the rest scrolls under it. */
+.listing-dialog { padding: var(--space-7); }
+
+.listing-dialog__bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raised);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  /* Bleeds into the sheet's padding so the bar spans its full width and the
+     content scrolling underneath it disappears at the edge, not just under
+     the buttons. */
+  margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) var(--space-4);
+  padding: var(--space-4) var(--space-7);
+  background: var(--surface-overlay);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+/* A phone has no room for a sheet with a margin round it: the dialog is the
+   screen, and the scrim is what is left when there is none. */
+@media (max-width: 40rem) {
+  .listing-dialog__scrim { padding: 0; }
+  .listing-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+}
 
 .lineup, .tag-list, .share {
   display: flex;

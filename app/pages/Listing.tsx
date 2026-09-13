@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useId, useState } from 'react'
 import type { Listing, ListingDetail } from '../lib/catalog'
 import { fetchListing } from '../lib/client'
 import { useResource } from '../lib/useResource'
@@ -13,6 +13,7 @@ import { useLanguage, useT } from '../i18n'
 import { Alert, Badge, Button, Card, Skeleton } from '../components/primitives'
 import { ResponsiveImage } from '../components/ResponsiveImage'
 import { ListingCard } from '../components/ListingCard'
+import { Description } from '../components/Description'
 import { StaticMap } from '../components/StaticMap'
 import { Link } from '../router'
 
@@ -30,18 +31,30 @@ import { Link } from '../router'
  * missing the page says so quietly and keeps the rest, because a page that
  * fails because a price could not be resolved is a discovery product held
  * hostage by a commerce one.
+ *
+ * **The same content opens in a dialog** (`ListingDialog`) when a card is
+ * clicked, so a reader browsing a row does not lose their place. The page and
+ * the dialog render one `ListingContent`; what differs is the heading level —
+ * the page's title is the `h1`, the dialog's sits under the page's — so the
+ * outline stays honest in both.
  */
 const HERO_SIZES = '(max-width: 60rem) 100vw, 60rem'
+
+/**
+ * The heading level the content starts at. Sections and panels take the next
+ * one down, so a description rendered under an `h2` title has `h3` headings.
+ */
+const LevelContext = createContext<1 | 2>(1)
+const useHeadings = () => {
+  const level = useContext(LevelContext)
+  return { Title: level === 1 ? 'h1' : 'h2', Section: level === 1 ? 'h2' : 'h3' } as const
+}
 
 export function ListingPage({ slug }: { slug: string }) {
   const t = useT()
   const { data, loading, missing, error } = useResource(
     (signal) => fetchListing(slug, signal), [slug], `/listings/${slug}`,
   )
-
-  // Counted once the listing is known to exist (#34). Firing on a 404 would
-  // teach the dashboard that a mistyped URL is a view.
-  useEffect(() => { if (data) recordListingEvent(slug, 'view') }, [data, slug])
 
   if (loading) return <ListingSkeleton />
 
@@ -57,12 +70,41 @@ export function ListingPage({ slug }: { slug: string }) {
     )
   }
 
-  return data ? <Loaded listing={data} /> : null
+  return data ? (
+    <article className="layout listing-page">
+      <ListingContent listing={data} />
+    </article>
+  ) : null
 }
 
-function Loaded({ listing }: { listing: ListingDetail }) {
+/**
+ * Everything a listing shows, from the category line to the related cards.
+ * `level` is where its headings start: 1 on the page, 2 in the dialog.
+ */
+export function ListingContent({ listing, level = 1, titleId }: {
+  listing: ListingDetail
+  level?: 1 | 2
+  /** For a dialog to label itself by the title. */
+  titleId?: string
+}) {
+  // Counted once the listing is known to exist (#34). Firing on a 404 would
+  // teach the dashboard that a mistyped URL is a view.
+  useEffect(() => { recordListingEvent(listing.slug, 'view') }, [listing.slug])
+
+  return (
+    <LevelContext.Provider value={level}>
+      <Loaded listing={listing} titleId={titleId} />
+    </LevelContext.Provider>
+  )
+}
+
+function Loaded({ listing, titleId }: { listing: ListingDetail; titleId?: string }) {
   const t = useT()
   const { language } = useLanguage()
+  const { Title, Section } = useHeadings()
+  // Generated, not fixed: the dialog can open over the listing page itself
+  // (a related card), and then there are two of every section on the document.
+  const ids = useId()
   const title = titleOf(listing, language)
   const summary = summaryOf(listing, language)
   const description = descriptionOf(listing, language)
@@ -70,14 +112,14 @@ function Loaded({ listing }: { listing: ListingDetail }) {
   const category = listing.categories.find((entry) => entry.is_primary) ?? listing.categories[0]
 
   return (
-    <article className="layout listing-page">
+    <>
       <header className="listing-page__head">
         {category && (
           <span className="listing-page__category" style={{ ['--card-accent' as string]: category.color ?? undefined }}>
             {categoryName(category, language)}
           </span>
         )}
-        <h1 className="listing-page__title" lang={langOf(listing.title_ne, language)}>{title}</h1>
+        <Title id={titleId} className="listing-page__title" lang={langOf(listing.title_ne, language)}>{title}</Title>
         {summary && (
           <p className="listing-page__summary" lang={langOf(listing.summary_ne, language)}>{summary}</p>
         )}
@@ -104,23 +146,15 @@ function Loaded({ listing }: { listing: ListingDetail }) {
       <div className="listing-page__body">
         <div className="listing-page__main">
           {description && (
-            <section className="stack" aria-labelledby="about-heading">
-              <h2 id="about-heading">{t('listing.about')}</h2>
-              {/* Paragraphs, not `dangerouslySetInnerHTML`: the description is
-                  author-supplied text and this is the one place it is rendered
-                  at full length. Splitting on blank lines keeps the shape the
-                  author typed without letting them inject markup. */}
-              <div className="prose" lang={langOf(listing.description_ne, language)}>
-                {description.split(/\n{2,}/).map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
+            <section className="stack" aria-labelledby={`${ids}about`}>
+              <Section id={`${ids}about`}>{t('listing.about')}</Section>
+              <Description text={description} lang={langOf(listing.description_ne, language)} />
             </section>
           )}
 
           {listing.artists.length > 0 && (
-            <section className="stack" aria-labelledby="lineup-heading">
-              <h2 id="lineup-heading">{t('listing.lineup')}</h2>
+            <section className="stack" aria-labelledby={`${ids}lineup`}>
+              <Section id={`${ids}lineup`}>{t('listing.lineup')}</Section>
               <ul className="lineup" role="list">
                 {listing.artists.map((artist) => (
                   <li key={artist.slug} className="lineup__artist">
@@ -137,8 +171,8 @@ function Loaded({ listing }: { listing: ListingDetail }) {
           )}
 
           {listing.media.length > 1 && (
-            <section className="stack" aria-labelledby="gallery-heading">
-              <h2 id="gallery-heading">{t('listing.gallery')}</h2>
+            <section className="stack" aria-labelledby={`${ids}gallery`}>
+              <Section id={`${ids}gallery`}>{t('listing.gallery')}</Section>
               <ul className="gallery" role="list">
                 {listing.media.slice(1).map((item) => (
                   <li key={item.id}>
@@ -168,7 +202,7 @@ function Loaded({ listing }: { listing: ListingDetail }) {
           {listing.venue && <WherePanel listing={listing} />}
           {listing.organizer && (
             <Card>
-              <h2 className="panel__heading">{t('listing.organizer')}</h2>
+              <Section className="panel__heading">{t('listing.organizer')}</Section>
               <p>
                 <Link href={`/organizers/${listing.organizer.slug}`}>{listing.organizer.name}</Link>
                 {listing.organizer.is_verified && <> <Badge tone="success">{t('listing.verified')}</Badge></>}
@@ -180,7 +214,7 @@ function Loaded({ listing }: { listing: ListingDetail }) {
       </div>
 
       {listing.related.length > 0 && <Related listings={listing.related} />}
-    </article>
+    </>
   )
 }
 
@@ -197,6 +231,7 @@ function Loaded({ listing }: { listing: ListingDetail }) {
 function OfferPanel({ listing }: { listing: ListingDetail }) {
   const t = useT()
   const { language } = useLanguage()
+  const { Section } = useHeadings()
   const offer = listing.offer
 
   if (listing.listing_type === 'free') {
@@ -220,7 +255,7 @@ function OfferPanel({ listing }: { listing: ListingDetail }) {
   if (!offer || !offer.url) {
     return (
       <Card>
-        <h2 className="panel__heading">{t('listing.tickets')}</h2>
+        <Section className="panel__heading">{t('listing.tickets')}</Section>
         <p className="text-muted">{t('listing.offerUnavailable')}</p>
         {listing.external_url && <ExternalLink listing={listing} />}
       </Card>
@@ -229,7 +264,7 @@ function OfferPanel({ listing }: { listing: ListingDetail }) {
 
   return (
     <Card raised>
-      <h2 className="panel__heading">{t('listing.tickets')}</h2>
+      <Section className="panel__heading">{t('listing.tickets')}</Section>
       {offer.sold_out ? (
         <p className="offer__headline">{t('listing.soldOut')}</p>
       ) : (
@@ -280,12 +315,13 @@ function ExternalLink({ listing }: { listing: ListingDetail }) {
 function WhenPanel({ listing }: { listing: ListingDetail }) {
   const t = useT()
   const { language } = useLanguage()
+  const { Section } = useHeadings()
   const bikram = startBikram(listing, language)
   const [copied, setCopied] = useState(false)
 
   return (
     <Card>
-      <h2 className="panel__heading">{t('listing.when')}</h2>
+      <Section className="panel__heading">{t('listing.when')}</Section>
       <p>
         <time dateTime={listing.starts_at}>{startLine(listing, language)}</time>
         {listing.ends_at && !listing.is_all_day && (
@@ -336,12 +372,13 @@ function downloadICal(listing: ListingDetail) {
 
 function WherePanel({ listing }: { listing: ListingDetail }) {
   const t = useT()
+  const { Section } = useHeadings()
   const venue = listing.venue
   if (!venue) return null
 
   return (
     <Card>
-      <h2 className="panel__heading">{t('listing.where')}</h2>
+      <Section className="panel__heading">{t('listing.where')}</Section>
       <p>
         <Link href={`/venues/${venue.slug}`}>{venue.name}</Link>
         {listing.venue_room && <> — {listing.venue_room}</>}
@@ -367,6 +404,7 @@ function WherePanel({ listing }: { listing: ListingDetail }) {
 
 function SharePanel({ listing, title }: { listing: ListingDetail; title: string }) {
   const t = useT()
+  const { Section } = useHeadings()
   const [copied, setCopied] = useState(false)
   const url = `${siteOrigin()}/listings/${listing.slug}`
 
@@ -379,7 +417,7 @@ function SharePanel({ listing, title }: { listing: ListingDetail; title: string 
 
   return (
     <Card>
-      <h2 className="panel__heading">{t('listing.share')}</h2>
+      <Section className="panel__heading">{t('listing.share')}</Section>
       <ul className="share" role="list">
         {shareTargets(url, title).map((target) => (
           <li key={target.id}>
@@ -414,9 +452,11 @@ function SharePanel({ listing, title }: { listing: ListingDetail; title: string 
 
 function Related({ listings }: { listings: Listing[] }) {
   const t = useT()
+  const { Section } = useHeadings()
+  const id = useId()
   return (
-    <section className="stack" aria-labelledby="related-heading">
-      <h2 id="related-heading">{t('listing.related')}</h2>
+    <section className="stack" aria-labelledby={id}>
+      <Section id={id}>{t('listing.related')}</Section>
       <ul className="grid" role="list">
         {listings.map((listing) => (
           <li key={listing.id}><ListingCard listing={listing} /></li>
@@ -426,10 +466,11 @@ function Related({ listings }: { listings: Listing[] }) {
   )
 }
 
-function ListingSkeleton() {
+/** `bare` leaves out the page gutter, for the dialog, which has its own. */
+export function ListingSkeleton({ bare = false }: { bare?: boolean }) {
   const t = useT()
   return (
-    <div className="layout listing-page" aria-busy="true">
+    <div className={bare ? 'listing-page' : 'layout listing-page'} aria-busy="true">
       <span className="visually-hidden" role="status">{t('common.loading')}</span>
       <div className="stack">
         <Skeleton width="30%" height="1rem" />

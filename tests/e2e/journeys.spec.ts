@@ -80,8 +80,26 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
   const title = await first.locator('.listing-card__title').innerText()
   await first.click()
 
+  // The listing opens over the row (#43): the address is the listing's own,
+  // so the link is shareable, while the page underneath keeps its place.
   await expect(page).toHaveURL(/\/listings\//)
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { level: 2 }).first()).toHaveText(title.trim())
+  await expect(dialog.getByRole('heading', { name: 'When' })).toBeVisible()
+  await assertAccessible(page, 'listing dialog')
+
+  // Escape is Back: the dialog goes, the filtered row is still there, and
+  // focus returns to the card that opened it.
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).toHaveURL(/category=concerts/)
+  await expect(first).toBeFocused()
+
+  // The same address on its own is the full page, which is what a shared
+  // link lands on.
+  await page.goto(at(`/listings/${(await first.getAttribute('href'))!.split('/').pop()}`))
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(title.trim())
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await assertAccessible(page, 'listing page')
 })
 
@@ -103,8 +121,10 @@ test('search: query with a typo, refine by facet, open a result', async ({ page 
   await assertAccessible(page, 'search results')
 
   // Refine. The facet counts come from the same WHERE as the rows, which is
-  // the property most likely to break quietly.
-  const facet = page.getByRole('link', { name: /Kathmandu/ }).first()
+  // the property most likely to break quietly. Scoped to the filters: a card
+  // titled "Kathmandu …" is also a link with that name, and clicking it opens
+  // the listing rather than refining anything.
+  const facet = page.getByRole('complementary', { name: 'Filters' }).getByRole('link', { name: /Kathmandu/ }).first()
   if (await facet.count()) {
     await facet.click()
     await expect(page.locator('.listing-card').first()).toBeVisible()
@@ -112,7 +132,7 @@ test('search: query with a typo, refine by facet, open a result', async ({ page 
 
   await page.locator('.listing-card__link').first().click()
   await expect(page).toHaveURL(/\/listings\//)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('heading', { level: 2 }).first()).toBeVisible()
 })
 
 // ── 3. Authoring ─────────────────────────────────────────────────────────────
@@ -171,5 +191,12 @@ test('the discovery journey works with touch at phone size', async ({ page, isMo
 
   await page.locator('.listing-card__link').first().tap()
   await expect(page).toHaveURL(/\/listings\//)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { level: 2 }).first()).toBeVisible()
+  // On a phone the dialog is the screen, and it must not scroll sideways either.
+  const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)
+  expect(dialogOverflow).toBeLessThanOrEqual(0)
+  await dialog.getByRole('button', { name: 'Close the listing' }).tap()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).toHaveURL(/\/$/)
 })
