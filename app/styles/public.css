@@ -137,17 +137,31 @@
 .mobile-menu__search { margin-bottom: var(--space-4); }
 
 /* ── Search page (#42) ───────────────────────────────────────────────────── */
+.search-page { grid-template-columns: minmax(0, 1fr); }
+
 .search-page__body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
 
 @media (min-width: 60rem) {
-  .search-page__body { grid-template-columns: 15rem minmax(0, 1fr); }
+  .search-page__body:has(> .facets) { grid-template-columns: 15rem minmax(0, 1fr); }
 }
 
-.search-page__results { min-width: 0; display: grid; gap: var(--space-4); }
+.search-page__results {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Result cards share their container with filters, so viewport columns can
+   make them too narrow even on a wide screen. */
+.search-page__results .grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+}
 
 .search-page__results-head {
   display: flex;
