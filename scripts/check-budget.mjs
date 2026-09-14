@@ -37,8 +37,12 @@ const SHELL = join(CLIENT, 'index.html')
  * paint is 85.4 KB of JavaScript, 9.9 KB of CSS and a 1.2 KB shell; the
  * deferred chunks together are 30.7 KB. Roughly 8% headroom on each, so an
  * ordinary feature does not trip it and a new dependency does.
+ *
+ * Deferred raised 33 → 40 on 2026-09-14 for the admin console (#28): a new
+ * 5.8 KB chunk that only an admin ever loads, taking the deferred total to
+ * 36.6 KB. The first paint did not move.
  */
-const BUDGETS_KB = { js: 92, css: 12, total: 104, deferred: 33 }
+const BUDGETS_KB = { js: 92, css: 12, total: 104, deferred: 40 }
 
 /**
  * What #39's "initial interactive paint under 1.5 seconds on 3G" would

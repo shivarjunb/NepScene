@@ -6,6 +6,7 @@ import { authorLookupRoutes } from './author/lookups'
 import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
 import { dashboardRoutes } from './author/dashboard'
+import { adminRoutes } from './admin/routes'
 import { moderationRoutes } from './author/moderation'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
@@ -56,6 +57,7 @@ app.use('/api/catalog/*', async (c, next) => {
 // anonymous so that it stays cacheable and free of a per-request D1 lookup.
 app.use('/api/auth/*', withUser)
 app.use('/api/author/*', withUser)
+app.use('/api/admin/*', withUser)
 
 app.route('/api', healthRoutes)
 app.route('/api/catalog', catalogRoutes)
@@ -70,6 +72,7 @@ app.route('/api/author', authorListingRoutes)
 app.route('/api/author', authorMediaRoutes)
 app.route('/api/author', moderationRoutes)
 app.route('/api/author', dashboardRoutes)
+app.route('/api/admin', adminRoutes)
 
 /**
  * Counted like any other failure (#50).
