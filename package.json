@@ -8,6 +8,8 @@
   },
   "scripts": {
     "scrape:all": "node scripts/scrape-all.mjs",
+    "scrape:venues": "node scripts/scrape-venues.mjs",
+    "test:scrapers": "node --test scripts/tests/*.test.mjs",
     "dev": "wrangler dev",
     "build": "vite build && vite build --config vite.ssr.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
@@ -31,6 +33,7 @@
   },
   "dependencies": {
     "hono": "^4.13.7",
+    "parse5": "^8.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

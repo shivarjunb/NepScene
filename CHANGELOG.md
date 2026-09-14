@@ -260,6 +260,9 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   disagreement across (#22, and the default #32 customises on top of)
 
 ### Fixed
+- Search results fill the page when no filter sidebar is needed. Card columns
+  now fit the available results width, preventing clipped cards on desktop and
+  overflow at 320px.
 - The social card is absolute. `og:image` was a relative `/brand/og-card.png`, and
   Facebook, X and WhatsApp fetch that URL with no base — the result is not a broken
   image but no preview card at all, which nothing in the application ever notices.

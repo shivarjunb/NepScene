@@ -497,3 +497,30 @@ test('a malformed slug does not take the app down', async ({ page }) => {
 
   await expect(page.getByRole('heading', { level: 1, name: 'No such listing' })).toBeVisible()
 })
+
+for (const width of [320, 1000, 1280]) {
+  for (const withFacets of [false, true]) {
+    test(`search cards retain readable width at ${width}px with facets ${withFacets}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await serve(page, { search: {
+        ...RESULTS,
+        data: [listing({ slug: 'paleti', title: 'Paleti with Neer Shah',
+          venue: { id: 'paleti', slug: 'paleti', name: 'Nepalaya, Kalikasthan', city: 'Kathmandu' } })],
+        facets: withFacets ? RESULTS.facets : Object.fromEntries(
+          Object.entries(RESULTS.facets).map(([key, entries]) => [key, entries.slice(0, 1)])),
+      } })
+      await page.goto('/search?q=Paleti')
+      const card = page.locator('.search-page__results article.listing-card')
+      await expect(card).toBeVisible()
+      const bounds = await card.boundingBox()
+      expect(bounds!.width).toBeGreaterThanOrEqual(256)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
+      if (!withFacets) {
+        const body = await page.locator('.search-page__body').boundingBox()
+        const results = await page.locator('.search-page__results').boundingBox()
+        expect(results!.width).toBeCloseTo(body!.width, 0)
+      }
+      await expect(page.locator('.listing-card__title')).toHaveText('Paleti with Neer Shah')
+    })
+  }
+}

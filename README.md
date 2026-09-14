@@ -145,7 +145,7 @@ is indexed in [docs/BACKLOG.md](docs/BACKLOG.md).
 # Daily scrapes
 
 The `Daily scrapes` GitHub Actions workflow runs Ticket Sanjal, Khalti, Kata Jaam,
-and Taragaon every day at **06:00 Nepal time** (00:15 UTC). It uses a GitHub-hosted
+Taragaon, and the 21 validated venue source profiles every day at **06:00 Nepal time** (00:15 UTC). It uses a GitHub-hosted
 Ubuntu runner, so your computer can be off. The schedule becomes active when
 `.github/workflows/daily-scrape.yml` is on the repository's default branch.
 GitHub may delay scheduled runs; this is not an exact-time guarantee.
@@ -169,3 +169,7 @@ npm run scrape:all
 ```
 
 Local results are saved under `scrape-output/<timestamp>/` and ignored by Git.
+
+The venue batch covers festival organizers, galleries, talks, theatre, comedy,
+music, races, courses and religious programmes. See [Venue scrapers](docs/VENUE_SCRAPERS.md)
+for commands, coverage, draft review requirements and the full 183-lead audit.

@@ -20,7 +20,7 @@ const safeUrl = (value) => {
 }
 export function sourceUrl(value) {
   const u = new URL(value, ORIGIN)
-  if (u.origin !== ORIGIN || !/^\/events\/[^/]+$/.test(u.pathname)) throw Error(`Invalid event URL: ${value}`)
+  if (u.origin !== ORIGIN || !/^\/events\/(?:series\/)?[^/]+$/.test(u.pathname)) throw Error(`Invalid event URL: ${value}`)
   u.search = ''; u.hash = ''; return u.href
 }
 function attrs(tag) {
@@ -52,6 +52,11 @@ export function eventPage(html, url) {
     .filter((m) => attrs(m[1]).type === 'application/ld+json')
     .flatMap((m) => flattenLd(JSON.parse(m[2])))
   const events = objects.filter((o) => [o['@type']].flat().some((t) => /^(Event|MusicEvent|SportsEvent|Festival)$/.test(t)))
+  if (new URL(sourceUrl(url)).pathname.startsWith('/events/series/')) {
+    const series = objects.find((o) => o['@type'] === 'EventSeries' && o.url && sourceUrl(o.url) === sourceUrl(url))
+    if (!series) throw Error(`No matching EventSeries JSON-LD on ${url}`)
+    return { ...series, url: sourceUrl(url), skip: 'Recurring series: individual occurrences require review' }
+  }
   const event = events.find((o) => o.url && sourceUrl(o.url) === sourceUrl(url)) ?? (events.length === 1 ? events[0] : null)
   if (!event) throw Error(`No unambiguous Event JSON-LD on ${url}`)
   const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ?? ''
@@ -98,6 +103,7 @@ const categoryMap = {
 const finite = (n, max) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= max ? n : null
 const instant = (s) => typeof s === 'string' && /T.*(?:Z|[+-]\d\d:\d\d)$/.test(s) && !Number.isNaN(Date.parse(s)) ? new Date(s).toISOString() : null
 export function transform(raw, overrides = {}, publish = false, now = new Date().toISOString()) {
+  if (raw.skip) return { ...raw, skip: raw.skip }
   const url = sourceUrl(raw.url), id = decode(new URL(url).pathname.slice(8))
   if (!raw.name || /^(test|test event|demo event)$/i.test(clean(raw.name))) return { skip: 'test or empty event', url }
   if (overrides.skip) return { skip: 'manual exclusion', url }

@@ -22,6 +22,9 @@ Omitting `--env` targets local D1. Without `--apply`, the importer only writes a
 inventory, SQL file, and report under `.katajaam-imports/`. `--apply` imports drafts;
 adding `--publish` publishes complete events and leaves uncertain events as drafts.
 Events without a valid start date are excluded. End dates are optional.
+Recurring `/events/series/…` pages count toward the scraped inventory, but remain
+excluded from imports until their individual occurrences are reviewed. Their
+EventSeries metadata is retained in the inventory; no dates are extrapolated.
 
 Use `--input PATH` to reuse an inventory and `--overrides PATH` for reviewed
 corrections keyed by the source event URL's final path segment. Existing listings

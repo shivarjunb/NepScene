@@ -68,8 +68,8 @@ jobs:
           node scripts/annotate.mjs eslint eslint-report.json
           exit ${LINT_FAILED:-0}
 
-      - name: Kata Jaam importer tests
-        run: node scripts/tests/katajaam.test.mjs
+      - name: Scraper and importer tests
+        run: npm run test:scrapers
 
       # Before the tests, not after. The server-rendering tests (#45) rewrite the
       # *built* `index.html` — that document is the shell, with Vite's hashed

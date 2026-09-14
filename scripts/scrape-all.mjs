@@ -13,6 +13,7 @@ export function runScrapers({ root = repository, output = join(root, 'scrape-out
   { name: 'khalti', script: 'scripts/scrape-khalti.mjs', args: [join(output, 'khalti')] },
   { name: 'katajaam', script: 'scripts/import-katajaam.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'katajaam')] },
   { name: 'taragaon', script: 'scripts/import-taragaon.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'taragaon')] },
+  { name: 'venues', script: 'scripts/scrape-venues.mjs', args: ['--scrape-only', '--out', join(output, 'venues')] },
  ]
  const report = { started_at: new Date().toISOString(), complete: false, jobs: [] }
  for (const job of jobs) {
