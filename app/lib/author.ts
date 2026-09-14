@@ -21,7 +21,7 @@ export class AuthorError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(path, {
     ...init,
     // Same origin, but stated rather than assumed: without it a session cookie

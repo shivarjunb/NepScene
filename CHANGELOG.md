@@ -7,6 +7,28 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **An admin console (#28).** `/admin`, for accounts whose role is `admin`:
+  who can do what, whose organization is whose, what happened, and whether
+  the housekeeping is running. Until now promoting someone meant a SQL
+  statement against D1; it is now a select on a row.
+  - **A screen per question, not a grid per table.** WaahTickets' admin is a
+    4,800-line component rendering one generic table over thirty resources,
+    most of which (orders, payments, commissions, payouts) are outside this
+    product's scope by design. The console has five screens — Overview,
+    Accounts, Organizations, Audit trail, Housekeeping — each of which knows
+    what a row means and what to do about it, and hands listings to the
+    screens that already exist for them (the queue, the dashboard).
+  - **One round trip per screen.** Every list is a single batched D1 call
+    with its counts and its lookahead row; there is no per-row fetch anywhere,
+    and the integration tests assert on `x-d1-round-trips: 1`. Two indexes
+    (migration 0014) back the two reads that did not have one.
+  - **Nothing here can lock you out.** Changing your own role and deactivating
+    your own account are refused by the API and greyed out in the console.
+    Deactivating anyone else revokes every session they have, at once.
+  - **Every change is in the audit log** — and the audit log is now readable
+    without a database client, newest first, each row resolved to the email,
+    title or name a person would recognise.
+  - The console is its own chunk (#39): the public first paint does not carry it.
 - **The public site is server-rendered (#45).** Every page a reader or a crawler
   can land on now arrives as a document with its content already in it — the
   homepage, listing pages, venue, organizer and artist pages, and the two index

@@ -20,6 +20,7 @@ const componentsCss = sheet('components.css')
 const baseCss = sheet('base.css')
 const shellCss = sheet('shell.css')
 const authorCss = sheet('author.css')
+const adminCss = sheet('admin.css')
 const mapCss = sheet('map.css')
 
 export default defineConfig({
@@ -41,6 +42,7 @@ export default defineConfig({
           BASE_CSS: baseCss,
           SHELL_CSS: shellCss,
           AUTHOR_CSS: authorCss,
+          ADMIN_CSS: adminCss,
           MAP_CSS: mapCss,
         },
       },

@@ -44,6 +44,10 @@ const QueuePage = deferred(
   () => import('./moderation/QueuePage').then((module) => module.QueuePage),
   Loading,
 )
+const AdminPage = deferred(
+  () => import('./admin/AdminPage').then((module) => module.AdminPage),
+  Loading,
+)
 const DesignSystem = deferred(
   () => import('./pages/DesignSystem').then((module) => module.DesignSystem),
   Loading,
@@ -108,6 +112,12 @@ export const ROUTES: Route[] = [
     element: <QueuePage />,
   },
   {
+    path: '/admin',
+    title: 'Admin',
+    summary: 'Accounts, organizations, the audit trail and the housekeeping jobs.',
+    element: <AdminPage section="" />,
+  },
+  {
     path: '/about',
     title: 'About NepScene',
     summary: 'What this is, who runs it, and how listings get here.',
@@ -155,6 +165,13 @@ const DYNAMIC = [
     // autosave first succeeds, so a reload returns to the draft in progress
     // rather than starting a second empty one.
     render: (id: string) => <SubmitPage listingId={id} />,
+  },
+  {
+    prefix: '/admin/',
+    title: 'Admin',
+    // The section is the whole segment (/admin/users, /admin/audit); the page
+    // answers an unknown one with the overview and a note, not a 404.
+    render: (section: string) => <AdminPage section={section} />,
   },
 ] as const
 

@@ -13,7 +13,8 @@ One deployable, three internal modules with enforced boundaries.
 │   React 19 + Vite SPA        Hono API               │
 │   ├── public/  discovery     ├── catalog/  read     │
 │   ├── author/  authoring     ├── author/   write    │
-│   └── admin/   moderation    └── identity/ auth     │
+│   ├── moderation/ the queue  ├── identity/ auth     │
+│   └── admin/   the console   └── admin/    manage   │
 │                                                     │
 │              D1 (SQLite)      R2 (media)            │
 └──────────────────────┬──────────────────────────────┘
@@ -170,7 +171,22 @@ POST   /api/author/venues               creates one; 409 names the venue it rese
 POST   /api/author/listings/:id/media   upload to R2; alt text required
 DELETE /api/author/media/:mediaId
 POST   /api/author/media/sweep         admin; reclaims unreferenced R2 objects
+
+GET    /api/admin/overview              counts by role and by state, and the last ten changes
+GET    /api/admin/users?q=&role=        accounts, with how they sign in and what they wrote
+PATCH  /api/admin/users/:id             body: { role?, is_active? } — never your own
+GET    /api/admin/organizations?q=      with member and listing counts
+GET    /api/admin/organizations/:id     one, with its members
+PATCH  /api/admin/organizations/:id     body: { is_verified } — bumps the catalogue version
+PUT    /api/admin/organizations/:id/members        body: { email, org_role } — upsert
+DELETE /api/admin/organizations/:id/members/:userId
+GET    /api/admin/audit?entity_type=&entity_id=&actor_id=  the trail, newest first, resolved
+POST   /api/admin/system/archive        the nightly sweep, now
 ```
+
+Everything under `/api/admin` requires `user:manage`, which only `admin` has,
+and each list is one batched round trip — the integration tests assert on the
+`x-d1-round-trips` header for every screen.
 
 **A draft is not validated; a submission is.** The wizard autosaves every few
 seconds and a half-written listing is the normal state of a draft, so `POST` and
