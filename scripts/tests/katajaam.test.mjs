@@ -15,6 +15,15 @@ const raw = (id='a', changes={}) => ({ '@type':'Event',url:`https://katajaam.com
   organizer:{name:'Jeevan Vigyan Youth'},image:['https://example.com/poster.jpg'],
   isAccessibleForFree:false,offers:{price:500,priceCurrency:'NPR',url:'https://example.com/event'}, ...changes })
 const map = (r, override={},publish=false) => transform(r,override,publish,now)
+test('recurring series count toward inventory but are not imported as single events', () => {
+  const url = 'https://katajaam.com/events/series/weekly-run'
+  const html = '<main>1 events across the valley<a href="/events/series/weekly-run"><img src="x"><h3>Weekly run</h3></a></main>'
+  assert.deepEqual(listingPage(html).urls, [url])
+  const series = { '@type': 'EventSeries', name: 'Weekly run', url }
+  const parsed = eventPage(`<script type="application/ld+json">${JSON.stringify(series)}</script>`, url)
+  assert.match(map(parsed, {}, true).skip, /individual occurrences require review/)
+  assert.throws(() => eventPage('<main>No structured series</main>', url))
+})
 function db() {
   const database = new DatabaseSync(':memory:')
   const dir = fileURLToPath(new URL('../../migrations/',import.meta.url))

@@ -1,0 +1,1969 @@
+[
+  {
+    "id": "ktm-001",
+    "name": "Alliance Francaise de Katmandou",
+    "url": "https://www.alliancefrancaise.org.np/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Page limit 15 reached; coverage is partial",
+    "seeds": [
+      "https://www.alliancefrancaise.org.np/cultural-events/",
+      "https://www.alliancefrancaise.org.np/course-detail/",
+      "https://www.alliancefrancaise.org.np/event-detail/",
+      "https://www.alliancefrancaise.org.np/exam-session-detail/"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-002",
+    "name": "Goethe-Zentrum Kathmandu",
+    "url": "https://www.goethe-kathmandu.edu.np/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-003",
+    "name": "International Ethnic Folklore Festival Nepal",
+    "url": "https://ieffnepal.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "ieff",
+    "collection": true
+  },
+  {
+    "id": "ktm-004",
+    "name": "Nepal Academy of Music & Drama",
+    "url": "https://namuda.gov.np/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-005",
+    "name": "photo.circle / Photo Kathmandu",
+    "url": "https://photocircle.com.np/about/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Page limit 15 reached; coverage is partial",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-006",
+    "name": "Association for Craft Producers",
+    "url": "https://www.acp.org.np/categories/ceramic",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-007",
+    "name": "Central Fashion School",
+    "url": "https://www.centralfashionschool.com/CourseDetails?CourseId=62",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-008",
+    "name": "Hatti Hatti",
+    "url": "https://hattihatti.org.np/about/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-009",
+    "name": "Impact Hub Kathmandu",
+    "url": "https://kathmandu.impacthub.net/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-010",
+    "name": "Local Women's Handicrafts",
+    "url": "https://wanderlog.com/place/details/107422",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-011",
+    "name": "Newa Craft Leather Works",
+    "url": "https://newacraft.com/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-012",
+    "name": "ROKPA Women's Workshop",
+    "url": "https://www.rokpaww.org/workshop-home",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-013",
+    "name": "Royal Mountain Travel",
+    "url": "https://royalmt.com.np/events-in-nepal/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "royalmt",
+    "collection": true
+  },
+  {
+    "id": "ktm-014",
+    "name": "Thimi Ceramics",
+    "url": "https://thimiceramics.com/our-heritage/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-015",
+    "name": "DMI Nepal",
+    "url": "https://dminepal.com/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-016",
+    "name": "Event Manager Nepal",
+    "url": "https://www.eventmanagernepal.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "eventmanager",
+    "collection": true
+  },
+  {
+    "id": "ktm-017",
+    "name": "Federation of Electrical Entrepreneurs of Nepal",
+    "url": "https://electrotech.feen.org.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-018",
+    "name": "Federation of Handicraft Associations of Nepal",
+    "url": "https://fhan.org.np/images/fhan-21st.pdf",
+    "evidence": "Organizer publication",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-019",
+    "name": "Floriculture Association Nepal",
+    "url": "https://nepalfloraexpo.com.np/venue/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-020",
+    "name": "Global Exposition / GEMS",
+    "url": "https://globalexposition.com.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://globalexposition.com.np/events",
+      "https://globalexposition.com.np/wada-auto-show/",
+      "https://globalexposition.com.np/nada-auto-show-2024-terms-of-participation/",
+      "https://globalexposition.com.np/auto-show-2018/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-021",
+    "name": "Media Space Solutions",
+    "url": "https://nepalpowerelec.com/",
+    "evidence": "Official expo website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-022",
+    "name": "NADA Automobiles Association of Nepal",
+    "url": "https://nada.org.np/auto-show",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "nada",
+    "collection": true
+  },
+  {
+    "id": "ktm-023",
+    "name": "TEDxIslingtonCollege student organizers",
+    "url": "https://tedx.islingtoncollege.edu.np/",
+    "evidence": "Official event website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 502: https://tedx.islingtoncollege.edu.np/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-024",
+    "name": "Vihaani Events",
+    "url": "https://www.vihaanievents.com/events",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "vihaani",
+    "collection": true
+  },
+  {
+    "id": "ktm-025",
+    "name": "Guthi Sansthan",
+    "url": "https://guthisansthan.org.np/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-026",
+    "name": "Martin Chautari",
+    "url": "https://martinchautari.org.np/events",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "chautari",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-027",
+    "name": "Nepal Academy",
+    "url": "https://en.wikipedia.org/wiki/Nepal_Academy",
+    "evidence": "Reference article",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-028",
+    "name": "Pashupati Area Development Trust",
+    "url": "https://www.pashupati.gov.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "pashupati",
+    "collection": true
+  },
+  {
+    "id": "ktm-029",
+    "name": "Shree Boudhanath Area Development Committee",
+    "url": "https://www.boudhanath.gov.np/en/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-030",
+    "name": "Brihaspati Toastmasters Club",
+    "url": "https://www.toastmasters.org/Find-a-Club/07930376-kathmandu-nepal-pros-club",
+    "evidence": "International club directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-031",
+    "name": "JCI Nepal",
+    "url": "https://jcinepal.org.np/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-032",
+    "name": "Kathmandu Toastmasters Club",
+    "url": "https://www.toastmasters.org/Find-a-Club/00008112",
+    "evidence": "International club directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-033",
+    "name": "Northmandu Toastmasters Club",
+    "url": "https://www.toastmasters.org/Find-a-Club/7799463",
+    "evidence": "International club directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-034",
+    "name": "Rotaract Club of Baneshwor Royal",
+    "url": "https://rotaractbroyal.org.np/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 521: https://rotaractbroyal.org.np/contact/ | HTTP 521: https://rotaractbroyal.org.np/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-035",
+    "name": "Rotaract Club of Kathmandu",
+    "url": "https://rckathmandu.org.np/partner_in_service/rotaract-club-of-kathmandu/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 404: https://rckathmandu.org.np/calendar/Rotary%20Bhawan,%20Thapathali%20target=",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-036",
+    "name": "Rotaract Club of Kathmandu Mid-Town",
+    "url": "https://www.searicmdio.org/directory/rotaract-club-of-kathmandu-mid-town-",
+    "evidence": "Club network directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-037",
+    "name": "Rotaract Club of Metro City",
+    "url": "https://www.rotaractmetrocity.org/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-038",
+    "name": "Rotary Club of Kasthamandap",
+    "url": "https://rckasthamandap.org.np/meetings/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-039",
+    "name": "Rotary Club of Kathmandu",
+    "url": "https://rckathmandu.org.np/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 404: https://rckathmandu.org.np/calendar/Rotary%20Bhawan,%20Thapathali%20target=",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-040",
+    "name": "Sagarmatha Toastmasters Club",
+    "url": "https://www.toastmasters.org/Find-a-Club/07993588-kathmandu-nepal-pros-club",
+    "evidence": "International club directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-041",
+    "name": "Salsa Nepal",
+    "url": "https://salsanepal.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "collection": true,
+    "enabled": true,
+    "audit_status": "empty"
+  },
+  {
+    "id": "ktm-042",
+    "name": "The Dance Floor",
+    "url": "https://www.thesalsaschool.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "collection": true,
+    "enabled": true,
+    "audit_status": "empty"
+  },
+  {
+    "id": "ktm-043",
+    "name": "Y-Stand Dance School",
+    "url": "https://www.ystanddance.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-044",
+    "name": "Budhi Aama Organic Agro Tourism",
+    "url": "https://budhiaama.com.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-045",
+    "name": "Chumhim Agro Tourism",
+    "url": "https://www.chumhimagro.com.np/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-046",
+    "name": "Dirty Duck Outdoor & Farm",
+    "url": "https://dirtyducknepal.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://dirtyducknepal.com/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-047",
+    "name": "Everest Coffee Mill",
+    "url": "https://www.everestcoffeemill.com/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-048",
+    "name": "HASERA Permaculture Learning Center",
+    "url": "https://organichasera.org/permaculture-courses/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "hasera",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-049",
+    "name": "Herb Nepal / Farm Stays Nepal",
+    "url": "https://www.herbnepal.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-050",
+    "name": "Sabal Farm",
+    "url": "https://www.sabalfarm.com.np/p/contact-us.html",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-051",
+    "name": "KIMFF Foundation",
+    "url": "https://kimff.org/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://kimff.org/kimff-monthly-virtual-session/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-052",
+    "name": "Nepal Film & Cultural Academy / NIFF",
+    "url": "https://filmfreeway.com/niff2027",
+    "evidence": "Festival submission platform",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-053",
+    "name": "Nepal Tourism Board auditorium",
+    "url": "https://filmfreeway.com/niff2027",
+    "evidence": "Festival submission platform",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-054",
+    "name": "QFX Cinemas - Chhaya Center",
+    "url": "https://filmfreeway.com/niff2027",
+    "evidence": "Festival submission platform",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-055",
+    "name": "QFX Cinemas - Civil Mall",
+    "url": "https://filmfreeway.com/niff2027",
+    "evidence": "Festival submission platform",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-056",
+    "name": "Arts Nepal",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-057",
+    "name": "Artudio",
+    "url": "https://artudio.net/artudio-contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 500: https://artudio.net/project/current-exhibition/?customize_changeset_uuid=afc02ac6-1c40-43a3-922c-206cc260e401 | Page limit 15 reached; coverage is partial",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-058",
+    "name": "Bikalpa Art Foundation",
+    "url": "https://bikalpaartfoundation.org/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Page limit 15 reached; coverage is partial",
+    "seeds": [
+      "https://bikalpaartfoundation.org/category/portfolio/education-program/projects/",
+      "https://bikalpaartfoundation.org/category/events/",
+      "https://bikalpaartfoundation.org/category/portfolio/education-program/training-workshops/",
+      "https://bikalpaartfoundation.org/category/portfolio/education-program/talk-presentation/",
+      "https://bikalpaartfoundation.org/category/portfolio/residency-programs/"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-059",
+    "name": "Collection Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-060",
+    "name": "Gajendra Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-061",
+    "name": "Gallery MCube",
+    "url": "https://artres.moc.gov.tw/en/database/globalContent/8aa8e6847853c80d0179644ed879312f",
+    "evidence": "Arts institution directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-062",
+    "name": "J. Art Gallery Nepal",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-063",
+    "name": "Kathmandu Art House",
+    "url": "https://kathmanduarthouse.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://kathmanduarthouse.com/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-064",
+    "name": "Light & Shade Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-065",
+    "name": "Lotus Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-066",
+    "name": "Nepal Academy of Fine Arts",
+    "url": "https://en.wikipedia.org/wiki/Nepal_Academy_of_Fine_Arts",
+    "evidence": "Reference article",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-067",
+    "name": "Nepal Art Council",
+    "url": "https://www.nepalartcouncil.org.np/events/37th-solo-exhibition-lee-bo-suk/",
+    "evidence": "Official event page",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 404: https://nepalartcouncil.org.np/events/37th-solo-exhibition-lee-bo-suk/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-068",
+    "name": "Nepal Traditional Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/2/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-069",
+    "name": "Patan Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/3/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-070",
+    "name": "Pooja Contemporary Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/3/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-071",
+    "name": "Rengey Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/3/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-072",
+    "name": "Sashi's Studio",
+    "url": "https://www.nepalyp.com/category/Art_galleries/3/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-073",
+    "name": "Siddhartha Art Gallery",
+    "url": "https://www.siddharthaartgallery.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "siddhartha",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-074",
+    "name": "Sirjana Contemporary Art Gallery",
+    "url": "https://www.nepalyp.com/category/Art_galleries/3/city%3AKathmandu",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-075",
+    "name": "Takpa Gallery",
+    "url": "https://takpagallery.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "takpa",
+    "collection": true
+  },
+  {
+    "id": "ktm-076",
+    "name": "Taragaon Next",
+    "url": "https://taragaonnext.com/visit-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Covered by existing Taragaon importer.",
+    "seeds": [
+      "https://taragaonnext.com/whats-on/",
+      "https://taragaonnext.com/our-space/ongoing-events/",
+      "https://taragaonnext.com/whats-on#current-tab"
+    ],
+    "existing": "scripts/import-taragaon.mjs",
+    "enabled": false,
+    "audit_status": "existing-scraper"
+  },
+  {
+    "id": "ktm-077",
+    "name": "Bungamati Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-078",
+    "name": "Community Homestay Network",
+    "url": "https://communityhomestay.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-079",
+    "name": "Kirtipur Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-080",
+    "name": "Nagarkot Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-081",
+    "name": "Panauti Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-082",
+    "name": "Patan Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-083",
+    "name": "Patlekhet Community Homestay",
+    "url": "https://communityhomestay.com/blog/community-homestays-near-kathmandu",
+    "evidence": "Network website",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-084",
+    "name": "Hotel Yak & Yeti / Lal Durbar Convention Center",
+    "url": "https://www.yakandyeti.com/conference-events",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://www.yakandyeti.com/conference-events",
+      "https://www.yakandyeti.com/conference-events",
+      "https://www.yakandyeti.com/whats-on/promotions",
+      "https://www.yakandyeti.com/conference-events/the-regal-ballroom",
+      "https://www.yakandyeti.com/conference-events/regency-hall"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-085",
+    "name": "Radisson Hotel Kathmandu",
+    "url": "https://www.radissonhotels.com/en-us/hotels/radisson-kathmandu/meeting-events",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 403: https://www.radissonhotels.com/en-us/hotels/radisson-kathmandu/meeting-events | HTTP 403: https://www.radissonhotels.com/en-us/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-086",
+    "name": "The Soaltee Kathmandu",
+    "url": "https://www.marriott.com/en-us/hotels/ktmsk-the-soaltee-kathmandu-autograph-collection/events/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 403: https://www.marriott.com/default.mi | HTTP 403: https://www.marriott.com/default.mi | Page limit 15 reached; coverage is partial",
+    "seeds": [
+      "https://www.marriott.com/en-us/hotels/ktmsk-the-soaltee-kathmandu-autograph-collection/events/",
+      "https://www.marriott.com/en-gb/hotels/ktmsk-the-soaltee-kathmandu-autograph-collection/events/",
+      "https://www.marriott.com/meeting-event-hotels/meeting-planning.mi",
+      "https://www.marriott.com/en-us/hotels/ktmsk-the-soaltee-kathmandu-autograph-collection/events/",
+      "https://www.marriott.com/en-us/hotels/ktmsk-the-soaltee-kathmandu-autograph-collection/events/#capacity"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-087",
+    "name": "Basantapur / Kathmandu Durbar Square",
+    "url": "https://kathmandupost.com/visual-stories/2025/01/14/maghi-visual-stories",
+    "evidence": "Reporting (2025)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-088",
+    "name": "Bhrikutimandap Exhibition Hall",
+    "url": "https://ypnepal.com/listing/7423",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-089",
+    "name": "Dasharath Stadium covered hall",
+    "url": "https://badmintonasia.org/wp-content/uploads/2024/03/Nepal-JIS-2024-Prospectus-Updated-20th-Nov.pdf",
+    "evidence": "Tournament prospectus (2024)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-090",
+    "name": "Tundikhel",
+    "url": "https://kathmandupost.com/visual-stories/2025/01/14/maghi-visual-stories",
+    "evidence": "Reporting (2025)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-091",
+    "name": "Bhanimandal Haat Bazaar",
+    "url": "https://kathmandupost.com/art-culture/2022/12/23/five-pop-up-markets-to-visit-in-the-valley",
+    "evidence": "Historical reporting (2022)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-092",
+    "name": "Boudha Farmers Market / Utpala Cafe",
+    "url": "https://kathmandupost.com/art-culture/2022/12/23/five-pop-up-markets-to-visit-in-the-valley",
+    "evidence": "Historical reporting (2022)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-093",
+    "name": "Labim Bazaar / LABIM Mall",
+    "url": "https://kathmandupost.com/art-culture/2022/12/23/five-pop-up-markets-to-visit-in-the-valley",
+    "evidence": "Historical reporting (2022)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-094",
+    "name": "Le Sherpa Farmers Market",
+    "url": "https://kathmandupost.com/art-culture/2022/12/23/five-pop-up-markets-to-visit-in-the-valley",
+    "evidence": "Historical reporting (2022)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-095",
+    "name": "Yellow House Farmers Market",
+    "url": "https://kathmandupost.com/art-culture/2022/12/23/five-pop-up-markets-to-visit-in-the-valley",
+    "evidence": "Historical reporting (2022)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-096",
+    "name": "Jazzmandu / Upstairs Ideas",
+    "url": "https://jazzmandu.org/about-us",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-097",
+    "name": "Metal for Nepal",
+    "url": "https://www.metalfornepal.org/team",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-098",
+    "name": "Nepco Entertainment",
+    "url": "https://nepcoentertainment.com/about-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Page limit 15 reached; coverage is partial",
+    "seeds": [
+      "https://nepcoentertainment.com/category/event/",
+      "https://nepcoentertainment.com/category/event/national-event/",
+      "https://nepcoentertainment.com/category/event/international-event/",
+      "https://nepcoentertainment.com/expo-2024-australia-event-by-nepco-entertainment/",
+      "https://nepcoentertainment.com/nepco-fashion-event-2023-australia/"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-099",
+    "name": "Silence Festival team",
+    "url": "https://www.metalfornepal.org/trustees",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-100",
+    "name": "Attic",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-101",
+    "name": "Cafe Deja Vu",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-102",
+    "name": "Club Nova",
+    "url": "https://theclubnova.com/live-music-in-thamel/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://theclubnova.com/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-103",
+    "name": "Eden Sanepa",
+    "url": "https://katajaam.com/blog/best-live-music-venues-kathmandu",
+    "evidence": "Event listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-104",
+    "name": "Electric Pagoda Bar & Cafe",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-105",
+    "name": "Fire Club",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-106",
+    "name": "Hard Rock Cafe Kathmandu",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-107",
+    "name": "Ibyza Lounge & Disco",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-108",
+    "name": "Jazz Upstairs",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-109",
+    "name": "Karma Bar & Club",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-110",
+    "name": "LOD - Lord of the Drinks",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-111",
+    "name": "Moksh",
+    "url": "https://katajaam.com/blog/best-live-music-venues-kathmandu",
+    "evidence": "Event listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-112",
+    "name": "Purple Haze Rock Bar",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-113",
+    "name": "REEF Restaurant & Lounge Bar",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-114",
+    "name": "Reggae Bar",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-115",
+    "name": "Senate Club",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-116",
+    "name": "Shisha Lounge and Bar",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-117",
+    "name": "Tamarind Restaurant",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-118",
+    "name": "The Ai-la Lounge",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-119",
+    "name": "The Victory Lounge",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-120",
+    "name": "Trisara",
+    "url": "https://wanderlog.com/list/geoCategory/813635/live-music-venues",
+    "evidence": "Directory listing",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-121",
+    "name": "Comedy Cafe",
+    "url": "https://surajkhadgi.com.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Invalid JSON-LD at https://surajkhadgi.com.np/nepal-entertainment-platforms-creative-shows/: Unexpected non-whitespace character after JSON at position 356 (line 13 column 2)",
+    "seeds": [
+      "https://surajkhadgi.com.np/nepal-entertainment-platforms-creative-shows/"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-122",
+    "name": "Comedy Circle",
+    "url": "https://english.onlinekhabar.com/comedy-circle-bringing-stand-up-comedy-to-kathmandu.html",
+    "evidence": "Historical reporting (2018)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-123",
+    "name": "Word Warriors / Quixote's Cove",
+    "url": "https://qcbookshop.com/program/word-warriors-spoken-word-poetry-group",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Page limit 15 reached; coverage is partial",
+    "seeds": [
+      "https://qcbookshop.com/program/word-warriors-spoken-word-poetry-group",
+      "https://qcbookshop.com/program/safu",
+      "https://qcbookshop.com/program/u-s-embassy-s-book-bus",
+      "https://qcbookshop.com/program/histories-from-home",
+      "https://qcbookshop.com/program/experiential-learning-programs"
+    ],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-124",
+    "name": "Bhangeri Durbar Resort",
+    "url": "https://bhangeridurbar.com/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://bhangeridurbar.com/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-125",
+    "name": "Chandragiri Hills Resort",
+    "url": "https://www.chandragirihillsresort.com/en/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-126",
+    "name": "Dhulikhel Lodge Resort",
+    "url": "https://dhulikhellodgeresort.com/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-127",
+    "name": "Dwarika's Resort Dhulikhel",
+    "url": "https://dwarikas-dhulikhel.com/contact_us.php",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 403: https://dwarikas-dhulikhel.com/contact_us.php | HTTP 403: https://dwarikas-dhulikhel.com/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-128",
+    "name": "Godavari Village Resort",
+    "url": "https://www.godavarivillageresort.com/?page_id=321",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-129",
+    "name": "Gokarna Forest Resort",
+    "url": "https://gokarna.com/event-inquiry/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://gokarna.com/event-inquiry/",
+      "https://gokarna.com/meeting-events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-130",
+    "name": "Haatiban Himalayan Height Resort",
+    "url": "https://haativanresort.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-131",
+    "name": "Hotel Sarathi",
+    "url": "https://www.sarathihotel.com/contact-us",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-132",
+    "name": "Ratnagiri Resort",
+    "url": "https://www.ratnagiriresortnagarkot.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-133",
+    "name": "Sky Garden Resort",
+    "url": "https://skygardenresort.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://skygardenresort.com/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-134",
+    "name": "Nepal Badminton Association",
+    "url": "https://badmintonasia.org/wp-content/uploads/2024/03/Nepal-JIS-2024-Prospectus-Updated-20th-Nov.pdf",
+    "evidence": "Tournament prospectus (2024)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-135",
+    "name": "Aarohan Gurukul",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-136",
+    "name": "Actors' Studio",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-137",
+    "name": "Kausi Theatre / Kathaghera",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-138",
+    "name": "Kunja Natak Ghar",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-139",
+    "name": "Mandala Theatre Nepal",
+    "url": "https://bookings.mandalatheatre.com/view-drama/grand-rehearsal",
+    "evidence": "Official event page",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "mandala",
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-140",
+    "name": "One World Theatre",
+    "url": "https://www.owtnepal.org/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-141",
+    "name": "Purano Ghar",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-142",
+    "name": "Sarwanam Theatre",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-143",
+    "name": "Shailee Theatre",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-144",
+    "name": "Shilpee Theatre",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-145",
+    "name": "Theatre Mall",
+    "url": "https://english.onlinekhabar.com/theatres-in-kathmandu-to-explore.html",
+    "evidence": "Historical reporting (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-146",
+    "name": "Chandragiri Hills",
+    "url": "https://www.chandragirihills.com/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://www.chandragirihills.com/meetings-events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-147",
+    "name": "Everest Bodhi Adventures",
+    "url": "https://everestbodhiadventures.com/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-148",
+    "name": "Himalayan Social Journey",
+    "url": "https://hsj.com.np/tourtype/daytours",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-149",
+    "name": "Kathmandu Adventure Treks",
+    "url": "https://kathmanduadventure.com/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-150",
+    "name": "Kathmandu Adventures Travel & Tours",
+    "url": "https://www.kathmanduadventures.com/tour/walking-tour-kathmandu-cooking-lesson/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-151",
+    "name": "Kathmandu Sport Climbing Center",
+    "url": "https://www.kscc.com.np/contact-us/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-152",
+    "name": "Nepal Experienced Adventure Treks",
+    "url": "https://www.neatadventure.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-153",
+    "name": "SASANE Sisterhood Trekking & Travel",
+    "url": "https://www.sequa.de/fileadmin/user_upload/03_Projekttypen/Importfoerderung/240305_IPD_tourism_partners_at_ITB_2024__002_.pdf",
+    "evidence": "Tourism partner publication (2024)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-154",
+    "name": "Trailmandu Nepal",
+    "url": "https://www.race.trailmandu.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [
+      "https://www.race.trailmandu.com/races"
+    ],
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-155",
+    "name": "Unique Adventure International",
+    "url": "https://keepnepal.org/member/unique-adventure-international-p-ltd",
+    "evidence": "Tourism association directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-156",
+    "name": "Happy Club",
+    "url": "https://happyclub.com.np/shows/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "happyclub",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-157",
+    "name": "Beers N' Cheers",
+    "url": "https://wanderlog.com/place/details/3065284",
+    "evidence": "Venue directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-158",
+    "name": "Backyard Brew",
+    "url": "https://www.reddit.com/r/Nepal/comments/1b9yyvh",
+    "evidence": "Historical community report",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-159",
+    "name": "Jyapu Aila",
+    "url": "https://www.reddit.com/r/Nepal/comments/1b9yyvh",
+    "evidence": "Historical community report",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-160",
+    "name": "Paleti / Nepalaya",
+    "url": "https://paleti.com.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "paleti",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-161",
+    "name": "Kathmandu Jazz Conservatory",
+    "url": "https://katjazz.com.np/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://katjazz.com.np/program-calender/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-162",
+    "name": "Octave Beer Garden",
+    "url": "https://octavekathmandu.com/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://octavekathmandu.com/events"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-163",
+    "name": "Bricks Cafe",
+    "url": "https://www.brickscafe.com.np/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-164",
+    "name": "Musicology",
+    "url": "https://www.tripadvisor.com/Restaurant_Review-g315764-d16831237-Reviews-Musicology-Patan_Lalitpur_Kathmandu_Valley_Bagmati_Zone_Central_Region.html",
+    "evidence": "Venue directory",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-165",
+    "name": "KathaSatha",
+    "url": "https://www.kathasatha.org/events",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "kathasatha",
+    "collection": false
+  },
+  {
+    "id": "ktm-166",
+    "name": "Kathalaya Inc.",
+    "url": "https://kathalaya.com.np/activities/book-release",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-167",
+    "name": "Social Science Baha",
+    "url": "https://soscbaha.org/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "HTTP 403: https://soscbaha.org/contact/ | HTTP 403: https://soscbaha.org/",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-168",
+    "name": "National Press Club Nepal",
+    "url": "https://nationalpressclubnepal.com/contact",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://nationalpressclubnepal.com/programs"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-169",
+    "name": "Kopan Monastery",
+    "url": "https://kopanmonastery.org/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "adapter": "kopan",
+    "collection": true,
+    "enabled": true,
+    "audit_status": "parsed"
+  },
+  {
+    "id": "ktm-170",
+    "name": "Art of Living Nepal",
+    "url": "https://www.artofliving.org/np-en/course-details-sudarshan-kriya",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
+    "seeds": [],
+    "enabled": true,
+    "audit_status": "parsed",
+    "adapter": "artofliving",
+    "collection": true
+  },
+  {
+    "id": "ktm-171",
+    "name": "Bhaktapur Municipality",
+    "url": "https://bhaktapurmun.gov.np/en",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed | fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "failed"
+  },
+  {
+    "id": "ktm-172",
+    "name": "Lalitpur Metropolitan City",
+    "url": "https://lmc.gov.np/en/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-173",
+    "name": "Kathmandu Metropolitan City - festival referrals",
+    "url": "https://kathmandu.gov.np/en/festivals/019e63f6-a758-79ee-947e-665dd6eedcb2",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "fetch failed",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "partial"
+  },
+  {
+    "id": "ktm-174",
+    "name": "Nepali Congress central office",
+    "url": "https://nepalicongress.org/contact/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://nepalicongress.org/events/gallery/",
+      "https://nepalicongress.org/events/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-175",
+    "name": "CPN UML publicity department",
+    "url": "https://bhojpur.cpnuml.org/departments/37",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://bhojpur.cpnuml.org/events/mechi-mahakali",
+      "https://bhojpur.cpnuml.org/events/organization-strengthening",
+      "https://bhojpur.cpnuml.org/events/diamond-jubilee",
+      "https://bhojpur.cpnuml.org/events/walkathon",
+      "https://bhojpur.cpnuml.org/events/youth-celebration"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-176",
+    "name": "Srijanalaya",
+    "url": "https://srijanalaya.org/open-call/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://srijanalaya.org/what-we-do#courses"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-177",
+    "name": "Karkhana Asia",
+    "url": "https://karkhana.asia/faqs-2/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-178",
+    "name": "Rotary Club of Patan",
+    "url": "https://rotaryclubpatan.org.np/contact-social-media/",
+    "evidence": "Official website",
+    "audit_date": "2026-09-11",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed.",
+    "seeds": [
+      "https://rotaryclubpatan.org.np/calendar/"
+    ],
+    "enabled": false,
+    "audit_status": "unsupported"
+  },
+  {
+    "id": "ktm-179",
+    "name": "Aesthetic Dance Studio",
+    "url": "https://kathmandupost.com/arts/2023/03/22/want-to-learn-classical-dance",
+    "evidence": "News feature (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-180",
+    "name": "Sadhana Kala Kendra",
+    "url": "https://kathmandupost.com/arts/2023/03/22/want-to-learn-classical-dance",
+    "evidence": "News feature (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-181",
+    "name": "Nepa Dance Academy",
+    "url": "https://kathmandupost.com/arts/2023/03/22/want-to-learn-classical-dance",
+    "evidence": "News feature (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-182",
+    "name": "Sushila Arts Academy",
+    "url": "https://kathmandupost.com/arts/2023/03/22/want-to-learn-classical-dance",
+    "evidence": "News feature (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  },
+  {
+    "id": "ktm-183",
+    "name": "Nritya Aagan",
+    "url": "https://kathmandupost.com/arts/2023/03/22/want-to-learn-classical-dance",
+    "evidence": "News feature (2023)",
+    "enabled": false,
+    "audit_status": "reference-only",
+    "audit_note": "No supported dated event feed identified in bounded public-page inspection; manual follow-up needed."
+  }
+]

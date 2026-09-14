@@ -29,8 +29,8 @@ jobs:
       - name: Install Chromium and Linux dependencies
         working-directory: ticketsanjal-scraper
         run: npx playwright install --with-deps chromium
-      - name: Test daily runner
-        run: node --test scripts/tests/scrape-all.test.mjs
+      - name: Test scrapers and daily runner
+        run: npm run test:scrapers
       - name: Run all public scrapers
         run: npm run scrape:all
       - name: Save results and logs
