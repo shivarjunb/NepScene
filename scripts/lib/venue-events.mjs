@@ -1,8 +1,28 @@
 import { createHash } from 'node:crypto'
+import { parseFragment } from 'parse5'
 import { decode, transform as baseTransform } from './katajaam.mjs'
 export { plan, buildSql } from './katajaam.mjs'
 const hash = s => createHash('sha256').update(s).digest('hex').slice(0,24)
-export const text = s => decode(String(s ?? '').replace(/<!--[\s\S]*?-->/g,'').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi,'').replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim()
+// Extract plain text from parsed nodes; this is not an HTML sanitiser.
+export function text(value) {
+ const parts=[]
+ function walk(node) {
+  if(['script','style','template'].includes(node.tagName))return
+  if(node.nodeName==='#text')parts.push(node.value)
+  for(const child of node.childNodes??[])walk(child)
+ }
+ walk(parseFragment(String(value??'')))
+ return parts.join(' ').replace(/\s+/g,' ').trim()
+}
+function scripts(html) {
+ const out=[]
+ function walk(node) {
+  if(node.tagName==='script')out.push({attrs:Object.fromEntries(node.attrs.map(a=>[a.name,a.value])),body:node.childNodes.map(n=>n.value??'').join('')})
+  for(const child of node.childNodes??[])walk(child)
+ }
+ walk(parseFragment(html))
+ return out
+}
 export const attrs = s => Object.fromEntries([...s.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map(m=>[m[1].toLowerCase(),decode(m[2]??m[3])]))
 export function publicUrl(value, base) {
  try { const u=new URL(value,base); if(!/^https?:$/.test(u.protocol)||u.username||u.password)return null;u.hash='';return u.href } catch { return null }
@@ -14,9 +34,9 @@ export function objects(value) {
 }
 export function structuredEvents(html,url) {
  const events=[],errors=[]
- for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
-  if(attrs(m[1]).type!=='application/ld+json')continue
-  try { for(const e of objects(JSON.parse(m[2]))) {
+ for(const script of scripts(html)) {
+  if(script.attrs.type!=='application/ld+json')continue
+  try { for(const e of objects(JSON.parse(script.body))) {
    if(![e['@type']].flat().some(t=>typeof t==='string' && /(?:^|\/)(?:Event|[A-Za-z]+Event|Festival)$/.test(t)))continue
    if(!e.name || !e.startDate)continue
    events.push({...e,url:publicUrl(e.url??e['@id'],url)??url,source_page:url})
@@ -26,9 +46,9 @@ export function structuredEvents(html,url) {
 }
 // Nuxt/devalue payloads reference a shared array. Decode data, never execute scripts.
 export function nuxtData(html) {
- const m=html.match(/<script\b[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i)
- if(!m)return null
- const pool=JSON.parse(m[1]),memo=new Map()
+ const script=scripts(html).find(s=>s.attrs.id==='__NUXT_DATA__')
+ if(!script)return null
+ const pool=JSON.parse(script.body),memo=new Map()
  function get(i) {
   if(i===-1)return undefined
   if(i<0)return null
@@ -85,7 +105,7 @@ export function customEvents(html,url,adapter) {
   }
  } else if(adapter==='takpa') {
   for(const m of html.matchAll(/<div[^>]*class="el-meta[^>]*>([\s\S]*?)<h3[^>]*>([\s\S]*?)<\/h3>/g)) {
-   const date=text(m[1]).replace(/Ongoing\s*/gi,''),dates=dateRange(date),name=text(m[2])
+   const date=text(m[1]).replace(/^(?:Ongoing\s+)+/i,''),dates=dateRange(date),name=text(m[2])
    if(dates)events.push({name,url:attrs(m[2].match(/<a[^>]*>/)?.[0]??'').href??url,source_page:url,...dates,location:{name:'Takpa Gallery'}})
   }
  } else if(adapter==='eventmanager') {

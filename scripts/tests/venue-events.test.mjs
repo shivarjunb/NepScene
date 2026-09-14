@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { structuredEvents,explicitDate,tribeEvents,customEvents,transform,plan,nuxtData,dateRange } from '../lib/venue-events.mjs'
-import { crawlSource,eventLinks,sameSite,coalesceEvents } from '../scrape-venues.mjs'
+import { text,structuredEvents,explicitDate,tribeEvents,customEvents,transform,plan,nuxtData,dateRange } from '../lib/venue-events.mjs'
+import { reader,crawlSource,eventLinks,sameSite,coalesceEvents } from '../scrape-venues.mjs'
 const source={id:'ktm-test',name:'Example',url:'https://example.org/',evidence:'Official website',collection:true}
 const now='2026-09-11T00:00:00Z'
 const raw={name:'Concert',url:source.url,startDate:'2026-09-25T17:00:00+05:45',location:{name:'Hall',address:{addressLocality:'Kathmandu'}},image:'https://example.org/poster.jpg'}
@@ -40,7 +40,7 @@ test('stable identities do not collapse multiple events at the same listing URL'
  const a=transform(raw,source,now),b=transform({...raw,name:'Second Concert'},source,now)
  assert.equal(a.source_id,transform(raw,source,now).source_id)
  assert.deepEqual(plan([a,b,a]).map(x=>x.action),['insert','insert','duplicate'])
- assert.ok(!a.description.includes('katajaam.com'))
+ assert.ok(a.description.endsWith('Source: '+source.url))
 })
 test('Tribe API uses UTC timestamps and does not assume unknown prices are free',()=>{
  const [e]=tribeEvents({total_pages:1,events:[{id:2,title:'Dance',url:source.url,utc_start_date:'2026-09-12 12:00:00',utc_end_date:'2026-09-12 14:00:00'}]},source.url)
@@ -129,3 +129,29 @@ for(const [adapter,count,date] of [['ieff',2,'2027-03-16'],['royalmt',1,'2026-12
   assert.equal(events.length,count);assert.equal(events[0].startDate,date)
  })
 }
+
+test('HTML text extraction skips comments and executable content and decodes entities once',()=>{
+ assert.equal(text('<p>Music &amp; art</p><!-- hidden --><script>bad()</script ><style>body{}</style ><p>Tonight</p>'),'Music & art Tonight')
+ assert.equal(text('<!-- outer <!-- nested -->Visible'),'Visible')
+ assert.equal(text('&lt;script&gt;literal&lt;/script&gt; &amp;lt;b&amp;gt;'),'<script>literal</script> &lt;b&gt;')
+})
+test('structured scripts accept HTML closing-tag whitespace and ignore commented-out scripts',()=>{
+ const event=JSON.stringify({'@type':'Event',...raw})
+ const html='<!-- <script type="application/ld+json">'+event+'</script> -->' +
+  '<script type="application/ld+json">'+event+'</script >'
+ assert.equal(structuredEvents(html,source.url).events.length,1)
+ const nuxt="<script id='__NUXT_DATA__' type='application/json'>[{}]</script >"
+ assert.deepEqual(nuxtData(nuxt),{})
+})
+test('reader rejects off-site requests and redirects before sending another request',async t=>{
+ const calls=[]
+ t.mock.method(globalThis,'fetch',async url=>{
+  calls.push(url)
+  return {status:302,headers:{get:()=> 'https://example.org.evil.org/events'},body:{cancel:async()=>{}}}
+ })
+ const read=reader(source,{pace:0})
+ await assert.rejects(read('https://example.org.evil.org/events'),/Cross-site request refused/)
+ assert.equal(calls.length,0)
+ await assert.rejects(read(source.url),/Cross-site redirect refused/)
+ assert.deepEqual(calls,[source.url])
+})

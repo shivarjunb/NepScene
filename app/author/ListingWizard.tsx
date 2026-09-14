@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   emptyListing, stepsFor, validateStep, validateListing, WIZARD_STEPS,
   type ListingInput, type StepId,
@@ -92,6 +92,15 @@ export function ListingWizard({ account, listingId: initialId, onFinished }: Pro
 
   const storage = useMemo(() => browserStorage(), [])
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const focusHeading = useRef(false)
+  // Focus after the DOM update, before paint, so a delayed callback cannot
+  // steal focus from a control the author has already moved to.
+  useLayoutEffect(() => {
+    if (focusHeading.current) {
+      focusHeading.current = false
+      headingRef.current?.focus()
+    }
+  })
 
   const canPublish = account.permissions.includes('listing:publish')
 
@@ -172,13 +181,13 @@ export function ListingWizard({ account, listingId: initialId, onFinished }: Pro
     setShowErrors(false)
     // A client-side step change moves nothing for a screen reader unless focus
     // moves with it, the same reason the router moves focus on navigation.
-    requestAnimationFrame(() => headingRef.current?.focus())
+    focusHeading.current = true
   }, [listing.listing_type])
 
   function next() {
     if (stepErrors.length > 0) {
       setShowErrors(true)
-      requestAnimationFrame(() => headingRef.current?.focus())
+      headingRef.current?.focus()
       return
     }
     const target = steps[index + 1]

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-import { readFileSync,writeFileSync,mkdirSync } from 'node:fs'
+import { writeFileSync,mkdirSync } from 'node:fs'
 import { resolve,dirname,join } from 'node:path'
 import { fileURLToPath,pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { Buffer } from 'node:buffer'
 import { attrs,publicUrl,structuredEvents,customEvents,tribeEvents,transform,plan,text } from './lib/venue-events.mjs'
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..')
-export const sources=JSON.parse(readFileSync(join(root,'scripts/venue-sources.json'),'utf8'))
+// The checked-in registry is part of the scraper, not an arbitrary input file.
+import registry from './venue-sources.json' with { type: 'json' }
+export const sources=registry
 export function sameSite(url,base) {
  const a=new URL(url),b=new URL(base)
  return /^https?:$/.test(a.protocol)&&!a.username&&!a.password&&a.hostname.replace(/^www\./,'')===b.hostname.replace(/^www\./,'')&&a.port===b.port
