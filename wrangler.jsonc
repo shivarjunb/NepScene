@@ -18,27 +18,16 @@
   // nothing and falls back to the plain shell.
   "alias": { "#ssr": "./dist/ssr/server.js" },
 
-  // The Worker answers /api/* and the pages it server-renders (#45);
-  // everything else is served straight from the edge, and anything that
-  // matches no file falls back to index.html.
+  // The Worker answers /api/* and every page-shaped path: the ones it
+  // server-renders (#45) and, for the rest, the question of whether the app
+  // has such a page at all — the fallback shell alone would answer 200 to
+  // anything (api/index.ts `handlePage`). The two directories of real files
+  // and the shell itself are the only things served straight from the edge.
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": [
-      "/api/*",
-      "/",
-      "/listings/*",
-      "/venues",
-      "/venues/*",
-      "/organizers",
-      "/organizers/*",
-      "/artists/*",
-      "/search",
-      "/robots.txt",
-      "/sitemap.xml",
-      "/sitemaps/*"
-    ]
+    "run_worker_first": ["/*", "!/index.html", "!/assets/*", "!/brand/*"]
   },
 
   "observability": { "enabled": true },

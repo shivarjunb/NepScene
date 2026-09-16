@@ -63,7 +63,7 @@ export function DashboardPage() {
       <Card raised>
         <h1>Sign in to see your listings</h1>
         <p>Your drafts and published events live here once you have an account.</p>
-        <Button onClick={() => navigate('/submit')}>Sign in</Button>
+        <Button onClick={() => navigate('/login?next=/dashboard')}>Sign in</Button>
       </Card>
     )
   }

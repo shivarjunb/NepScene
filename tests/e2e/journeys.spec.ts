@@ -59,6 +59,10 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(PASSWORD())
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  // Signed in for real before anything navigates away: WebKit abandons the
+  // login request if the next `goto` comes first, and every journey after
+  // this line then runs as nobody.
+  await expect(page.getByRole('heading', { name: /Sign in/ })).toHaveCount(0)
 }
 
 // ── 1. Discovery ─────────────────────────────────────────────────────────────
@@ -140,8 +144,7 @@ test('search: query with a typo, refine by facet, open a result', async ({ page 
 test('authoring: sign in, create, place, submit for review', async ({ page }) => {
   await signIn(page, EDITOR())
 
-  // Signed in for real — the wizard, not the sign-in card.
-  await expect(page.getByRole('heading', { name: /Sign in/ })).toHaveCount(0)
+  // The wizard, not the sign-in card.
   await assertAccessible(page, 'wizard, first step')
 
   const title = `Journey listing ${Date.now()}`
