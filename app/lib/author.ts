@@ -63,17 +63,46 @@ export type Account = {
   permissions: string[]
 }
 
+/**
+ * The last answer to "who is signed in", shared with whoever subscribes.
+ * `undefined` is "not asked yet"; `null` is "asked, nobody". The shell's
+ * sign-in control reads this, so a sign-in on /submit or a sign-out from the
+ * header changes both without either knowing about the other.
+ */
+let account: Account | null | undefined
+const listeners = new Set<() => void>()
+
+function publish(next: Account | null) {
+  account = next
+  for (const listener of listeners) listener()
+}
+
+export const accountStore = {
+  subscribe(listener: () => void) {
+    listeners.add(listener)
+    return () => { listeners.delete(listener) }
+  },
+  get: () => account,
+}
+
 /** Null rather than throwing: not being signed in is a state, not an error. */
 export async function fetchAccount(): Promise<Account | null> {
   try {
     const body = await request<{ user: Omit<Account, 'permissions'>; permissions: string[] }>(
       '/api/auth/me',
     )
-    return { ...body.user, permissions: body.permissions }
+    publish({ ...body.user, permissions: body.permissions })
   } catch (error) {
-    if (error instanceof AuthorError && error.status === 401) return null
-    throw error
+    if (!(error instanceof AuthorError && error.status === 401)) throw error
+    publish(null)
   }
+  return account ?? null
+}
+
+/** Ends the session on the server and forgets it here, in that order. */
+export async function signOut() {
+  await request<{ ok: true }>('/api/auth/logout', { method: 'POST' })
+  publish(null)
 }
 
 /**

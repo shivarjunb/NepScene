@@ -259,6 +259,23 @@ describe('what is not rendered, and why', () => {
   it('404s an artist below the threshold for a page, as the API does', async () => {
     expect((await get('/artists/nobody')).status).toBe(404)
   })
+
+  // The asset layer's SPA fallback answers 200 to anything; the Worker runs
+  // first for page-shaped paths so that a path the app has no page for is a
+  // real 404 (app/lib/routePaths.ts). The body is still the shell — the app
+  // renders its own not-found page from it — so only the status differs.
+  it('404s a path the app has no page for, with the shell as the body', async () => {
+    const { response, body } = await html('/nope')
+    expect(response.status).toBe(404)
+    expect(response.headers.get('content-type')).toContain('text/html')
+    expect(body).toContain('<div id="root">')
+  })
+
+  it('serves the shell with a 200 for a page the app has but the Worker does not render', async () => {
+    for (const path of ['/login', '/map', '/about', '/submit/abc123']) {
+      expect((await get(path)).status, path).toBe(200)
+    }
+  })
 })
 
 describe('the pages a reader browses', () => {

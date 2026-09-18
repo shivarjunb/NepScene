@@ -20,6 +20,7 @@ import { ApiError, errorResponse, requestId } from './lib/http'
 import { logEvent, requestFailed, setRequestId } from './lib/observability'
 import { MovedPermanently } from './render/data'
 import { handleSeoRoute, matchRenderRoute } from './render/routes'
+import { isAppPath } from '../app/lib/routePaths'
 import { scheduled } from './scheduled'
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
@@ -130,7 +131,15 @@ async function handlePage(request: Request, env: Env, ctx: ExecutionContext): Pr
   if (seo) return seo
 
   const route = matchRenderRoute(url.pathname)
-  if (!route) return env.ASSETS.fetch(request)
+  if (!route) {
+    // A page the app has but the Worker does not render: the asset layer's
+    // SPA fallback serves the shell, and 200 is right. A path the app has no
+    // page for gets the same fallback — and a 200 with it, which is how
+    // `/nope` came to be indexable. The app's own route table says which is
+    // which; the status is the only thing that changes.
+    if (isAppPath(url.pathname) || isAssetPath(url.pathname)) return env.ASSETS.fetch(request)
+    return notFoundPage(env, url)
+  }
 
   try {
     const data = await route.load(env)
@@ -143,15 +152,7 @@ async function handlePage(request: Request, env: Env, ctx: ExecutionContext): Pr
     if (error instanceof MovedPermanently) {
       return Response.redirect(new URL(error.location, url).toString(), 301)
     }
-    if (error instanceof ApiError && error.status === 404) {
-      // The SPA renders its own not-found page, and the status is what tells a
-      // crawler not to keep the URL.
-      const shell = await env.ASSETS.fetch(new Request(new URL('/index.html', url)))
-      return new Response(shell.body, {
-        status: 404,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      })
-    }
+    if (error instanceof ApiError && error.status === 404) return notFoundPage(env, url)
     // Structured, and carrying the correlation id, so this is findable from
     // the `x-request-id` a reader can be asked for (#50). It is an `error`
     // rather than a `swallowed`: the page still renders, but a crawler got the
@@ -163,6 +164,35 @@ async function handlePage(request: Request, env: Env, ctx: ExecutionContext): Pr
     ctx.passThroughOnException?.()
     return env.ASSETS.fetch(request)
   }
+}
+
+/**
+ * Where the real files are. The edge serves these without running this Worker
+ * at all (wrangler.jsonc `run_worker_first` excludes them), so this is the
+ * same list a second time — for the vitest pool, which sends everything
+ * through the Worker, and for the day the two lists drift: a file that
+ * reached here without being listed would be a 404 page with a 200 body.
+ */
+const ASSET_PATHS = ['/index.html', '/assets/', '/brand/']
+
+function isAssetPath(pathname: string): boolean {
+  return ASSET_PATHS.some((asset) =>
+    asset.endsWith('/') ? pathname.startsWith(asset) : pathname === asset,
+  )
+}
+
+/**
+ * The shell, with the status that tells a crawler not to keep the URL. The SPA
+ * renders its own not-found page from it; a reader sees no difference between
+ * this and the 200 the fallback would have served, and a search engine sees
+ * the whole difference.
+ */
+async function notFoundPage(env: Env, url: URL): Promise<Response> {
+  const shell = await env.ASSETS.fetch(new Request(new URL('/index.html', url)))
+  return new Response(shell.body, {
+    status: 404,
+    headers: { 'content-type': 'text/html; charset=utf-8' },
+  })
 }
 
 /**

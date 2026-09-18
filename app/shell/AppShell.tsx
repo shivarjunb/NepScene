@@ -5,7 +5,9 @@ import { SearchBox } from '../components/SearchBox'
 import { ThemeToggle } from '../theme'
 import { LanguageToggle, useT } from '../i18n'
 import { useFocusTrap } from '../hooks/useFocusTrap'
-import { Link, useRoute } from '../router'
+import { useAccount } from '../hooks/useAccount'
+import { signOut } from '../lib/author'
+import { Link, navigate, useRoute } from '../router'
 
 /**
  * The application shell (#18).
@@ -26,6 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const t = useT()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const account = useAccount()
   useFocusTrap(menuRef, menuOpen, () => setMenuOpen(false))
 
   // A menu that stays open behind a widened viewport strands focus off-screen.
@@ -40,6 +43,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
+
+  // "Sign in" remembers where you were, so /login can send you back. A
+  // sign-out from a page that needed the account is sent home rather than
+  // left on a page that will now refuse it.
+  const signInHref = path === '/' || path === '/login' ? '/login' : `/login?next=${encodeURIComponent(path)}`
+  const accountLinks = account === undefined ? null : account === null
+    ? [{ href: signInHref, label: t('nav.signIn') }]
+    : [{ href: '/dashboard', label: t('nav.myListings') }]
+  async function handleSignOut() {
+    setMenuOpen(false)
+    await signOut()
+    if (['/submit', '/dashboard', '/moderate', '/admin'].some((p) => path.startsWith(p))) navigate('/')
+  }
 
   return (
     <>
@@ -81,8 +97,29 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="site-header__actions">
-            <LanguageToggle />
-            <ThemeToggle />
+            {accountLinks && (
+              <nav className="site-account" aria-label={t('nav.account')}>
+                {accountLinks.map((item) => (
+                  <Link key={item.href} className="site-nav__link site-account__link" href={item.href}
+                        aria-current={path === item.href ? 'page' : undefined}>
+                    {item.label}
+                  </Link>
+                ))}
+                {account && (
+                  <Button variant="ghost" size="sm" className="site-account__link"
+                          onClick={() => void handleSignOut()}>
+                    {t('nav.signOut')}
+                  </Button>
+                )}
+              </nav>
+            )}
+            {/* Below 48rem these two go into the menu instead: with the
+                brand word they are 60px wider than a 320px screen, and the
+                thing pushed off the edge was the menu button itself. */}
+            <div className="site-header__settings">
+              <LanguageToggle />
+              <ThemeToggle />
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -98,37 +135,65 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </div>
+      </header>
 
-        {menuOpen && (
-          <div
-            ref={menuRef}
-            id="mobile-menu"
-            className="mobile-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t('nav.primary')}
-            tabIndex={-1}
-          >
-            <div className="mobile-menu__search">
-              <SearchBox />
-            </div>
-            <nav aria-label={t('nav.primary')}>
+      {/* A sibling of the header, not a child: the header's backdrop-filter
+          would otherwise become the containing block for this fixed panel,
+          squeezing it into the header's own box instead of the viewport. */}
+      {menuOpen && (
+        <div
+          ref={menuRef}
+          id="mobile-menu"
+          className="mobile-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('nav.primary')}
+          tabIndex={-1}
+        >
+          <div className="mobile-menu__search">
+            <SearchBox />
+          </div>
+          <nav aria-label={t('nav.primary')}>
+            <ul className="mobile-menu__list">
+              {NAV.map((item) => (
+                <li key={item.href}>
+                  <Link className="mobile-menu__link" href={item.href}
+                        aria-current={path === item.href ? 'page' : undefined}
+                        onClick={() => setMenuOpen(false)}>{t(item.key)}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {accountLinks && (
+            <nav aria-label={t('nav.account')}>
               <ul className="mobile-menu__list">
-                {NAV.map((item) => (
+                {accountLinks.map((item) => (
                   <li key={item.href}>
                     <Link className="mobile-menu__link" href={item.href}
                           aria-current={path === item.href ? 'page' : undefined}
-                          onClick={() => setMenuOpen(false)}>{t(item.key)}</Link>
+                          onClick={() => setMenuOpen(false)}>{item.label}</Link>
                   </li>
                 ))}
+                {account && (
+                  <li>
+                    <button type="button" className="mobile-menu__link"
+                            onClick={() => void handleSignOut()}>
+                      {t('nav.signOut')}
+                    </button>
+                  </li>
+                )}
               </ul>
             </nav>
-            <Button variant="secondary" block onClick={() => setMenuOpen(false)}>
-              {t('nav.close')}
-            </Button>
+          )}
+          <div className="mobile-menu__settings">
+            <LanguageToggle />
+            <ThemeToggle />
           </div>
-        )}
-      </header>
+          <Button variant="secondary" block onClick={() => setMenuOpen(false)}>
+            {t('nav.close')}
+          </Button>
+        </div>
+      )}
 
       <main id="main" className="site-main" tabIndex={-1}>{children}</main>
 
