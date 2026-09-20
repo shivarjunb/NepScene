@@ -15,29 +15,60 @@ concurrency:
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest
+    # Self-hosted like every other workflow here (#96): hosted runners refuse
+    # to start while the account's Actions billing is locked, and this was the
+    # one job still asking for `ubuntu-latest` — it failed in four seconds
+    # every morning without running a step. Pinned to Linux so a scheduled run
+    # never lands on the developer's laptop, which may be asleep at 06:00.
+    runs-on: [self-hosted, Linux]
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
+
+      # No `cache: npm`: on this runner `~/.npm` is already warm, and caching
+      # it only fills the repository's cache store (see ci.yml).
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: ticketsanjal-scraper/package-lock.json
+
       - name: Install scraper dependencies
         run: npm ci --prefix ticketsanjal-scraper
+
       - name: Install Chromium and Linux dependencies
         working-directory: ticketsanjal-scraper
         run: npx playwright install --with-deps chromium
+
       - name: Test scrapers and daily runner
         run: npm run test:scrapers
+
       - name: Run all public scrapers
         run: npm run scrape:all
+
+      # The workspace does not survive: checkout runs `git clean -ffdx` at the
+      # start of the next job and `scrape-output/` is ignored, so without this
+      # each morning's run erases the previous one. Kept on the runner's own
+      # disk for thirty days, outside the workspace.
+      - name: Keep results on the runner
+        if: always()
+        run: |
+          archive="$HOME/nepscene-scrapes"
+          mkdir -p "$archive"
+          if [ -d scrape-output ]; then
+            cp -R scrape-output/. "$archive/"
+          fi
+          find "$archive" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
+          echo "Archived under $archive:" && ls -1 "$archive" | tail -n 5
+
+      # Best effort. Uploads are refused while the billing lock lasts, and a
+      # refused upload must not turn a successful scrape into a failed run.
+      # Seven days, not thirty: the artifact store is what hit the storage
+      # quota in the first place, and the runner keeps its own copy above.
       - name: Save results and logs
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: daily-scrapes-${{ github.run_id }}-${{ github.run_attempt }}
           path: scrape-output/
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: warn
