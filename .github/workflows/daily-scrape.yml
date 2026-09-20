@@ -34,9 +34,15 @@ jobs:
       - name: Install scraper dependencies
         run: npm ci --prefix ticketsanjal-scraper
 
-      - name: Install Chromium and Linux dependencies
+      # The browser binary only. `--with-deps` is for hosted runners: it
+      # `sudo apt-get install`s Chromium's shared libraries, and this runner's
+      # user has no passwordless sudo — the step sat at a password prompt for
+      # five minutes and failed. The libraries were installed on the machine
+      # once by hand (the 2026-09-18 CI log lists every one as "already the
+      # newest version"), so there is nothing for apt to do here.
+      - name: Install Chromium
         working-directory: ticketsanjal-scraper
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Test scrapers and daily runner
         run: npm run test:scrapers
