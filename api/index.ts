@@ -7,6 +7,7 @@ import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
 import { dashboardRoutes } from './author/dashboard'
 import { adminRoutes } from './admin/routes'
+import { internalScrapeRoutes } from './internal/scrapes'
 import { moderationRoutes } from './author/moderation'
 import { catalogRoutes } from './catalog/routes'
 import { googleRoutes } from './identity/google'
@@ -74,6 +75,8 @@ app.route('/api/author', authorMediaRoutes)
 app.route('/api/author', moderationRoutes)
 app.route('/api/author', dashboardRoutes)
 app.route('/api/admin', adminRoutes)
+// Not a person: the scrape runner, with a shared token. No session lookup.
+app.route('/api/internal', internalScrapeRoutes)
 
 /**
  * Counted like any other failure (#50).

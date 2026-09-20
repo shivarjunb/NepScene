@@ -27,6 +27,8 @@ export const moderationRoutes = new Hono<{ Bindings: Env; Variables: AuthVariabl
 /** A page of work, not a page of scrolling. */
 const PAGE = 25
 const MAX_PAGE = 50
+/** The `listings.source` CHECK, for the queue's optional filter. */
+const SOURCES = ['organizer', 'submission', 'import', 'editorial']
 /** How many rows one bulk action may touch. See the note on the handler. */
 const MAX_BULK = 50
 
@@ -74,6 +76,14 @@ moderationRoutes.get('/queue', requirePermission('listing:moderate'), async (c) 
   // would drift as editors work: publishing row 3 shifts everything after it,
   // and page 2 would skip whatever slid up into the gap.
   const after = url.searchParams.get('after')
+  // Optional, and one value: `source=import` is the imported drafts a scrape
+  // run left for a person to publish, apart from the drafts people are still
+  // writing. The tab counts stay unfiltered so the tabs keep meaning the
+  // same thing whichever filter is on.
+  const source = url.searchParams.get('source')
+  if (source !== null && !SOURCES.includes(source)) {
+    throw badRequest('invalid_source', 'That is not a source a listing can have')
+  }
 
   const session = writeSession(c.env)
   const [rows, counts] = await session.batch([
@@ -95,9 +105,10 @@ moderationRoutes.get('/queue', requirePermission('listing:moderate'), async (c) 
          LEFT JOIN organizations o ON o.id = l.organization_id
          LEFT JOIN listings d ON d.id = l.suspected_duplicate_of
         WHERE l.status = ?1 AND (?2 IS NULL OR l.updated_at > ?2)
+          AND (?4 IS NULL OR l.source = ?4)
         ORDER BY l.updated_at ASC
         LIMIT ?3`,
-    ).bind(status, after, limit + 1),
+    ).bind(status, after, limit + 1, source),
     // The counts the tabs show. One statement, so switching tabs is a filter
     // rather than a fresh page load with a fresh set of numbers.
     c.env.DB.prepare(

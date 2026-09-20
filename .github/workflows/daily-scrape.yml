@@ -5,6 +5,20 @@ on:
     # 00:15 UTC = 06:00 Asia/Kathmandu.
     - cron: '15 0 * * *'
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: The scrape_runs row the admin console created for this run (blank for an ad-hoc run)
+        required: false
+        default: ''
+      apply:
+        description: Which D1 the importers write drafts into
+        type: choice
+        options: [production, staging, preview, none]
+        default: production
+      api_url:
+        description: The site whose API the runner reports to (the one whose D1 holds the row)
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -12,6 +26,13 @@ permissions:
 concurrency:
   group: daily-scrapes
   cancel-in-progress: false
+
+env:
+  # A scheduled run applies to production and reports there; a run the
+  # console started says which environment it came from.
+  APPLY: ${{ inputs.apply || 'production' }}
+  NEPSCENE_API_URL: ${{ inputs.api_url || 'https://nepscene.bhattarai-shiva.workers.dev' }}
+  SCRAPE_REPORT_TOKEN: ${{ secrets.SCRAPE_REPORT_TOKEN }}
 
 jobs:
   scrape:
@@ -22,6 +43,12 @@ jobs:
     # never lands on the developer's laptop, which may be asleep at 06:00.
     runs-on: [self-hosted, Linux]
     timeout-minutes: 75
+    # Its own environment, not `production`: that one requires a reviewer's
+    # approval, which is right for a deploy and wrong for a job that runs at
+    # six every morning. `scrape` holds a Cloudflare token that can edit D1
+    # and nothing else — it writes drafts, it cannot deploy — plus the token
+    # the runner reports back with. Set up in docs/DEVOPS.md, "Scrape runs".
+    environment: scrape
     steps:
       - uses: actions/checkout@v7
 
@@ -31,13 +58,12 @@ jobs:
         with:
           node-version: 22
 
-      # Two installs. `scripts/lib/venue-events.mjs` parses HTML with `parse5`,
-      # a root dependency, so the runner without root `node_modules` failed
-      # the tests with ERR_MODULE_NOT_FOUND. Runtime dependencies only — the
-      # scrapers use nothing from the front-end toolchain.
+      # The whole root install, not `--omit=dev`: the importers reach D1
+      # through wrangler, which is a devDependency, and the venue scraper
+      # parses HTML with parse5, a dependency. Warm cache; seconds.
       - name: Install dependencies
         run: |
-          npm ci --omit=dev
+          npm ci
           npm ci --prefix ticketsanjal-scraper
 
       # The browser binary only. `--with-deps` is for hosted runners: it
@@ -50,16 +76,35 @@ jobs:
         working-directory: ticketsanjal-scraper
         run: npx playwright install chromium
 
+      # Tell the site the run has begun (or, for a scheduled run, that it
+      # exists). Best effort: a site that cannot be reached is a reason to
+      # look at the site, not a reason to skip the morning's scrape — the
+      # results are kept on the runner below either way.
+      - name: Register the run
+        id: register
+        continue-on-error: true
+        run: |
+          args=(--github-run-id "$GITHUB_RUN_ID")
+          [ -n "${{ inputs.run_id }}" ] && args+=(--run-id "${{ inputs.run_id }}")
+          [ "$APPLY" != none ] && args+=(--apply "$APPLY")
+          node scripts/scrape-report.mjs start "${args[@]}"
+
       - name: Test scrapers and daily runner
         run: npm run test:scrapers
 
+      # Scrape every source, then import what the importers know how to —
+      # Kata Jaam and Taragaon — as drafts. Never published from here: the
+      # moderation queue's "imported" filter is where a person publishes.
       - name: Run all public scrapers
-        run: npm run scrape:all
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ "$APPLY" = none ]; then npm run scrape:all; else npm run scrape:all -- --apply "$APPLY"; fi
 
-      # The artifact upload below is refused while the billing lock lasts, so
-      # a failed scraper's log would otherwise be readable only by logging in
-      # to the runner. Each scraper's verdict goes to the job summary, and the
-      # tail of every failed one to the log as well.
+      # Each scraper's verdict goes to the job summary, and the tail of every
+      # failed one to the log as well — the same thing the admin console
+      # shows, for whoever is reading it from this side.
       - name: Report per-scraper results
         if: always()
         run: |
@@ -69,18 +114,32 @@ jobs:
             const { readFileSync, existsSync } = require('node:fs')
             const report = JSON.parse(readFileSync(process.argv[2], 'utf8'))
             console.log('| Scraper | Result | Exit |\n|---|---|---|')
-            for (const j of report.jobs) console.log(`| ${j.name} | ${j.success ? '✅ ok' : '❌ failed'} | ${j.exit_code ?? j.signal ?? j.error ?? '—'} |`)
-            for (const j of report.jobs.filter(j => !j.success)) {
+            for (const j of report.jobs) console.log(`| ${j.name} | ${j.success ? '✅ ok' : j.skipped ? '➖ skipped' : '❌ failed'} | ${j.exit_code ?? j.signal ?? j.error ?? '—'} |`)
+            for (const j of report.jobs.filter(j => !j.success && !j.skipped)) {
               const tail = existsSync(j.log) ? readFileSync(j.log, 'utf8').trim().split('\n').slice(-40).join('\n') : '(no log)'
               console.log(`\n<details><summary>${j.name} — last 40 lines</summary>\n\n\`\`\`\n${tail}\n\`\`\`\n</details>`)
               console.error(`::group::${j.name} log tail\n${tail}\n::endgroup::`)
             }
           JS
 
+      # The output goes to the site (R2, via the API) and the verdict to the
+      # run's row. Not to a GitHub artifact: those are refused while the
+      # account's billing is locked, and the console cannot read them anyway.
+      - name: Report the run to the site
+        if: always() && steps.register.outputs.run_id != ''
+        run: |
+          out=$(ls -d scrape-output/*/ 2>/dev/null | tail -n 1)
+          args=(--run-id "${{ steps.register.outputs.run_id }}" --output "${out:-scrape-output/none}")
+          if [ -n "$out" ]; then
+            tar -czf "$RUNNER_TEMP/scrape-output.tar.gz" -C scrape-output "$(basename "$out")"
+            args+=(--archive "$RUNNER_TEMP/scrape-output.tar.gz")
+          fi
+          node scripts/scrape-report.mjs finish "${args[@]}"
+
       # The workspace does not survive: checkout runs `git clean -ffdx` at the
-      # start of the next job and `scrape-output/` is ignored, so without this
-      # each morning's run erases the previous one. Kept on the runner's own
-      # disk for thirty days, outside the workspace.
+      # start of the next job and `scrape-output/` is ignored. A copy stays on
+      # the runner's own disk for thirty days, for the day the upload above
+      # did not happen.
       - name: Keep results on the runner
         if: always()
         run: |
@@ -91,17 +150,3 @@ jobs:
           fi
           find "$archive" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
           echo "Archived under $archive:" && ls -1 "$archive" | tail -n 5
-
-      # Best effort. Uploads are refused while the billing lock lasts, and a
-      # refused upload must not turn a successful scrape into a failed run.
-      # Seven days, not thirty: the artifact store is what hit the storage
-      # quota in the first place, and the runner keeps its own copy above.
-      - name: Save results and logs
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: daily-scrapes-${{ github.run_id }}-${{ github.run_attempt }}
-          path: scrape-output/
-          retention-days: 7
-          if-no-files-found: warn
