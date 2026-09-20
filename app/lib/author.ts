@@ -332,9 +332,11 @@ export type Queue = {
   next: string | null
 }
 
-export const fetchQueue = (status = 'pending_review', after?: string | null) =>
+export const fetchQueue = (status = 'pending_review', after?: string | null, source?: string | null) =>
   request<Queue>(
-    `/api/author/queue?status=${encodeURIComponent(status)}${after ? `&after=${encodeURIComponent(after)}` : ''}`,
+    `/api/author/queue?status=${encodeURIComponent(status)}`
+    + (after ? `&after=${encodeURIComponent(after)}` : '')
+    + (source ? `&source=${encodeURIComponent(source)}` : ''),
   )
 
 export type Refusal = {
