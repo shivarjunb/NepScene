@@ -56,6 +56,27 @@ jobs:
       - name: Run all public scrapers
         run: npm run scrape:all
 
+      # The artifact upload below is refused while the billing lock lasts, so
+      # a failed scraper's log would otherwise be readable only by logging in
+      # to the runner. Each scraper's verdict goes to the job summary, and the
+      # tail of every failed one to the log as well.
+      - name: Report per-scraper results
+        if: always()
+        run: |
+          summary=$(ls -d scrape-output/*/summary.json 2>/dev/null | tail -n 1)
+          if [ -z "$summary" ]; then echo "No summary.json — the run never started." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          node - "$summary" <<'JS' >> "$GITHUB_STEP_SUMMARY"
+            const { readFileSync, existsSync } = require('node:fs')
+            const report = JSON.parse(readFileSync(process.argv[2], 'utf8'))
+            console.log('| Scraper | Result | Exit |\n|---|---|---|')
+            for (const j of report.jobs) console.log(`| ${j.name} | ${j.success ? '✅ ok' : '❌ failed'} | ${j.exit_code ?? j.signal ?? j.error ?? '—'} |`)
+            for (const j of report.jobs.filter(j => !j.success)) {
+              const tail = existsSync(j.log) ? readFileSync(j.log, 'utf8').trim().split('\n').slice(-40).join('\n') : '(no log)'
+              console.log(`\n<details><summary>${j.name} — last 40 lines</summary>\n\n\`\`\`\n${tail}\n\`\`\`\n</details>`)
+              console.error(`::group::${j.name} log tail\n${tail}\n::endgroup::`)
+            }
+          JS
+
       # The workspace does not survive: checkout runs `git clean -ffdx` at the
       # start of the next job and `scrape-output/` is ignored, so without this
       # each morning's run erases the previous one. Kept on the runner's own
