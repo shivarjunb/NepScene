@@ -84,6 +84,19 @@ jobs:
           # config — where it is nepscene-local — and aborts.
           command: d1 migrations apply nepscene-preview --env preview --remote
 
+      # A preview nobody can sign in to shows only the public site. The shared
+      # preview D1 always carries one admin with a known, test-only credential
+      # — the same account on every PR, upserted so a PR that ran first does
+      # not own it. `create-admin.mjs` is the supported way to mint an admin
+      # (register hardcodes 'visitor'); it also resets the password, so a
+      # preview whose admin was tampered with heals on the next deploy.
+      - name: Ensure the preview test admin
+        if: steps.guard.outputs.ready == 'true'
+        run: node scripts/create-admin.mjs --env preview --email admin@waahtickets.local --password 'Admin@12345' --name 'Preview admin'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # --env preview is not optional. Without it wrangler uploads the top-level
       # config, whose bindings are local placeholders — the deploy fails on
       # `KV namespace '0000000000000000000000000000local' is not valid` after
@@ -131,7 +144,7 @@ jobs:
           script: |
             const url = '${{ steps.url.outputs.preview_url }}'
             const marker = '<!-- nepscene-preview -->'
-            const body = `${marker}\n**Preview deployed** → ${url}\n\nBuilt from \`${context.sha.slice(0,7)}\`.`
+            const body = `${marker}\n**Preview deployed** → ${url}\n\nBuilt from \`${context.sha.slice(0,7)}\`. Sign in at ${url}/login as \`admin@waahtickets.local\` / \`Admin@12345\` (preview-only test account).`
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: context.payload.pull_request.number

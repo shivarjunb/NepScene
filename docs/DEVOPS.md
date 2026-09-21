@@ -149,6 +149,13 @@ simply stops being referenced.
 whose bindings are local placeholders, and the deploy fails on an invalid KV namespace
 after provisioning a junk R2 bucket in the real account.
 
+Every preview can be signed in to. The deploy upserts one admin into the shared
+preview D1 — `admin@waahtickets.local` / `Admin@12345`, via `scripts/create-admin.mjs`
+— and the PR comment says so. It is a test-only credential for an environment with no
+real accounts; the same run resets it, so a preview whose admin was changed by hand
+heals on the next push. Do not create it anywhere else: staging and production admins
+are made with the script by hand, with a generated password.
+
 ### `deploy-staging.yml` — merge to `main`
 Applies migrations to staging, deploys, then runs `scripts/smoke.mjs`. A failed smoke
 test fails the run; rollback is the one command below, not automatic.
