@@ -8,6 +8,7 @@ import { archiveFinishedListings } from '../author/archive'
 import { adminUserRoutes } from './users'
 import { adminOrganizationRoutes } from './organizations'
 import { adminAuditRoutes, serialiseEntry } from './audit'
+import { adminScrapeRoutes } from './scrapes'
 
 /**
  * The admin console's API (#28), at `/api/admin/*`.
@@ -26,6 +27,7 @@ export const adminRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 adminRoutes.route('/', adminUserRoutes)
 adminRoutes.route('/', adminOrganizationRoutes)
 adminRoutes.route('/', adminAuditRoutes)
+adminRoutes.route('/', adminScrapeRoutes)
 
 const RECENT = 10
 

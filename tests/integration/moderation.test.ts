@@ -125,6 +125,25 @@ describe('the queue', () => {
     expect(flagged.duplicate.score).toBeGreaterThanOrEqual(0.75)
   })
 
+  it('can show only what the scrapers imported, without changing what the tabs count', async () => {
+    const { cookie } = await signIn('editor-filter@example.np', 'editor')
+    await env.DB.prepare(
+      `INSERT INTO listings (id, slug, title, listing_type, source, status, venue_id,
+                             starts_at, created_at, updated_at)
+       SELECT 'lst_import_f', 'imported-filter', 'Imported', 'free', 'import', 'draft',
+              venue_id, starts_at, created_at, updated_at FROM listings WHERE id = 'lst_draft'`,
+    ).run()
+
+    const all = await (await api('/queue?status=draft', cookie)).json() as any
+    const imported = await (await api('/queue?status=draft&source=import', cookie)).json() as any
+    expect(all.data.map((r: any) => r.id)).toEqual(expect.arrayContaining(['lst_draft', 'lst_import_f']))
+    expect(imported.data.map((r: any) => r.id)).toEqual(['lst_import_f'])
+    // The tab counts are not filtered: they say how many drafts there are, not how many match.
+    expect(imported.counts.draft).toBe(all.counts.draft)
+
+    expect((await api('/queue?status=draft&source=robots', cookie)).status).toBe(400)
+  })
+
   it('is closed to anyone who cannot moderate', async () => {
     const { cookie } = await signIn('nosy@example.np', 'organizer')
     expect((await api('/queue', cookie)).status).toBe(403)

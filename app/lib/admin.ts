@@ -144,3 +144,41 @@ export type Sweep = { scanned: number; orphans: number; deleted: number; dry_run
 /** Lives under the authoring API because that is where uploads live. */
 export const sweepMedia = (dryRun: boolean) =>
   request<Sweep>(`/api/author/media/sweep?dry_run=${dryRun}`, { method: 'POST' })
+
+// ── Scrape runs ─────────────────────────────────────────────────────────────
+
+export type ScrapeJob = {
+  name: string
+  success: boolean
+  skipped?: boolean
+  exit_code: number | null
+  error: string | null
+  import?: { new_drafts?: number; duplicates?: number; excluded?: number } | null
+}
+
+export type ScrapeRun = {
+  id: string
+  trigger: 'schedule' | 'manual'
+  requested_by: string | null
+  requested_by_name: string | null
+  status: 'queued' | 'running' | 'succeeded' | 'failed'
+  apply_env: 'preview' | 'staging' | 'production' | null
+  github_run_url: string | null
+  summary: { complete: boolean; jobs: ScrapeJob[] } | null
+  drafts_created: number
+  output_key: string | null
+  error: string | null
+  requested_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export type ScrapeRuns = { data: ScrapeRun[]; pending_imports: number; configured: boolean }
+
+export const fetchScrapeRuns = () => request<ScrapeRuns>('/api/admin/system/scrape-runs')
+
+export const startScrapeRun = () =>
+  request<ScrapeRun>('/api/admin/system/scrape', { method: 'POST' })
+
+export const scrapeOutputUrl = (id: string) =>
+  `/api/admin/system/scrape-runs/${encodeURIComponent(id)}/output`

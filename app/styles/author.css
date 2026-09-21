@@ -1071,3 +1071,12 @@
 .wizard__optional[open] > summary { margin-bottom: var(--space-4); }
 
 .wizard__optional .field + .field { margin-top: var(--space-4); }
+
+.queue__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}

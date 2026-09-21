@@ -257,3 +257,46 @@ a.queue__tab { text-decoration: none; }
   .admin__job { grid-template-columns: minmax(0, 1fr); }
   .admin__audit-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── Scrape runs ── */
+
+.admin__runs {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin__run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.admin__run-head,
+.admin__run-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.admin__run-when { font-weight: var(--weight-bold); }
+
+.admin__run-jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.admin__run-job.is-failed { color: var(--danger); }
+.admin__run-job.is-skipped { opacity: 0.7; }
