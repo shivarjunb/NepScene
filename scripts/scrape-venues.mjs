@@ -23,11 +23,12 @@ export function coalesceEvents(events,source) {
   const parent=parents.get(path(e));return parent&&stages.includes(e)?{...e,image:e.image??parent.image,organizer:e.organizer??parent.organizer}:e
  })
 }
-export function eventLinks(html,base) {
+export function eventLinks(html,base,source = {}) {
  const urls=[]
  for(const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
   const a=attrs(m[1]),u=publicUrl(a.href,base);if(!a.href||!u||!sameSite(u,base))continue
   const p=new URL(u)
+  if(source.id==='ktm-154' && !/^\/races(?:\/[^/]+)?\/?$/.test(p.pathname))continue
   if(/\[|\]|[{}]/.test(u)||/past|archive|event-categories|event-history|post-show|\/events\/\d{4}-\d{2}/i.test(p.pathname))continue
   if(/\.(?:css|js|jpg|jpeg|png|webp|pdf|zip|mp4)\b/i.test(p.pathname)||/wp-admin|logout|login|register|cart|checkout|oembed/i.test(p.pathname))continue
   if(/event|calendar|programme|program|shows|whats-on|exhibition|retreat|course|view-drama|session|race/i.test(p.pathname+' '+text(m[2])) && !/book-a-show|meeting-event|conference-event|inquiry/i.test(p.pathname))urls.push(u)
@@ -85,7 +86,7 @@ export async function crawlSource(source,{read=reader(source),maxPages=25,now=ne
    }
    // A discovered paginated calendar API is authoritative; do not also walk
    // an infinite previous-month calendar. Collection adapters parse their cards.
-   if(!apis.size && !source.collection)for(const link of eventLinks(body,url))if(!seen.has(link)&&!queue.includes(link))queue.push(link)
+   if(!apis.size && !source.collection)for(const link of eventLinks(body,url,source))if(!seen.has(link)&&!queue.includes(link))queue.push(link)
    if(source.collection)for(const m of body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
     const a=attrs(m[1]);if(a.rel==='next'||/^(Next|Older)(?:\s|$)/i.test(text(m[2]))) {
      const next=publicUrl(a.href,url);if(next&&sameSite(next,url)&&!seen.has(next)&&!queue.includes(next))queue.push(next)
@@ -116,7 +117,7 @@ export async function main(args=process.argv.slice(2)) {
  }
  mkdirSync(out,{recursive:true});const checked_at=new Date().toISOString(),reports=[]
  let index=0
- async function worker() {while(index<selected.length){const source=selected[index++];const r=await crawlSource(source,{maxPages,now:checked_at});reports.push(r);writeFileSync(join(out,source.id+'.json'),JSON.stringify(r,null,2));console.log(`${source.id} ${source.name}: ${r.status}, ${r.events.length} entries, ${r.review.length} review`)}}
+ async function worker() {while(index<selected.length){const source=selected[index++];const r=await crawlSource(source,{maxPages,now:checked_at});reports.push(r);writeFileSync(join(out,source.id+'.json'),JSON.stringify(r,null,2));console.log(`${source.id} ${source.name}: ${r.status}, ${r.events.length} entries, ${r.review.length} review`);for(const error of r.errors)console.error(`${source.id}: ${error}`)}}
  await Promise.all(Array.from({length:4},worker))
  reports.sort((a,b)=>a.id.localeCompare(b.id))
  const events=reports.flatMap(r=>r.events),review=reports.flatMap(r=>r.review)

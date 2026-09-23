@@ -155,3 +155,8 @@ test('reader rejects off-site requests and redirects before sending another requ
  await assert.rejects(read(source.url),/Cross-site redirect refused/)
  assert.deepEqual(calls,[source.url])
 })
+
+test('Trailmandu follows race details without crawling policy, runner, or result pages',()=>{
+ const html='<a href="/races">Races</a><a href="/races/summit">Summit</a><a href="/info/privacy-policy">Race policy</a><a href="/races/summit/runner">Runners</a><a href="/races/summit/stage/one/result">Results</a>'
+ assert.deepEqual(eventLinks(html,'https://trailmandu.com/',{id:'ktm-154'}),['https://trailmandu.com/races','https://trailmandu.com/races/summit'])
+})
