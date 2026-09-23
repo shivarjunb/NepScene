@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { transform, plan, buildSql, eventPage, listingPage, crawl, sameEvent } from '../lib/katajaam.mjs'
-import { options, runWrangler, parseD1Output } from '../import-katajaam.mjs'
+import { options, runWrangler, parseD1Output, main } from '../import-katajaam.mjs'
 
 const now = '2026-09-09T00:00:00.000Z'
 const raw = (id='a', changes={}) => ({ '@type':'Event',url:`https://katajaam.com/events/${id}`,
@@ -155,4 +156,26 @@ test('D1 JSON parsing accepts import progress but rejects failures and malformed
   assert.throws(() => parseD1Output('[{"success":false,"error":"SQL failed"}]'), /SQL failed/)
   assert.throws(() => parseD1Output('{"error":"D1_RESET_DO"}'), /D1_RESET_DO/)
   assert.throws(() => parseD1Output('[{}]'), /unsuccessful/)
+})
+
+test('listing cards without posters are included, while navigation is ignored',()=>{
+  const html='<main>2 events across the valley<a href="/events/a"><span>🏃</span><h3>Run</h3></a><a href="/events/b"><img src="poster"><h3>Music</h3></a><a href="/events/category">Browse</a></main>'
+  assert.deepEqual(listingPage(html).urls,['https://katajaam.com/events/a','https://katajaam.com/events/b'])
+})
+test('failed completeness checks retain discovered URLs and page evidence',async()=>{
+  const snapshots=[]
+  await assert.rejects(crawl(async url=>url.endsWith('sitemap.xml')?'<urlset/>':'<main>2 events across the valley<a href="/events/a"><h3>Run</h3></a></main>',{checkpoint:s=>snapshots.push(JSON.parse(JSON.stringify(s)))}),/Inventory incomplete/)
+  assert.equal(snapshots.at(-1).complete,false)
+  assert.equal(snapshots.at(-1).expected_count,2)
+  assert.deepEqual(snapshots.at(-1).urls,['https://katajaam.com/events/a'])
+})
+
+test('saved partial inventories cannot reach the import stage',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'katajaam-partial-'))
+  try {
+    const input=join(dir,'partial.json')
+    writeFileSync(input,JSON.stringify({complete:false,events:[raw()]}))
+    await assert.rejects(main(['--input',input,'--out',dir,'--apply']),/Inventory is incomplete/)
+    assert.equal(existsSync(join(dir,'import.sql')),false)
+  } finally { rmSync(dir,{recursive:true,force:true}) }
 })
