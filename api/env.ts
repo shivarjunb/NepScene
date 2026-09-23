@@ -18,4 +18,15 @@ export type Env = {
    */
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
+  /**
+   * The scrape runs (migration 0015). The console starts one by dispatching
+   * the `daily-scrape.yml` workflow in GITHUB_REPOSITORY with a fine-grained
+   * token that can do nothing but that (`actions: write` on this repository);
+   * the runner reports back to /api/internal with SCRAPE_REPORT_TOKEN. Both
+   * tokens are secrets; either missing disables its half with a 503 rather
+   * than failing it, so a preview without them still runs.
+   */
+  GITHUB_REPOSITORY: string
+  GITHUB_DISPATCH_TOKEN?: string
+  SCRAPE_REPORT_TOKEN?: string
 }

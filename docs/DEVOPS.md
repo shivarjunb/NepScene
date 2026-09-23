@@ -149,6 +149,13 @@ simply stops being referenced.
 whose bindings are local placeholders, and the deploy fails on an invalid KV namespace
 after provisioning a junk R2 bucket in the real account.
 
+Every preview can be signed in to. The deploy upserts one admin into the shared
+preview D1 — `admin@waahtickets.local` / `Admin@12345`, via `scripts/create-admin.mjs`
+— and the PR comment says so. It is a test-only credential for an environment with no
+real accounts; the same run resets it, so a preview whose admin was changed by hand
+heals on the next push. Do not create it anywhere else: staging and production admins
+are made with the script by hand, with a generated password.
+
 ### `deploy-staging.yml` — merge to `main`
 Applies migrations to staging, deploys, then runs `scripts/smoke.mjs`. A failed smoke
 test fails the run; rollback is the one command below, not automatic.
@@ -193,6 +200,63 @@ npx wrangler deployments list --env production  # confirm what is live
 migration — that is why migrations are additive-first (below): the previous build has
 to keep working against the new schema.
 
+### `daily-scrape.yml` — every morning, and from the admin console
+
+Runs the public scrapers at 06:00 Kathmandu on the self-hosted Linux runner
+(`runs-on: [self-hosted, Linux]` — never the laptop), imports what Kata Jaam and
+Taragaon found into D1 **as drafts**, and reports to the site rather than to a GitHub
+artifact: a row in `scrape_runs` (migration 0015) and the output tarball in R2 under
+`scrapes/`. The admin console's Housekeeping screen shows the runs and starts one on
+demand, and the moderation queue's "only what the scrapers imported" filter — with
+"Publish all imported drafts" — is where the drafts go public. Nothing is published
+by a run.
+
+How a run moves:
+
+1. **Console → GitHub.** `POST /api/admin/system/scrape` inserts a `queued` row and
+   calls GitHub's `workflow_dispatch` with the row's id, the environment to apply to
+   (the console's own: staging fills staging) and the console's origin. Refused with
+   `409 already_running` while a run is queued or running; a refused dispatch leaves a
+   `failed` row rather than nothing.
+2. **Runner → site.** `scripts/scrape-report.mjs start` marks the row `running` (a
+   scheduled run, which has no row, creates one). `scripts/scrape-all.mjs --apply
+   production` scrapes, then runs the importers from the saved inventories with
+   `--apply` and never `--publish`. `scrape-report.mjs finish` uploads the tarball
+   (`PUT /api/internal/scrape-runs/:id/output`) and the verdict with `summary.json`.
+3. **Stale runs.** A row still `queued`/`running` after three hours is failed on the
+   next console read, so a runner that died cannot block tomorrow's button.
+
+The job declares `environment: scrape`, not `production`: production requires a
+reviewer's approval, which is right for a deploy and wrong for a nightly job. What
+`scrape` holds:
+
+| Secret | What it is |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | A **separate** token: Account → D1 → Edit, nothing else. It writes drafts; it cannot deploy a Worker. Do not reuse the deploy token. |
+| `CLOUDFLARE_ACCOUNT_ID` | The account id (`npx wrangler whoami`). |
+| `SCRAPE_REPORT_TOKEN` | A random string; the same value is the Worker secret of that name. |
+
+And on the Worker, per environment:
+
+| Secret | What it is |
+|---|---|
+| `GITHUB_DISPATCH_TOKEN` | A fine-grained PAT on this repository only, permission **Actions: read and write**, nothing else. Missing → the console's button says so (503) and the schedule still runs. |
+| `SCRAPE_REPORT_TOKEN` | The runner's token, above. Missing → `/api/internal/*` answers 503. |
+
+```bash
+openssl rand -hex 32                                        # one value, used twice:
+gh secret set SCRAPE_REPORT_TOKEN --env scrape
+npx wrangler secret put SCRAPE_REPORT_TOKEN --env production
+npx wrangler secret put GITHUB_DISPATCH_TOKEN --env production
+gh secret set CLOUDFLARE_API_TOKEN --env scrape             # the D1-only token
+gh secret set CLOUDFLARE_ACCOUNT_ID --env scrape
+```
+
+`GITHUB_REPOSITORY` is a plain var in `wrangler.jsonc`. If a scheduled run reports
+"No summary.json", the scrapers never ran — read the job log; the per-scraper
+verdicts and failed logs are in the job summary too, for the day the site is the
+thing that is down.
+
 ### `codeql.yml` and `dependency-review.yml`
 Static analysis weekly and on PR; dependency review blocks known-vulnerable
 additions.
@@ -208,6 +272,9 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are se
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Environment secret | Deploy workflows |
 | `VITE_GOOGLE_MAPS_API_KEY` | GitHub Environment secret | Build — referrer-restricted per environment |
 | `GOOGLE_CLIENT_SECRET` | Cloudflare secret binding | Worker, per environment |
+| `GITHUB_DISPATCH_TOKEN` | Cloudflare secret binding | Worker — the admin console's "run the scrapers" |
+| `SCRAPE_REPORT_TOKEN` | Cloudflare secret binding **and** `scrape` Environment secret | Worker and the daily scrape, one shared value |
+| `CLOUDFLARE_API_TOKEN` (D1-only) | `scrape` Environment secret | Daily scrape's importers — a different token from the deploy one |
 
 `GOOGLE_CLIENT_ID` is a plain var in `wrangler.jsonc` (it is public by design).
 Leaving both empty disables Google sign-in rather than breaking it, so a preview
