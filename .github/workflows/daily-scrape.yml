@@ -61,20 +61,12 @@ jobs:
       # The whole root install, not `--omit=dev`: the importers reach D1
       # through wrangler, which is a devDependency, and the venue scraper
       # parses HTML with parse5, a dependency. Warm cache; seconds.
+      #
+      # ticketsanjal is temporarily disabled in scripts/scrape-all.mjs, so its
+      # own dependencies and Playwright's Chromium install aren't needed here.
+      # Restore both alongside re-enabling that job.
       - name: Install dependencies
-        run: |
-          npm ci
-          npm ci --prefix ticketsanjal-scraper
-
-      # The browser binary only. `--with-deps` is for hosted runners: it
-      # `sudo apt-get install`s Chromium's shared libraries, and this runner's
-      # user has no passwordless sudo — the step sat at a password prompt for
-      # five minutes and failed. The libraries were installed on the machine
-      # once by hand (the 2026-09-18 CI log lists every one as "already the
-      # newest version"), so there is nothing for apt to do here.
-      - name: Install Chromium
-        working-directory: ticketsanjal-scraper
-        run: npx playwright install chromium
+        run: npm ci
 
       # Tell the site the run has begun (or, for a scheduled run, that it
       # exists). Best effort: a site that cannot be reached is a reason to

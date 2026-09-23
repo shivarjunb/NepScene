@@ -13,11 +13,11 @@ test('all sources run after a failure, with scrape-only imports and a failed sum
    calls.push({ args, options })
    return calls.length === 1 ? { status: null, error: Error('timeout') } : { status: 0 }
   } })
-  assert.equal(calls.length, 5)
+  assert.equal(calls.length, 4)
   assert.equal(report.complete, false)
   assert.equal(report.jobs[0].error, 'timeout')
   assert.ok(report.jobs.slice(1).every(job => job.success))
-  for (const call of calls.slice(2)) {
+  for (const call of calls.slice(1)) {
    assert.ok(call.args.includes('--scrape-only'))
    assert.ok(!call.args.includes('--apply'))
   }
@@ -31,17 +31,17 @@ test('--apply adds draft-only imports that read the saved inventories, and skips
   const calls = []
   const report = runScrapers({ output, apply: 'production', execute: (node, args, options) => {
    calls.push({ args, options })
-   // The katajaam scrape (third job) fails; everything else succeeds.
-   if (calls.length === 3) return { status: 1 }
+   // The katajaam scrape (second job) fails; everything else succeeds.
+   if (calls.length === 2) return { status: 1 }
    if (args.some(a => a.endsWith('import-taragaon.mjs')) && args.includes('--apply')) {
     writeFileSync(join(options.cwd, 'report.json'), JSON.stringify({ summary: { new_drafts: 4, duplicates: 2 } }))
    }
    return { status: 0 }
   } })
-  // Five scrapes, then only the taragaon import ran; the katajaam import was skipped, not attempted.
-  assert.equal(calls.length, 6)
+  // Four scrapes, then only the taragaon import ran; the katajaam import was skipped, not attempted.
+  assert.equal(calls.length, 5)
   assert.equal(report.apply, 'production')
-  assert.deepEqual(report.jobs.map(j => j.name), ['ticketsanjal', 'khalti', 'katajaam', 'taragaon', 'venues', 'katajaam-import', 'taragaon-import'])
+  assert.deepEqual(report.jobs.map(j => j.name), ['khalti', 'katajaam', 'taragaon', 'venues', 'katajaam-import', 'taragaon-import'])
   const katajaamImport = report.jobs.find(j => j.name === 'katajaam-import')
   assert.equal(katajaamImport.skipped, true)
   assert.equal(katajaamImport.success, false)
