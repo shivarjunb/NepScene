@@ -9,7 +9,10 @@ const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export function runScrapers({ root = repository, output = join(root, 'scrape-output', new Date().toISOString().replace(/[:.]/g, '-')), execute = spawnSync } = {}) {
  mkdirSync(output, { recursive: true })
  const jobs = [
-  { name: 'ticketsanjal', script: 'ticketsanjal-scraper/scrape.mjs', args: [] },
+  // ticketsanjal is temporarily disabled — it needs Playwright's browser
+  // binaries, which daily-scrape.yml no longer installs. Re-add both to
+  // bring it back.
+  // { name: 'ticketsanjal', script: 'ticketsanjal-scraper/scrape.mjs', args: [] },
   { name: 'khalti', script: 'scripts/scrape-khalti.mjs', args: [join(output, 'khalti')] },
   { name: 'katajaam', script: 'scripts/import-katajaam.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'katajaam')] },
   { name: 'taragaon', script: 'scripts/import-taragaon.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'taragaon')] },

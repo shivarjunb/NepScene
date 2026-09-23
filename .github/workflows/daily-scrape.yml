@@ -22,13 +22,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: ticketsanjal-scraper/package-lock.json
-      - name: Install scraper dependencies
-        run: npm ci --prefix ticketsanjal-scraper
-      - name: Install Chromium and Linux dependencies
-        working-directory: ticketsanjal-scraper
-        run: npx playwright install --with-deps chromium
+      # ticketsanjal is temporarily disabled in scripts/scrape-all.mjs, so its
+      # own dependencies and Playwright's Chromium install aren't needed here.
+      # Restore both alongside re-enabling that job.
       - name: Test scrapers and daily runner
         run: npm run test:scrapers
       - name: Run all public scrapers
