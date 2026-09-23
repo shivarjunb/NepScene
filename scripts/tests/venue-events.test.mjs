@@ -160,3 +160,33 @@ test('Trailmandu follows race details without crawling policy, runner, or result
  const html='<a href="/races">Races</a><a href="/races/summit">Summit</a><a href="/info/privacy-policy">Race policy</a><a href="/races/summit/runner">Runners</a><a href="/races/summit/stage/one/result">Results</a>'
  assert.deepEqual(eventLinks(html,'https://trailmandu.com/',{id:'ktm-154'}),['https://trailmandu.com/races','https://trailmandu.com/races/summit'])
 })
+
+test('Art of Living weekly schedule becomes a review record without invented dates',async()=>{
+ const html=readFileSync(new URL('./fixtures/venues/artofliving.html',import.meta.url),'utf8')
+ const [event]=customEvents(html,source.url,'artofliving')
+ assert.equal(event.name,'Weekly follow up long sudarsankriya in bir hospital')
+ assert.equal(event.recurrence_text,'Every Wednesday')
+ assert.equal(event.session_times,'12:30 - 14:00')
+ assert.equal(event.source_key,'BABCDE5190')
+ assert.match(event.location.name,/Birhospital 7th floor/)
+ assert.equal(event.review_only,true)
+ assert.equal(event.startDate,undefined)
+ const report=await crawlSource({...source,enabled:true,adapter:'artofliving'},{read:async url=>({url,body:html}),now})
+ assert.equal(report.status,'parsed')
+ assert.deepEqual(report.errors,[])
+ assert.equal(report.events.length,0)
+ assert.equal(report.review.length,1)
+})
+test('Art of Living dated courses still parse and unknown schedule formats stay visible',async()=>{
+ const html=readFileSync(new URL('./fixtures/venues/artofliving.html',import.meta.url),'utf8')
+ const dated=html.replace('Every Wednesday','September 25 - 27, 2026').replace('class="course-details-title"',"class='featured course-details-title'")
+ const [event]=customEvents(dated,source.url,'artofliving')
+ assert.equal(event.startDate,'2026-09-25')
+ assert.equal(event.endDate,'2026-09-27')
+ assert.equal(event.review_only,false)
+ for(const body of [html.replace('Every Wednesday','Schedule coming soon'),'<h1>404 Not Found</h1>']){
+  const report=await crawlSource({...source,enabled:true,adapter:'artofliving'},{read:async url=>({url,body}),now})
+  assert.equal(report.status,'partial')
+  assert.match(report.errors[0],/Expected event markup missing/)
+ }
+})
