@@ -391,3 +391,109 @@ describe('housekeeping', () => {
     expect(await auditRows('archived_on_demand')).toHaveLength(1)
   })
 })
+
+describe('all listings', () => {
+  it('lets an editor search every state at once, with counts that follow the search', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    const { cookie: organizer } = await signIn('org@example.np', 'organizer')
+    expect((await get('/listings', organizer)).status).toBe(403)
+
+    const all = await get('/listings', cookie)
+    expect(all.status).toBe(200)
+    expect(all.headers.get('x-d1-round-trips')).toBe('1')
+    const body = await all.json() as any
+    expect(body.counts).toMatchObject({ published: 5, draft: 1, pending_review: 1, rejected: 0, archived: 0 })
+    expect(body.data.map((row: any) => row.id)).toEqual(expect.arrayContaining(['lst_draft', 'lst_pending', 'lst_soon']))
+
+    const searched = await (await get('/listings?q=secret', cookie)).json() as any
+    expect(searched.data.map((row: any) => row.id)).toEqual(['lst_draft'])
+    expect(searched.counts).toMatchObject({ draft: 1, published: 0 })
+    expect(searched.data[0]).toMatchObject({ status: 'draft', venue_name: 'Purple Haze' })
+
+    const drafts = await (await get('/listings?status=published&source=submission', cookie)).json() as any
+    expect(drafts.data.map((row: any) => row.id)).toEqual(['lst_free'])
+  })
+
+  it('refuses a state or a source that does not exist', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    expect((await get('/listings?status=nonsense', cookie)).status).toBe(400)
+    expect((await get('/listings?source=robots', cookie)).status).toBe(400)
+  })
+})
+
+describe('venues', () => {
+  it('lists venues with their listings, and filters the ones with no pin', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    await env.DB.prepare(
+      `INSERT INTO venues (id, slug, name, city, created_at, updated_at)
+       VALUES ('ven_nopin', 'no-pin-hall', 'No Pin Hall', 'Bhaktapur', '2026-01-01', '2026-01-01')`,
+    ).run()
+
+    const response = await get('/venues', cookie)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-d1-round-trips')).toBe('1')
+    const body = await response.json() as any
+    expect(body.counts).toMatchObject({ unmapped: 1 })
+    const thamel = body.data.find((row: any) => row.id === 'ven_thamel')
+    expect(thamel).toMatchObject({ name: 'Purple Haze', is_verified: false, published_count: 3 })
+
+    const unmapped = await (await get('/venues?filter=unmapped', cookie)).json() as any
+    expect(unmapped.data.map((row: any) => row.id)).toEqual(['ven_nopin'])
+    expect((await get('/venues?filter=haunted', cookie)).status).toBe(400)
+  })
+
+  it('edits a venue with the wizard’s rules, and records what changed', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    const patch = (body: unknown) => api('PATCH', '/venues/ven_thamel', cookie, body)
+
+    const outside = await patch({ latitude: 51.5, longitude: -0.12 })
+    expect(outside.status).toBe(400)
+    expect(((await outside.json()) as any).error.fields[0].field).toBe('latitude')
+
+    const response = await patch({ address: 'JP Marg, Thamel', is_verified: true })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      id: 'ven_thamel', name: 'Purple Haze', address: 'JP Marg, Thamel', is_verified: true,
+    })
+    const [row] = await auditRows('updated')
+    expect(row).toMatchObject({ entity_type: 'venue', entity_id: 'ven_thamel' })
+    expect(JSON.parse(row.details)).toEqual({ fields: ['address', 'is_verified'] })
+
+    expect((await api('PATCH', '/venues/ven_nowhere', cookie, { name: 'X' })).status).toBe(404)
+  })
+
+  it('merges a duplicate: its listings move and it goes', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    expect((await api('POST', '/venues/ven_pokhara/merge', cookie, { into: 'ven_pokhara' })).status).toBe(400)
+
+    const response = await api('POST', '/venues/ven_pokhara/merge', cookie, { into: 'ven_thamel' })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ merged: 'ven_pokhara', into: 'ven_thamel', moved: 3 })
+
+    const left = await env.DB.prepare(`SELECT COUNT(*) AS n FROM listings WHERE venue_id = 'ven_pokhara'`)
+      .first<{ n: number }>()
+    expect(left!.n).toBe(0)
+    expect(await env.DB.prepare(`SELECT id FROM venues WHERE id = 'ven_pokhara'`).first()).toBeNull()
+    const [row] = await auditRows('merged')
+    expect(JSON.parse(row.details).merged).toMatchObject({ id: 'ven_pokhara', name: 'Lakeside' })
+  })
+
+  it('is closed to an organizer', async () => {
+    const { cookie } = await signIn('org@example.np', 'organizer')
+    expect((await get('/venues', cookie)).status).toBe(403)
+    expect((await api('PATCH', '/venues/ven_thamel', cookie, { name: 'Mine now' })).status).toBe(403)
+  })
+})
+
+describe('the header’s review count', () => {
+  it('is the number waiting, for anyone who can moderate', async () => {
+    const { cookie } = await signIn('ed@example.np', 'editor')
+    const { cookie: organizer } = await signIn('org@example.np', 'organizer')
+    const count = (who: string) => SELF.fetch('https://nepscene.test/api/author/queue/count', { headers: { cookie: who } })
+
+    const response = await count(cookie)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ waiting: 1 })
+    expect((await count(organizer)).status).toBe(403)
+  })
+})

@@ -73,7 +73,7 @@ async function serveQueue(page: Page, {
     json: {
       user: { id: 'usr_e', email: 'editor@nepscene.test', name: null, role },
       permissions: role === 'editor'
-        ? ['listing:create', 'listing:edit_own', 'listing:publish', 'listing:moderate']
+        ? ['listing:create', 'listing:edit_own', 'listing:publish', 'listing:moderate', 'venue:edit_any']
         : ['listing:create', 'listing:edit_own'],
     },
   }))
@@ -176,13 +176,13 @@ test('the old address still works, filters and all', async ({ page }) => {
   await expect(page.getByRole('checkbox', { name: 'Only what the scrapers imported' })).toBeChecked()
 })
 
-test('an editor sees only moderation in the console, and lands on it', async ({ page }) => {
+test('an editor sees only the content sections in the console, and lands on the queue', async ({ page }) => {
   await serveQueue(page)
   await page.goto('/admin')
 
   await expect(page).toHaveURL(/\/admin\/moderation$/)
-  // The sidebar on a desk, the tab bar on a phone: either way, one section.
-  await expect(page.locator('.console__nav .console__link-label')).toHaveText(['Moderation'])
+  // The sidebar on a desk, the tab bar on a phone: either way, one group.
+  await expect(page.locator('.console__nav .console__link-label')).toHaveText(['Moderation', 'All listings', 'Venues'])
   await expect(page.locator('.console__tabs .console__tab')).toHaveCount(1)
   await expect(page.getByText('No such section')).toHaveCount(0)
 

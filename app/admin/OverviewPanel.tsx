@@ -71,7 +71,8 @@ export function OverviewPanel({ overview, error, onChanged }: {
       </div>
 
       <div className="admin__columns">
-        <Attention waiting={overview.waiting} total={waiting} unverified={unverified} onChanged={onChanged} />
+        <Attention waiting={overview.waiting} total={waiting} unverified={unverified}
+                   unmapped={overview.venues.unmapped} onChanged={onChanged} />
 
         <div className="admin__stack">
           <Card>
@@ -159,10 +160,11 @@ function ScrapeTile({ run }: { run: Overview['last_scrape'] }) {
  * endpoint the queue uses, so a listing the API will not publish yet — no
  * date, no category — comes back with the reason, and the link to fix it.
  */
-function Attention({ waiting, total, unverified, onChanged }: {
+function Attention({ waiting, total, unverified, unmapped, onChanged }: {
   waiting: WaitingListing[]
   total: number
   unverified: number
+  unmapped: number
   onChanged: () => Promise<void>
 }) {
   const [busy, setBusy] = useState<string | null>(null)
@@ -196,7 +198,7 @@ function Attention({ waiting, total, unverified, onChanged }: {
       {note && <Alert tone="success" title="Done">{note}</Alert>}
       {problem && <Alert tone="warning" title="Not published">{problem}</Alert>}
 
-      {waiting.length === 0 && unverified === 0 && (
+      {waiting.length === 0 && unverified === 0 && unmapped === 0 && (
         <p className="queue__empty">Nothing is waiting. The queue is clear.</p>
       )}
 
@@ -224,6 +226,19 @@ function Attention({ waiting, total, unverified, onChanged }: {
             </div>
           </li>
         ))}
+        {unmapped > 0 && (
+          <li className="admin__waiting-row">
+            <div className="admin__row-body">
+              <h3 className="admin__waiting-title">
+                {unmapped} {unmapped === 1 ? 'venue has' : 'venues have'} no map pin
+              </h3>
+              <p className="board__meta">Nothing listed there can appear on the map until it has one.</p>
+            </div>
+            <div className="admin__row-actions">
+              <Link className="btn btn--ghost btn--sm" href="/admin/venues?filter=unmapped">Fix</Link>
+            </div>
+          </li>
+        )}
         {unverified > 0 && (
           <li className="admin__waiting-row">
             <div className="admin__row-body">

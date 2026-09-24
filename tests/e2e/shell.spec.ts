@@ -225,18 +225,23 @@ test.describe('account controls', () => {
       permissions: ['listing:create', 'listing:moderate', 'listing:publish'],
     } }))
 
+    await page.route('**/api/author/queue/count', (route) => route.fulfill({ json: { waiting: 3 } }))
+
     await page.goto('/')
     const header = page.locator('.site-header')
-    const trigger = header.getByRole('button', { name: /Sita.*Account menu/ })
+    // The count is on the trigger for a screen reader, as a dot for everyone else.
+    const trigger = header.getByRole('button', { name: /Sita.*Account menu, 3 waiting for review/ })
+    await expect(header.locator('.site-account__dot')).toBeVisible()
     await trigger.click()
-    await expect(header.getByRole('link', { name: 'Admin console' })).toHaveAttribute('href', '/admin')
+    const console = header.getByRole('link', { name: 'Admin console 3 waiting' })
+    await expect(console).toHaveAttribute('href', '/admin')
 
     await page.keyboard.press('Escape')
-    await expect(header.getByRole('link', { name: 'Admin console' })).toHaveCount(0)
+    await expect(header.getByRole('link', { name: /Admin console/ })).toHaveCount(0)
     await expect(trigger).toBeFocused()
 
     await page.setViewportSize({ width: 390, height: 844 })
     await page.locator('.site-header__menu-button').click()
-    await expect(page.locator('#mobile-menu').getByRole('link', { name: 'Admin console' })).toBeVisible()
+    await expect(page.locator('#mobile-menu').getByRole('link', { name: /Admin console/ })).toContainText('3')
   })
 })

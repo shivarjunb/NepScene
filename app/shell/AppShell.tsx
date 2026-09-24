@@ -6,7 +6,7 @@ import { ThemeToggle } from '../theme'
 import { LanguageToggle, useT } from '../i18n'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useAccount } from '../hooks/useAccount'
-import { signOut } from '../lib/author'
+import { fetchQueueCount, signOut } from '../lib/author'
 import { Link, navigate, useRoute } from '../router'
 
 /**
@@ -32,6 +32,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   useFocusTrap(menuRef, menuOpen, () => setMenuOpen(false))
   const [accountOpen, setAccountOpen] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
+
+  // What is waiting for review, for the people who review it. Read again on
+  // every page change, so publishing from the console brings the badge down
+  // on the way out; one indexed COUNT, and only for accounts that moderate.
+  const moderates = Boolean(account?.permissions.includes('listing:moderate'))
+  const [waiting, setWaiting] = useState(0)
+  useEffect(() => {
+    if (!moderates) { setWaiting(0); return }
+    let current = true
+    fetchQueueCount().then(
+      (count) => { if (current) setWaiting(count.waiting) },
+      () => { if (current) setWaiting(0) },
+    )
+    return () => { current = false }
+  }, [moderates, path])
 
   // The account menu is a disclosure, not a dialog: it closes on Escape, on a
   // click anywhere else, and when the page changes under it.
@@ -146,9 +161,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <button type="button" className="site-account__trigger"
                         aria-expanded={accountOpen} aria-controls="account-menu"
                         onClick={() => setAccountOpen((open) => !open)}>
-                  <span className="site-account__avatar" aria-hidden="true">{initials(account)}</span>
+                  <span className="site-account__avatar" aria-hidden="true">
+                    {initials(account)}
+                    {waiting > 0 && <span className="site-account__dot" />}
+                  </span>
                   <span className="site-account__name">{firstName(account)}</span>
-                  <span className="visually-hidden">{t('nav.accountMenu')}</span>
+                  <span className="visually-hidden">
+                    {t('nav.accountMenu')}{waiting > 0 && `, ${t('nav.waiting', { n: waiting })}`}
+                  </span>
                   <svg className="site-account__chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
                   </svg>
@@ -164,7 +184,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <li key={item.href}>
                           <Link className="account-menu__item" href={item.href}
                                 aria-current={path === item.href ? 'page' : undefined}>
-                            {item.label}
+                            <span className="account-menu__label">{item.label}</span>
+                            {item.href === '/admin' && waiting > 0 && (
+                              <span className="account-menu__count">
+                                {waiting}<span className="visually-hidden"> {t('nav.waitingShort')}</span>
+                              </span>
+                            )}
                           </Link>
                         </li>
                       ))}
@@ -237,7 +262,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <li key={item.href}>
                     <Link className="mobile-menu__link" href={item.href}
                           aria-current={path === item.href ? 'page' : undefined}
-                          onClick={() => setMenuOpen(false)}>{item.label}</Link>
+                          onClick={() => setMenuOpen(false)}>
+                      {item.label}
+                      {item.href === '/admin' && waiting > 0 && (
+                        <span className="account-menu__count">
+                          {waiting}<span className="visually-hidden"> {t('nav.waitingShort')}</span>
+                        </span>
+                      )}
+                    </Link>
                   </li>
                 ))}
                 {account && (

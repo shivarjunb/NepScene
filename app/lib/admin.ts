@@ -39,6 +39,8 @@ export type Overview = {
   users: Record<Role, { total: number; inactive: number }>
   listings: Record<string, number>
   organizations: { total: number; verified: number }
+  /** Venues, and how many have no pin — a listing there cannot be on the map. */
+  venues: { total: number; unmapped: number }
   recent: AuditEntry[]
   /** The oldest few waiting for review, oldest first. */
   waiting: WaitingListing[]
@@ -199,3 +201,75 @@ export const startScrapeRun = () =>
 
 export const scrapeOutputUrl = (id: string) =>
   `/api/admin/system/scrape-runs/${encodeURIComponent(id)}/output`
+
+// ── All listings ────────────────────────────────────────────────────────────
+
+export const LISTING_STATUSES = ['pending_review', 'published', 'draft', 'rejected', 'archived'] as const
+export type ListingStatus = (typeof LISTING_STATUSES)[number]
+
+export type AdminListing = {
+  id: string
+  slug: string
+  title: string | null
+  status: ListingStatus
+  source: string
+  listing_type: string
+  starts_at: string | null
+  updated_at: string
+  created_at: string
+  venue_name: string | null
+  venue_slug: string | null
+  organization_name: string | null
+  author_email: string | null
+}
+
+export type ListingList = { data: AdminListing[]; counts: Record<ListingStatus, number>; page: Page }
+
+export const fetchListings = (params: {
+  q?: string; status?: ListingStatus; source?: string; offset?: number; limit?: number
+}) => request<ListingList>(`/api/admin/listings${query(params)}`)
+
+// ── Venues ──────────────────────────────────────────────────────────────────
+
+export type AdminVenue = {
+  id: string
+  slug: string
+  name: string
+  address: string | null
+  area: string | null
+  city: string | null
+  latitude: number | null
+  longitude: number | null
+  website_url: string | null
+  phone: string | null
+  is_verified: boolean
+  created_at: string
+  updated_at: string
+  listing_count: number
+  published_count: number
+}
+
+export type VenueFilter = 'unmapped' | 'unverified'
+
+export type VenueList = {
+  data: AdminVenue[]
+  counts: { all: number; unmapped: number; unverified: number }
+  page: Page
+}
+
+export type VenueChange = Partial<Pick<AdminVenue,
+  'name' | 'address' | 'area' | 'city' | 'latitude' | 'longitude' | 'website_url' | 'phone' | 'is_verified'>>
+
+export const fetchVenues = (params: { q?: string; filter?: VenueFilter; offset?: number; limit?: number }) =>
+  request<VenueList>(`/api/admin/venues${query(params)}`)
+
+export const updateVenue = (id: string, change: VenueChange) =>
+  request<AdminVenue>(`/api/admin/venues/${encodeURIComponent(id)}`, {
+    method: 'PATCH', body: JSON.stringify(change),
+  })
+
+export const mergeVenue = (id: string, into: string) =>
+  request<{ merged: string; into: string; slug: string; moved: number }>(
+    `/api/admin/venues/${encodeURIComponent(id)}/merge`,
+    { method: 'POST', body: JSON.stringify({ into }) },
+  )

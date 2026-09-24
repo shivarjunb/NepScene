@@ -4,6 +4,8 @@ import { AuthorError, fetchAccount, type Account } from '../lib/author'
 import { fetchOverview, type Overview } from '../lib/admin'
 import { Link } from '../router'
 import { ModerationPanel } from './ModerationPanel'
+import { ListingsPanel } from './ListingsPanel'
+import { VenuesPanel } from './VenuesPanel'
 import { OverviewPanel } from './OverviewPanel'
 import { UsersPanel } from './UsersPanel'
 import { OrganizationsPanel } from './OrganizationsPanel'
@@ -24,19 +26,22 @@ import { SystemPanel } from './SystemPanel'
  *
  * **Each section says what it is for, and who it is for.** A section carries
  * the permission it needs, and the sidebar only shows what this account can
- * open: an editor sees Moderation and nothing else, and lands there, instead
- * of on an overview the API would refuse them.
+ * open: an editor sees the Content sections — Moderation, All listings,
+ * Venues — and lands on the queue, instead of on an overview the API would
+ * refuse them.
  *
  * The section is the URL (/admin/users, /admin/audit) so a screen can be sent
  * to someone, and so the Back button does what a person expects.
  */
 
 type Group = 'overview' | 'content' | 'people' | 'system'
-type IconName = 'overview' | 'review' | 'people' | 'org' | 'audit' | 'scrape' | 'broom'
+type IconName = 'overview' | 'review' | 'calendar' | 'pin' | 'people' | 'org' | 'audit' | 'scrape' | 'broom'
 
 const SECTIONS = [
   { slug: '', label: 'Overview', group: 'overview', needs: 'user:manage', icon: 'overview' },
   { slug: 'moderation', label: 'Moderation', group: 'content', needs: 'listing:moderate', icon: 'review' },
+  { slug: 'listings', label: 'All listings', group: 'content', needs: 'listing:moderate', icon: 'calendar' },
+  { slug: 'venues', label: 'Venues', group: 'content', needs: 'venue:edit_any', icon: 'pin' },
   { slug: 'users', label: 'Accounts', group: 'people', needs: 'user:manage', icon: 'people' },
   { slug: 'organizations', label: 'Organizations', group: 'people', needs: 'user:manage', icon: 'org' },
   { slug: 'audit', label: 'Audit trail', group: 'system', needs: 'user:manage', icon: 'audit' },
@@ -133,6 +138,9 @@ function Console({ account, section, visible, landing }: {
     if (s.slug === 'moderation' && waiting > 0) {
       return <span className="console__count">{waiting}<span className="visually-hidden"> waiting</span></span>
     }
+    if (s.slug === 'venues' && (overview?.venues.unmapped ?? 0) > 0) {
+      return <span className="console__hint">{overview!.venues.unmapped} no pin</span>
+    }
     if (s.slug === 'organizations' && unverified > 0) {
       return <span className="console__hint">{unverified} to verify</span>
     }
@@ -223,6 +231,8 @@ function Console({ account, section, visible, landing }: {
           <OverviewPanel overview={overview} error={overviewError} onChanged={loadOverview} />
         )}
         {current.slug === 'moderation' && <ModerationPanel account={account} />}
+        {current.slug === 'listings' && <ListingsPanel account={account} />}
+        {current.slug === 'venues' && <VenuesPanel />}
         {current.slug === 'users' && <UsersPanel account={account} />}
         {current.slug === 'organizations' && <OrganizationsPanel />}
         {current.slug === 'audit' && <AuditPanel />}
@@ -255,6 +265,8 @@ function Icon({ name }: { name: IconName | 'back' | 'list' }) {
   const paths: Record<typeof name, ReactNode> = {
     overview: <><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>,
     review: <><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" /></>,
+    calendar: <><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>,
+    pin: <><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></>,
     people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5" /></>,
     org: <><path d="M3 21V8l9-5 9 5v13" /><path d="M9 21v-6h6v6" /></>,
     audit: <path d="M4 6h16M4 12h16M4 18h10" />,

@@ -363,6 +363,9 @@ export const moderate = (action: 'publish' | 'reject' | 'archive', ids: string[]
     method: 'POST', body: JSON.stringify({ action, ids, reason }),
   })
 
+/** How many listings are waiting for review; the header's badge for an editor. */
+export const fetchQueueCount = () => request<{ waiting: number }>('/api/author/queue/count')
+
 export const mergeListing = (id: string, into: string) =>
   request<{ merged: string; into: string; slug: string; inherited: string[] }>(
     `/api/author/listings/${encodeURIComponent(id)}/merge`,
