@@ -40,3 +40,11 @@ The migration adds nullable import columns, unique indexes, and an import-source
 mapping table. Earlier application versions ignore these additions, so leave the
 migration in place when reverting code. Reverting code does not remove imported
 listings or change their publication status.
+
+Customer-facing links use the event's external destination listed on Kata Jaam,
+falling back to its social post or organizer social profile. Kata Jaam URLs are
+kept for source tracking only; when no destination is available, `external_url`
+is left empty. Calendar, map, share and related-event links are ignored.
+Reviewed corrections can set `external_url` (or explicitly clear it with `null`).
+Fresh scrapes capture page links; older saved inventories can only use their
+structured offer and organizer URLs. Existing imported listings remain preserved.
