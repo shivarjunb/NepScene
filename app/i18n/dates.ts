@@ -60,9 +60,18 @@ const ne = (value: number | string) => toDevanagariDigits(value)
 /** "बिहिबार, १ अक्टोबर २०२६" — the long form a page heading wants. */
 export function longDate(at: Date, timeZone: string, language: Language): string {
   if (language !== 'ne') {
-    return new Intl.DateTimeFormat('en-GB', {
+    // Assembled from parts rather than taken whole from `format()`: the
+    // punctuation between fields is locale data, and it differs by ICU
+    // version. The Worker's workerd renders "Wednesday, 30 September 2026",
+    // current Chrome "Wednesday 30 September 2026", and the page is rendered
+    // by one and hydrated by the other — a text mismatch React answers by
+    // throwing the server markup away (#45).
+    const formatted = new Intl.DateTimeFormat('en-GB', {
       timeZone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    }).format(at)
+    }).formatToParts(at)
+    const value = (type: Intl.DateTimeFormatPartTypes) =>
+      formatted.find((part) => part.type === type)?.value ?? ''
+    return `${value('weekday')} ${value('day')} ${value('month')} ${value('year')}`
   }
   const parts = partsIn(at, timeZone)
   return `${WEEKDAYS_NE[parts.weekday]}, ${ne(parts.day)} ${MONTHS_NE[parts.month - 1]} ${ne(parts.year)}`

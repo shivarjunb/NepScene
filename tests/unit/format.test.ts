@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Listing, Offer } from '../../app/lib/catalog'
-import { offerLine, startDay, startTime, venueLine } from '../../app/lib/format'
+import { offerLine, startDay, startLine, startTime, venueLine } from '../../app/lib/format'
 import { aListing, anOffer } from '../factories'
 
 /** #41 — the card has to render every listing type, including those with no price. */
@@ -60,6 +60,13 @@ describe('times are the listing’s, not the reader’s', () => {
 
   it('says so when a listing runs all day', () => {
     expect(startTime(listing({ is_all_day: true }))).toBe('All day')
+  })
+
+  it('spells the long date the same in every runtime', () => {
+    // This file runs in workerd, whose ICU puts a comma after the weekday
+    // where Chrome's does not. The server renders this line and the browser
+    // hydrates it, so a runtime-chosen separator is a hydration mismatch (#45).
+    expect(startLine(listing())).toBe('Friday 11 September 2026, 7:00 pm')
   })
 })
 
