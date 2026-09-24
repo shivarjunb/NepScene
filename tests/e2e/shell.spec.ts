@@ -174,7 +174,7 @@ test.describe('account controls', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL(/\/venues$/)
-    await expect(page.locator('.site-header').getByRole('link', { name: 'My listings' })).toBeVisible()
+    await expect(page.locator('.site-header').getByRole('button', { name: /Account menu/ })).toBeVisible()
   })
 
   test('/login with an off-site next still lands on this site', async ({ page }) => {
@@ -204,11 +204,44 @@ test.describe('account controls', () => {
 
     await page.goto('/')
     const header = page.locator('.site-header')
-    await expect(header.getByRole('link', { name: 'My listings' })).toBeVisible()
+    const trigger = header.getByRole('button', { name: /Account menu/ })
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
+
+    await trigger.click()
+    await expect(header.getByRole('link', { name: 'My listings' })).toBeVisible()
+    await expect(header.getByRole('link', { name: 'Add a listing' })).toBeVisible()
+    // An organizer cannot moderate, so there is no console to offer.
+    await expect(header.getByRole('link', { name: 'Admin console' })).toHaveCount(0)
 
     await header.getByRole('button', { name: 'Sign out' }).click()
     await expect(header.getByRole('link', { name: 'Sign in' })).toBeVisible()
     expect(logoutCalls).toBe(1)
+  })
+
+  test('an editor finds the admin console in the account menu, and Escape puts it away', async ({ page }) => {
+    await page.route('**/api/auth/me', (route) => route.fulfill({ json: {
+      user: { id: 'usr_2', email: 'editor@nepscene.test', name: 'Sita Rai', role: 'editor' },
+      permissions: ['listing:create', 'listing:moderate', 'listing:publish'],
+    } }))
+
+    await page.route('**/api/author/queue/count', (route) => route.fulfill({ json: { waiting: 3 } }))
+
+    await page.goto('/')
+    const header = page.locator('.site-header')
+    // The count is on the trigger for a screen reader, as a dot for everyone else.
+    const trigger = header.getByRole('button', { name: /Sita.*Account menu, 3 waiting for review/ })
+    await expect(header.locator('.site-account__dot')).toBeVisible()
+    await trigger.click()
+    const console = header.getByRole('link', { name: 'Admin console 3 waiting' })
+    await expect(console).toHaveAttribute('href', '/admin')
+
+    await page.keyboard.press('Escape')
+    await expect(header.getByRole('link', { name: /Admin console/ })).toHaveCount(0)
+    await expect(trigger).toBeFocused()
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.locator('.site-header__menu-button').click()
+    await expect(page.locator('#mobile-menu').getByRole('link', { name: /Admin console/ })).toContainText('3')
   })
 })

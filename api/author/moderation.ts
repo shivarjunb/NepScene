@@ -150,6 +150,20 @@ moderationRoutes.get('/queue', requirePermission('listing:moderate'), async (c) 
   }), session)
 })
 
+// ─── GET /api/author/queue/count ─────────────────────────────────────────────
+/**
+ * How many are waiting, and nothing else — for the badge on the header's
+ * account menu, which every page of the site draws for an editor. One
+ * indexed COUNT, so a badge on every page costs next to nothing.
+ */
+moderationRoutes.get('/queue/count', requirePermission('listing:moderate'), async (c) => {
+  const row = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM listings WHERE status = 'pending_review'`,
+  ).first<{ n: number }>()
+  c.header('cache-control', 'private, no-store')
+  return c.json({ waiting: Number(row?.n ?? 0) })
+})
+
 // ─── POST /api/author/queue/actions ──────────────────────────────────────────
 /**
  * One decision applied to many listings.

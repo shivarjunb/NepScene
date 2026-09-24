@@ -6,6 +6,48 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **One admin console, reached from the header.** The console, the
+  moderation queue and "Your listings" used to link to each other from
+  buttons in each page's header, so the only way into admin was through your
+  own listings. Now:
+  - **The header has an account menu.** Signed in, "My listings" and "Sign
+    out" become one control with My listings, Add a listing, Admin console
+    (for editors and admins) and Sign out; the phone menu lists the same.
+    The Admin and Moderation queue buttons are gone from "Your listings".
+  - **The console has a sidebar of sections**, grouped as Content
+    (Moderation), People (Accounts, Organizations) and System (Audit trail,
+    Scrapers, Housekeeping), with the waiting count, the organizations still
+    to verify and a failed scrape marked on the section that deals with
+    them. On a phone the sidebar becomes a tab bar of the four groups.
+  - **The moderation queue moved into it**, at `/admin/moderation`.
+    `/moderate` still works and redirects there, filters included. An editor
+    sees only Moderation and lands on it.
+  - **Scrapers are their own section**, out of Housekeeping.
+  - **All listings** (`/admin/listings`): every listing in every state, one
+    search box, filtered by state and source, newest change first. Publish,
+    Archive and Edit work on the row, through the queue's own endpoint and
+    the queue's own wizard dialog. `GET /api/admin/listings`, for anyone with
+    `listing:moderate`.
+  - **Venues** (`/admin/venues`): search, with filters for venues that have
+    no map pin and venues nobody has verified. Edit a venue's details and pin
+    (validated with the wizard's own rules, answered per field), mark it
+    verified, or merge a duplicate into the venue it duplicates — its
+    listings move and it is deleted, in one batch, with the merge in the
+    audit log. `GET/PATCH /api/admin/venues`, `POST /api/admin/venues/:id/merge`,
+    for anyone with `venue:edit_any`.
+  - **The review count follows you.** For editors and admins, the header's
+    account menu shows a dot when something is waiting and the number beside
+    "Admin console"; `GET /api/author/queue/count` is one indexed COUNT.
+  - **The overview leads with what needs doing:** four counts (waiting,
+    published, accounts, the last scrape), the oldest waiting listings with
+    a Publish button, the venues with no map pin, the organizations not yet
+    verified, listings by state,
+    accounts by role and the recent activity. `GET /api/admin/overview`
+    returns the queue's head and the latest scrape run in the same single
+    round trip.
+  - `robots.txt` now disallows `/admin` in production, as it did `/moderate`.
+
 ### Added
 - **An admin console (#28).** `/admin`, for accounts whose role is `admin`:
   who can do what, whose organization is whose, what happened, and whether

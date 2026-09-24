@@ -41,8 +41,15 @@ const SHELL = join(CLIENT, 'index.html')
  * Deferred raised 33 → 40 on 2026-09-14 for the admin console (#28): a new
  * 5.8 KB chunk that only an admin ever loads, taking the deferred total to
  * 36.6 KB. The first paint did not move.
+ *
+ * Deferred raised 40 → 47 on 2026-09-24 for the console's second round
+ * (all listings, venues, the overview's attention list, the scrapers split
+ * out) and for admin.css moving from the shell into the console's own chunk,
+ * which took 1.7 KB *off* every first paint (CSS 12.2 → 10.5 KB, first paint
+ * 103.8 → 102.1 KB) and put it where only an editor or admin fetches it. The
+ * deferred total is 43.8 KB; 47 is the usual headroom on top.
  */
-const BUDGETS_KB = { js: 92, css: 12, total: 104, deferred: 40 }
+const BUDGETS_KB = { js: 92, css: 12, total: 104, deferred: 47 }
 
 /**
  * What #39's "initial interactive paint under 1.5 seconds on 3G" would

@@ -169,11 +169,13 @@ test('authoring: sign in, create, place, submit for review', async ({ page }) =>
 
 test('moderation: an editor reaches the queue and can work it', async ({ page }) => {
   await signIn(page, EDITOR())
-  await page.goto(at('/moderate'))
+  await page.goto(at('/admin'))
 
-  // An editor has `listing:publish`, so the queue is theirs to see — the
-  // permission check is the real one against the real session.
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // An editor has `listing:moderate` and nothing else in the console, so
+  // /admin lands on the queue — the permission check is the real one against
+  // the real session.
+  await expect(page).toHaveURL(/\/admin\/moderation/)
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
   await expect(page.getByText(/not allowed|sign in/i)).toHaveCount(0)
   await assertAccessible(page, 'moderation queue')
 })

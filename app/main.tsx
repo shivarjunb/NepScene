@@ -7,7 +7,6 @@ import './styles/base.css'
 import './styles/components.css'
 import './styles/shell.css'
 import './styles/author.css'
-import './styles/admin.css'
 import './styles/map.css'
 import './styles/public.css'
 
