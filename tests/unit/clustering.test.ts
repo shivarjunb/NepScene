@@ -155,6 +155,66 @@ describe('the grid is derived from the viewport, so it follows the zoom', () => 
   })
 })
 
+describe('pins that would overlap on screen are merged', () => {
+  /** Roughly 40px on a phone-width city view. */
+  const OVERLAP = { lat: 0.005, lng: 0.005 }
+
+  it('merges two places closer than a pin, and leaves the rest as pins', () => {
+    const plan = planMarkers([
+      group(27.72, 85.320, 1, 'a'),
+      group(27.72, 85.322, 3, 'b'),
+      group(27.78, 85.40, 1, 'far'),
+    ], VIEWPORT, { overlap: OVERLAP })
+
+    expect(plan.kind).toBe('mixed')
+    expect(plan.groups.map((g) => g.key)).toEqual(['far'])
+    expect(plan.clusters).toHaveLength(1)
+    expect(plan.clusters[0]!.count).toBe(4)
+    // The busiest place leads, so the key is stable whatever order rows came in.
+    expect(plan.clusters[0]!.key).toBe('o:b')
+  })
+
+  it('is the same plan whatever order the groups arrive in', () => {
+    const groups = [
+      group(27.72, 85.320, 1, 'a'),
+      group(27.72, 85.322, 2, 'b'),
+      group(27.721, 85.3205, 1, 'c'),
+    ]
+    const forward = planMarkers(groups, VIEWPORT, { overlap: OVERLAP })
+    const backward = planMarkers([...groups].reverse(), VIEWPORT, { overlap: OVERLAP })
+    expect(backward.clusters.map((c) => [c.key, c.count]))
+      .toEqual(forward.clusters.map((c) => [c.key, c.count]))
+  })
+
+  it('stays a plain plan of groups when nothing overlaps', () => {
+    const plan = planMarkers(spread(10), VIEWPORT, { overlap: OVERLAP })
+    expect(plan.kind).toBe('groups')
+    expect(plan.groups).toHaveLength(10)
+  })
+
+  it('merges nothing without a measured overlap, as in the list view', () => {
+    const plan = planMarkers([
+      group(27.72, 85.320, 1, 'a'),
+      group(27.72, 85.3201, 1, 'b'),
+    ], VIEWPORT, { overlap: null })
+    expect(plan.kind).toBe('groups')
+    expect(plan.groups).toHaveLength(2)
+  })
+
+  it('loses no listings', () => {
+    const groups = spread(50).map((g, i) => ({ ...g, count: (i % 4) + 1 }))
+    const plan = planMarkers(groups, VIEWPORT, { overlap: { lat: 0.02, lng: 0.02 } })
+    const total = plan.groups.reduce((sum, g) => sum + g.count, 0)
+      + plan.clusters.reduce((sum, c) => sum + c.count, 0)
+    expect(total).toBe(groups.reduce((sum, g) => sum + g.count, 0))
+  })
+
+  it('leaves the density threshold in charge above it', () => {
+    const plan = planMarkers(spread(CLUSTER_THRESHOLD + 1), VIEWPORT, { overlap: OVERLAP })
+    expect(plan.kind).toBe('clusters')
+  })
+})
+
 describe('the bubble grows in steps, not continuously', () => {
   it('takes one of three sizes', () => {
     for (const count of [1, 60, 99, 100, 400, 500, 9999]) {

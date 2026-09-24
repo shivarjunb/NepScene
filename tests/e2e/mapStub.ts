@@ -21,7 +21,7 @@ import type { Page } from '@playwright/test'
 export const THAMEL = { lat: 27.7154, lng: 85.3105 }
 export const POKHARA = { lat: 28.2096, lng: 83.9556 }
 
-const listing = (
+export const listing = (
   over: Record<string, unknown> & { id: string; latitude: number; longitude: number },
 ) => ({
   slug: over.id,
@@ -48,7 +48,7 @@ const listing = (
   ...over,
 })
 
-const venue = (id: string, slug: string, name: string, area: string, city: string) =>
+export const venue = (id: string, slug: string, name: string, area: string, city: string) =>
   ({ id, slug, name, area, city })
 
 const PURPLE_HAZE = venue('v_purple', 'purple-haze', 'Purple Haze', 'Thamel', 'Kathmandu')
@@ -139,7 +139,9 @@ export async function stubMapsSdk(page: Page) {
 
     /** Half a degree each way — a plausible city-scale viewport. */
     let centre = { lat: 27.7172, lng: 85.324 }
-    const SPAN = 0.09
+    // Mutable so a spec can zoom: a narrower span is what a zoom-in is, as far
+    // as anything the app reads is concerned.
+    let SPAN = 0.09
 
     class FakeBounds {
       getNorthEast() { return new FakeLatLng(centre.lat + SPAN, centre.lng + SPAN) }
@@ -264,6 +266,11 @@ export async function stubMapsSdk(page: Page) {
           for (const handler of markerListeners.get(marker) ?? []) handler(undefined)
         },
         __markerTitles: () => markers.map((m) => m.options.title),
+        /** Zoom to a half-span of `span` degrees around the current centre. */
+        __setSpan: (span: number) => {
+          SPAN = span
+          fire('idle', undefined)
+        },
         __centre: () => ({ ...centre }),
       },
     }

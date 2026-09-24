@@ -7,7 +7,7 @@ import { ListingPopup } from './ListingPopup'
 import {
   clusterDataUri, clusterSize, meDataUri, ME_SIZE, pinDataUri, PIN_SIZE,
 } from './pinMarker'
-import { planMarkers, type Cluster } from './clustering'
+import { OVERLAP_PX, planMarkers, type Cluster } from './clustering'
 import type { MapPin } from './markers'
 import { groupByVenue, type VenueGroup } from './venueGrouping'
 import { VenueStack } from './VenueStack'
@@ -64,6 +64,14 @@ const IDLE_DEBOUNCE_MS = 250
 const FALLBACK_SPAN = 0.09
 
 /**
+ * A cluster whose contents span less than this, in degrees (about 20m), is a
+ * set of places zooming cannot pull apart — two venues geocoded to the same
+ * point, typically. Tapping it opens their listings as one stack instead of
+ * zooming to a box that would still draw the same bubble.
+ */
+const INSEPARABLE_SPAN = 0.0002
+
+/**
  * The distance chips (#38), ported unchanged. 2km is walking, 5km is a short
  * ride, 10km covers the valley, 20km covers it and its edges, and 100km is
  * "worth the trip" — which for Nepal's geography is a real category rather
@@ -92,7 +100,6 @@ export function NepalMap({ onOpen, location }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
-  const overlayRef = useRef<google.maps.OverlayView | null>(null)
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map())
   const meMarkerRef = useRef<google.maps.Marker | null>(null)
   /**
@@ -121,12 +128,17 @@ export function NepalMap({ onOpen, location }: Props) {
   const [view, setView] = useState<'map' | 'list'>('map')
   /**
    * What is open over the map: one listing's popup, or a venue's stack. Never
-   * both — they occupy the same anchor, and a stack behind a popup is a
-   * card the viewer cannot reach.
+   * both — they occupy the same place, and a stack behind a popup is a card
+   * the viewer cannot reach.
+   *
+   * Not anchored to the pin. A card drawn above a pin was clipped by the map's
+   * edge whenever the pin sat in its top half — and in the hero, which is
+   * short, that was most pins. The card opens in the middle of the map
+   * instead, where it always fits.
    */
   const [selected, setSelected] = useState<
-    | { kind: 'listing'; pin: MapPin; x: number; y: number }
-    | { kind: 'stack'; group: VenueGroup; x: number; y: number }
+    | { kind: 'listing'; pin: MapPin }
+    | { kind: 'stack'; group: VenueGroup; venueName: string | null }
     | null
   >(null)
 
@@ -196,10 +208,21 @@ export function NepalMap({ onOpen, location }: Props) {
    * point crosses the screen edge, which reads as the map stuttering rather
    * than as the pin arriving.
    */
-  const plan = useMemo(
-    () => planMarkers(groups, effectiveViewport ? padBounds(effectiveViewport, PAD_RATIO / 2) : null),
-    [groups, effectiveViewport],
-  )
+  const plan = useMemo(() => {
+    if (!effectiveViewport) return planMarkers(groups, null)
+    // Pins that would overlap on screen are merged too, not only a screen too
+    // dense to read. `OVERLAP_PX` becomes degrees through the map's own
+    // size; a hidden canvas (the list view) measures zero and merges nothing.
+    const width = containerRef.current?.clientWidth ?? 0
+    const height = containerRef.current?.clientHeight ?? 0
+    const overlap = width > 0 && height > 0
+      ? {
+          lat: ((effectiveViewport.north - effectiveViewport.south) / height) * OVERLAP_PX,
+          lng: ((effectiveViewport.east - effectiveViewport.west) / width) * OVERLAP_PX,
+        }
+      : null
+    return planMarkers(groups, padBounds(effectiveViewport, PAD_RATIO / 2), { overlap })
+  }, [groups, effectiveViewport])
 
   /**
    * The list shows what is *on screen*, not everything ever loaded — otherwise
@@ -248,15 +271,6 @@ export function NepalMap({ onOpen, location }: Props) {
         gestureHandling: 'cooperative',
       })
       mapRef.current = map
-
-      // A projection, so a pin's popup can be positioned over it. An empty
-      // OverlayView is the documented way to get one; nothing is drawn.
-      const overlay = new maps.OverlayView()
-      overlay.onAdd = () => {}
-      overlay.draw = () => {}
-      overlay.onRemove = () => {}
-      overlay.setMap(map)
-      overlayRef.current = overlay
 
       // `idle` rather than `bounds_changed`: the latter fires continuously
       // through a drag, and every frame of a pan would be a fetch decision.
@@ -401,16 +415,6 @@ export function NepalMap({ onOpen, location }: Props) {
   const closeSelected = useCallback(() => setSelected(null), [])
   useFocusTrap(popupRef, selected !== null, closeSelected)
 
-  /** Where a point sits in container pixels, or null if it is not on screen. */
-  const positionOf = useCallback((at: { lat: number; lng: number }) => {
-    const projection = overlayRef.current?.getProjection()
-    if (!projection) return null
-    const point = projection.fromLatLngToContainerPixel(
-      new google.maps.LatLng(at.lat, at.lng),
-    )
-    return point ? { x: point.x, y: point.y } : null
-  }, [])
-
   // ── Draw the pins ──────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
@@ -457,6 +461,17 @@ export function NepalMap({ onOpen, location }: Props) {
         // Zoom to what it contains rather than by a fixed step: one press
         // opens the cluster, however deep it was.
         marker.addListener('click', () => {
+          const { bounds } = cluster
+          if (bounds.north - bounds.south < INSEPARABLE_SPAN
+            && bounds.east - bounds.west < INSEPARABLE_SPAN) {
+            const pins = cluster.groups.flatMap((group) => group.pins)
+            setSelected({
+              kind: 'stack',
+              group: { ...cluster.groups[0]!, key: cluster.key, pins, count: pins.length },
+              venueName: null,
+            })
+            return
+          }
           movedRef.current = true
           setSelected(null)
           map.fitBounds(new google.maps.LatLngBounds(
@@ -491,18 +506,16 @@ export function NepalMap({ onOpen, location }: Props) {
         zIndex: group.count,
       })
       marker.addListener('click', () => {
-        const at = positionOf(group)
-        if (!at) return
         // One listing opens its card directly. Making a single listing go
         // through a list of one would be a step that never told anybody
         // anything.
         setSelected(group.count === 1
-          ? { kind: 'listing', pin: group.primary, ...at }
-          : { kind: 'stack', group, ...at })
+          ? { kind: 'listing', pin: group.primary }
+          : { kind: 'stack', group, venueName: group.primary.popup.venue })
       })
       live.set(id, marker)
     }
-  }, [plan, ready, positionOf])
+  }, [plan, ready])
 
   // ── "You are here", once there is a precise answer ─────────────────────────
   useEffect(() => {
@@ -545,7 +558,6 @@ export function NepalMap({ onOpen, location }: Props) {
     markersRef.current.clear()
     meMarkerRef.current?.setMap(null)
     meMarkerRef.current = null
-    overlayRef.current?.setMap(null)
   }, [])
 
   /**
@@ -692,24 +704,29 @@ export function NepalMap({ onOpen, location }: Props) {
       </div>
 
       {selected && (
+        // Dims the pins behind the card so it reads as the thing in front, and
+        // gives a tap outside it somewhere to land that means "close".
+        <div className="nepal-map__scrim" aria-hidden="true" onClick={closeSelected} />
+      )}
+
+      {selected && (
         <div
           ref={popupRef}
           className="nepal-map__popup"
-          style={{ left: selected.x, top: selected.y }}
           // A card that opens over the map and traps focus is a dialog, and
           // saying so is what makes a screen reader announce it on arrival
           // rather than leaving the reader to discover it.
           role="dialog"
           aria-modal="true"
           aria-label={selected.kind === 'stack'
-            ? `Listings at ${selected.group.primary.popup.venue ?? 'this place'}`
+            ? `Listings at ${selected.venueName ?? 'this place'}`
             : selected.pin.popup.title}
         >
           {selected.kind === 'stack' ? (
             <VenueStack
               group={selected.group}
-              venueName={selected.group.primary.popup.venue}
-              onSelect={(pin) => setSelected({ kind: 'listing', pin, x: selected.x, y: selected.y })}
+              venueName={selected.venueName}
+              onSelect={(pin) => setSelected({ kind: 'listing', pin })}
               onClose={() => setSelected(null)}
             />
           ) : (

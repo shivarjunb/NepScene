@@ -903,6 +903,10 @@
   border-radius: var(--radius-xl);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-overlay);
+  /* Its own text colour, not whatever it is drawn inside: the homepage hero
+     is light-on-dark, and an inherited white title on this white card was
+     invisible. */
+  color: var(--text-primary);
 }
 
 .pin-card__title {
