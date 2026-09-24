@@ -331,6 +331,9 @@
   border-bottom: 1px solid var(--border-hairline);
 }
 
+.listing-dialog__actions { display: flex; gap: var(--space-2); }
+.listing-dialog__bar .listing-dialog__back { display: none; }
+
 /* A phone has no room for a sheet with a margin round it: the dialog is the
    screen, and the scrim is what is left when there is none. */
 @media (max-width: 40rem) {
@@ -342,6 +345,11 @@
     border: 0;
     border-radius: 0;
   }
+  /* The screen is the page here, so its bar is a page's: Back on the left,
+     nothing else (see ListingDialog). */
+  .listing-dialog__bar { justify-content: flex-start; }
+  .listing-dialog__bar .listing-dialog__back { display: inline-flex; }
+  .listing-dialog__actions { display: none; }
 }
 
 .lineup, .tag-list, .share {

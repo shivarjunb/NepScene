@@ -272,6 +272,7 @@ export const STRINGS = {
   'listing.externalTickets': { en: 'Tickets elsewhere', ne: 'टिकट अन्यत्र' },
   'listing.gallery': { en: 'Pictures', ne: 'तस्बिरहरू' },
   'listing.close': { en: 'Close the listing', ne: 'सूची बन्द गर्नुहोस्' },
+  'listing.back': { en: 'Back', ne: 'पछाडि' },
   'listing.openPage': { en: 'Open as a page', ne: 'पृष्ठको रूपमा खोल्नुहोस्' },
 
   // ── Venues, organizers, artists ──────────────────────────────────────────

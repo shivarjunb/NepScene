@@ -199,7 +199,10 @@ test('the discovery journey works with touch at phone size', async ({ page, isMo
   // On a phone the dialog is the screen, and it must not scroll sideways either.
   const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)
   expect(dialogOverflow).toBeLessThanOrEqual(0)
-  await dialog.getByRole('button', { name: 'Close the listing' }).tap()
+  // A phone gets a page's Back, not the sheet's "Open as a page" and ✕.
+  await expect(dialog.getByRole('link', { name: 'Open as a page' })).toBeHidden()
+  await expect(dialog.getByRole('button', { name: 'Close the listing' })).toBeHidden()
+  await dialog.getByRole('button', { name: 'Back' }).tap()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page).toHaveURL(/\/$/)
 })
