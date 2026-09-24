@@ -12,6 +12,9 @@ import { OrganizationsPanel } from './OrganizationsPanel'
 import { AuditPanel } from './AuditPanel'
 import { ScrapersPanel } from './ScrapersPanel'
 import { SystemPanel } from './SystemPanel'
+// With the console, not the shell: nobody but an editor or admin ever needs
+// these rules, so they arrive in this chunk rather than on every first paint.
+import '../styles/admin.css'
 
 /**
  * The admin console (#28), at /admin — one place for everything an admin or
