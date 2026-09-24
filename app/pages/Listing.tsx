@@ -13,6 +13,7 @@ import { useLanguage, useT } from '../i18n'
 import { Alert, Badge, Button, Card, Skeleton } from '../components/primitives'
 import { ResponsiveImage } from '../components/ResponsiveImage'
 import { ListingCard } from '../components/ListingCard'
+import { listingImages } from '../lib/listingImages'
 import { Description } from '../components/Description'
 import { StaticMap } from '../components/StaticMap'
 import { Link } from '../router'
@@ -107,8 +108,13 @@ function Loaded({ listing, titleId }: { listing: ListingDetail; titleId?: string
   const ids = useId()
   const title = titleOf(listing, language)
   const summary = summaryOf(listing, language)
+  // Imported source URLs stay in the stored description for record-keeping.
   const description = descriptionOf(listing, language)
-  const hero = listing.media.find((item) => item.kind === 'image') ?? null
+    ?.split(/\r?\n/)
+    .filter((line) => !/^\s*Source\s*:/i.test(line))
+    .join('\n')
+    .trim()
+  const [hero, ...gallery] = listingImages(listing)
   const category = listing.categories.find((entry) => entry.is_primary) ?? listing.categories[0]
 
   return (
@@ -139,14 +145,16 @@ function Loaded({ listing, titleId }: { listing: ListingDetail; titleId?: string
           {/* The hero is the listing's own poster, so its alt text is the one
               the author wrote — unlike a card, where the title is right next
               to it and repeating it reads the listing twice. */}
-          <ResponsiveImage media={hero} sizes={HERO_SIZES} priority />
+          <a href={hero.url} target="_blank" rel="noopener noreferrer">
+            <ResponsiveImage media={hero} sizes={HERO_SIZES} alt={hero.alt_text || title} priority />
+          </a>
         </div>
       )}
 
       <div className="listing-page__body">
         <div className="listing-page__main">
           {description && (
-            <section className="stack" aria-labelledby={`${ids}about`}>
+            <section className="stack listing-page__section" aria-labelledby={`${ids}about`}>
               <Section id={`${ids}about`}>{t('listing.about')}</Section>
               <Description text={description} lang={langOf(listing.description_ne, language)} />
             </section>
@@ -170,13 +178,15 @@ function Loaded({ listing, titleId }: { listing: ListingDetail; titleId?: string
             </section>
           )}
 
-          {listing.media.length > 1 && (
+          {gallery.length > 0 && (
             <section className="stack" aria-labelledby={`${ids}gallery`}>
               <Section id={`${ids}gallery`}>{t('listing.gallery')}</Section>
               <ul className="gallery" role="list">
-                {listing.media.slice(1).map((item) => (
+                {gallery.map((item) => (
                   <li key={item.id}>
-                    <ResponsiveImage media={item} sizes="(max-width: 40rem) 45vw, 18rem" />
+                    <a href={item.url} target="_blank" rel="noopener noreferrer">
+                      <ResponsiveImage media={item} sizes="(max-width: 40rem) 90vw, 20rem" alt={item.alt_text || title} />
+                    </a>
                   </li>
                 ))}
               </ul>

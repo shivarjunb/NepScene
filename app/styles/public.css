@@ -202,9 +202,9 @@
 }
 
 /* ── Listing page (#43) ──────────────────────────────────────────────────── */
-.listing-page { display: grid; gap: var(--space-6); }
+.listing-page { display: grid; gap: var(--space-9); min-width: 0; }
 
-.listing-page__head { display: grid; gap: var(--space-2); max-width: 48rem; }
+.listing-page__head { display: grid; gap: var(--space-5); max-width: 48rem; overflow-wrap: anywhere; }
 
 /* The same fix as `.listing-card__category`, for the same reason: the
  * category's database colour is a pin colour, and pin colours are not text
@@ -227,7 +227,7 @@
   background: var(--card-accent, var(--accent));
 }
 
-.listing-page__title { font-size: var(--text-3xl); line-height: var(--leading-tight); }
+.listing-page__title { font-size: clamp(1.75rem, 4vw, 3rem); line-height: 1.15; text-wrap: balance; }
 
 .listing-page__summary { font-size: var(--text-lg); color: var(--text-secondary); }
 
@@ -239,7 +239,22 @@
   background: var(--surface-sunken);
 }
 
-.listing-page__hero img { width: 100%; height: auto; }
+.listing-page__hero a, .listing-page__hero picture { display: block; }
+.listing-page__hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70svh;
+  object-fit: contain;
+}
+.listing-page__section {
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+.listing-page__section .prose { line-height: var(--leading-relaxed); gap: var(--space-7); }
+.listing-page__section > h2, .listing-page__section > h3 { margin-bottom: var(--space-5); }
 
 .listing-page__body {
   display: grid;
@@ -253,7 +268,7 @@
 
 .listing-page__main { display: grid; gap: var(--space-6); min-width: 0; }
 
-.listing-page__aside { display: grid; gap: var(--space-4); }
+.listing-page__aside { display: grid; gap: var(--space-7); min-width: 0; overflow-wrap: anywhere; }
 
 .panel__heading {
   font-size: var(--text-sm);
@@ -403,13 +418,15 @@
 
 .gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
   gap: var(--space-3);
   list-style: none;
   padding: 0;
 }
 
-.gallery img { border-radius: var(--radius-md); width: 100%; height: auto; }
+.gallery a, .gallery picture { display: block; }
+.gallery a { border-radius: var(--radius-md); overflow: hidden; background: var(--surface-sunken); }
+.gallery img { display: block; width: 100%; height: auto; max-height: 32rem; object-fit: contain; }
 
 .static-map {
   height: 12rem;
