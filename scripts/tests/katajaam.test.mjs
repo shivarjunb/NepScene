@@ -179,3 +179,37 @@ test('saved partial inventories cannot reach the import stage',async()=>{
     assert.equal(existsSync(join(dir,'import.sql')),false)
   } finally { rmSync(dir,{recursive:true,force:true}) }
 })
+
+test('customer destination prefers external event links, then social posts and profiles', () => {
+  const event = raw('links', { offers: { url: 'https://katajaam.com/events/links' } })
+  const parse = (body) => eventPage(`<header><a href="https://instagram.com/kata.jaam">Instagram</a></header><main>${body}<h2>More events</h2><a href="https://unrelated.example">Tickets</a></main><footer><a href="https://facebook.com/katajaam">Facebook</a></footer><script type="application/ld+json">${JSON.stringify(event)}</script>`, event.url)
+  const social = '<a href="https://instagram.com/organizer">Organizer</a><a href="https://instagram.com/p/event/">View on Instagram</a>'
+  const utilities = '<a href="https://calendar.google.com/calendar/render">Google Calendar</a><a href="https://www.google.com/maps/search/">Venue</a><a href="https://organizer.katajaam.com/claim">Claim</a><a href="https://facebook.com/sharer/sharer.php?u=event">Facebook</a>'
+  assert.equal(map(parse(social + '<a href="https://tickets.example/event?a=1&amp;b=2">Get Tickets</a>')).external_url, 'https://tickets.example/event?a=1&b=2')
+  assert.equal(map(parse(utilities + social)).external_url, 'https://instagram.com/p/event/')
+  assert.equal(map(parse('<a href="https://facebook.com/organizer">Organizer</a>')).external_url, 'https://facebook.com/organizer')
+  assert.equal(map(parse(utilities)).external_url, null)
+  assert.equal(map(parse(utilities)).offer_url, null)
+})
+
+test('structured destinations and overrides reject showcase and unsafe URLs', () => {
+  assert.equal(map(raw()).external_url, 'https://example.com/event')
+  const event = raw('social', { offers: [{ url: 'https://www.katajaam.com/events/social' }], organizer: { sameAs: 'https://instagram.com/organizer' } })
+  assert.equal(map(event).external_url, 'https://instagram.com/organizer')
+  assert.equal(map(event, { external_url: 'https://official.example/event' }).external_url, 'https://official.example/event')
+  for (const external_url of ['javascript:alert(1)', 'https://user:password@example.com', 'https://katajaam.com./events/a', 'https://organizer.katajaam.com/event', null]) {
+    assert.equal(map(event, { external_url }).external_url, null)
+  }
+})
+
+test('SQL stores destination separately from source and retains free-event social links', () => {
+  const d = db()
+  const e = map(raw('free-social', { isAccessibleForFree: true, offers: {}, external_url: 'https://instagram.com/p/event/' }))
+  d.exec(buildSql(plan([e])))
+  const listing = d.prepare('SELECT external_url, offer_url, listing_type FROM listings').get()
+  assert.equal(listing.external_url, 'https://instagram.com/p/event/')
+  assert.equal(listing.offer_url, null)
+  assert.equal(listing.listing_type, 'free')
+  assert.equal(d.prepare('SELECT source_url FROM import_sources').get().source_url, e.url)
+  d.close()
+})
