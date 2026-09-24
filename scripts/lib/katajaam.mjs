@@ -31,7 +31,7 @@ export function listingPage(html) {
   const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1]
   if (!main) throw Error('Kata Jaam listing page has no main element')
   const links = [...main.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)]
-  const urls = links.filter((m) => /<h3\b/i.test(m[2]) && /<img\b/i.test(m[2]))
+  const urls = links.filter((m) => /<h3\b/i.test(m[2]))
     .map((m) => attrs(m[1]).href).filter((u) => u?.startsWith('/events/')).map(sourceUrl)
   const nextHref = links.find((m) => clean(m[2].replace(/<[^>]+>/g, '')) === 'Next')
   let next = nextHref ? new URL(attrs(nextHref[1]).href, ORIGIN) : null
@@ -69,11 +69,13 @@ export function eventPage(html, url) {
   return { ...event, url: sourceUrl(url), category, page_text: text,
     date_tbd: /to be decided|to be announced/i.test(glance) || /EventPostponed|EventCancelled/.test(event.eventStatus ?? '') }
 }
-export async function crawl(read) {
+export async function crawl(read, { checkpoint = () => {} } = {}) {
   const sitemap = await read(`${ORIGIN}/sitemap.xml`)
   const sitemapUrls = new Set([...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => decode(m[1])))
   const urls = new Set(), pages = new Set()
   let next = `${ORIGIN}/events`, expected
+  const events = []
+  const snapshot = (complete = false) => ({ checked_at: new Date().toISOString(), complete, expected_count: expected, count: events.length, pages: [...pages], urls: [...urls], events })
   while (next) {
     if (pages.has(next) || pages.size >= 100) throw Error('Pagination loop or unexpected page count')
     pages.add(next)
@@ -82,17 +84,18 @@ export async function crawl(read) {
     if (expected !== undefined && page.count !== expected) throw Error('Inventory changed during scrape; run again')
     expected = page.count
     for (const u of page.urls) urls.add(u)
+    checkpoint(snapshot())
     next = page.next
   }
   if (!urls.size || urls.size !== expected) throw Error(`Inventory incomplete: found ${urls.size}, expected ${expected}`)
-  const events = []
   // Sequential requests deliberately keep the public site load low.
   for (const url of urls) {
     const e = eventPage(await read(url), url)
     e.in_sitemap = sitemapUrls.has(url)
     events.push(e)
+    checkpoint(snapshot())
   }
-  return { checked_at: new Date().toISOString(), count: events.length, pages: [...pages], events }
+  return snapshot(true)
 }
 const categoryMap = {
   Music: 'cat_concert', 'Nightlife & Parties': 'cat_nightlife', 'Screenings & Watch Parties': 'cat_film',
