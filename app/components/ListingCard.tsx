@@ -32,6 +32,13 @@ export function ListingCard({ listing, layout = 'grid' }: {
   const { language } = useLanguage()
   const { day, month, weekday } = startDay(listing, language)
   const hasPoster = Boolean(listing.cover || listing.cover_image_url)
+  // The title is right there in the card, so the poster is decorative here —
+  // repeating the alt text would make a screen reader read the listing twice.
+  const cover = listing.cover ? (
+    <ResponsiveImage media={listing.cover} alt="" sizes={layout === 'row' ? ROW_SIZES : GRID_SIZES} />
+  ) : listing.cover_image_url ? (
+    <img src={listing.cover_image_url} alt="" loading="lazy" decoding="async" />
+  ) : null
   const category = listing.categories[0]
   const place = venueLine(listing)
   const price = offerLine(listing, language)
@@ -55,23 +62,19 @@ export function ListingCard({ listing, layout = 'grid' }: {
           middle click and "copy link address" all get the page. */}
       <Link className="listing-card__link" href={`/listings/${listing.slug}`} overlay>
         <div className="listing-card__poster" aria-hidden="true">
-          {/* Over a photograph the date floats on a pill; with no photograph
-              the poster already *is* the date, and two of them is one too
-              many. */}
-          {hasPoster && (
-            <span className="listing-card__badge">{`${day} ${month}`}</span>
-          )}
-          {listing.cover ? (
-            // The title is right there in the card, so the poster is decorative
-            // here — repeating the alt text would make a screen reader read the
-            // same listing twice.
-            <ResponsiveImage
-              media={listing.cover}
-              alt=""
-              sizes={layout === 'row' ? ROW_SIZES : GRID_SIZES}
-            />
-          ) : listing.cover_image_url ? (
-            <img src={listing.cover_image_url} alt="" loading="lazy" decoding="async" />
+          {hasPoster ? (
+            <>
+              {/* A poster is usually portrait and the frame is 16:10, so the
+                  whole poster is shown, letterboxed over a blurred copy of
+                  itself rather than cropped to its middle. The copy is the
+                  same request, so it costs nothing to fetch. */}
+              <span className="listing-card__cover listing-card__cover--fill">{cover}</span>
+              <span className="listing-card__cover">{cover}</span>
+              {/* Over a photograph the date floats on a pill; with no
+                  photograph the poster already *is* the date, and two of
+                  them is one too many. */}
+              <span className="listing-card__badge">{`${day} ${month}`}</span>
+            </>
           ) : (
             <div className="listing-card__date">
               <span className="listing-card__date-weekday">{weekday}</span>
