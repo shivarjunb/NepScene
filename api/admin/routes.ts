@@ -9,6 +9,7 @@ import { adminUserRoutes } from './users'
 import { adminOrganizationRoutes } from './organizations'
 import { adminAuditRoutes, serialiseEntry } from './audit'
 import { adminScrapeRoutes } from './scrapes'
+import { SELECT_RUN, serialiseRun, type ScrapeRunRow } from '../scrapes/runs'
 
 /**
  * The admin console's API (#28), at `/api/admin/*`.
@@ -18,9 +19,9 @@ import { adminScrapeRoutes } from './scrapes'
  * over thirty tables, and the cost of that was a 4,800-line component in
  * which no screen knew what it was for. Each route here answers one question
  * an administrator actually asks — who can do what, which organization is
- * whose, what happened, and is the housekeeping running — and the screens
- * that already exist for listings (the queue, the dashboard) stay where they
- * are.
+ * whose, what happened, and is the housekeeping running. Listings keep
+ * their own API (`/api/author/queue`), which the console's Moderation section
+ * calls with `listing:moderate` so an editor can work it too.
  */
 export const adminRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>()
 
@@ -30,16 +31,18 @@ adminRoutes.route('/', adminAuditRoutes)
 adminRoutes.route('/', adminScrapeRoutes)
 
 const RECENT = 10
+/** How many of the oldest waiting listings the overview puts in front of an admin. */
+const WAITING = 5
 
 // ─── GET /api/admin/overview ─────────────────────────────────────────────────
 /**
- * The first screen: the numbers, and what happened last. One batch, four
- * statements — an overview that takes four round trips from Kathmandu is an
- * overview nobody opens twice.
+ * The first screen: the numbers, what is waiting longest, how the last scrape
+ * went, and what happened last. One batch — an overview that takes six round
+ * trips from Kathmandu is an overview nobody opens twice.
  */
 adminRoutes.get('/overview', requirePermission('user:manage'), async (c) => {
   const session = writeSession(c.env)
-  const [users, listings, organizations, recent] = await session.batch([
+  const [users, listings, organizations, recent, waiting, scrape] = await session.batch([
     c.env.DB.prepare(
       `SELECT role, COUNT(*) AS n, SUM(is_active = 0) AS inactive FROM users GROUP BY role`,
     ),
@@ -65,6 +68,20 @@ adminRoutes.get('/overview', requirePermission('user:manage'), async (c) => {
         ORDER BY a.created_at DESC, a.id DESC
         LIMIT ?1`,
     ).bind(RECENT),
+    // The queue's head, oldest first — the same order the queue itself uses,
+    // so "publish" here takes the listing the queue would have shown first.
+    c.env.DB.prepare(
+      `SELECT l.id, l.slug, l.title, l.source, l.starts_at, l.updated_at,
+              v.name AS venue_name, o.name AS organization_name,
+              l.suspected_duplicate_of IS NOT NULL AS has_duplicate
+         FROM listings l
+         LEFT JOIN venues v ON v.id = l.venue_id
+         LEFT JOIN organizations o ON o.id = l.organization_id
+        WHERE l.status = 'pending_review'
+        ORDER BY l.updated_at ASC
+        LIMIT ?1`,
+    ).bind(WAITING),
+    c.env.DB.prepare(`${SELECT_RUN} ORDER BY r.requested_at DESC LIMIT 1`),
   ])
 
   const byRole = Object.fromEntries(ROLES.map((role) => [role, { total: 0, inactive: 0 }]))
@@ -80,6 +97,10 @@ adminRoutes.get('/overview', requirePermission('user:manage'), async (c) => {
     ),
     organizations: { total: Number(orgs?.total ?? 0), verified: Number(orgs?.verified ?? 0) },
     recent: rowsOf<Record<string, unknown>>(recent).map(serialiseEntry),
+    waiting: rowsOf<Record<string, unknown> & { has_duplicate: number }>(waiting)
+      .map((row) => ({ ...row, has_duplicate: Boolean(row.has_duplicate) })),
+    last_scrape: rowsOf<ScrapeRunRow>(scrape)
+      .map((row) => serialiseRun(row, c.env.GITHUB_REPOSITORY))[0] ?? null,
   }), session)
 })
 

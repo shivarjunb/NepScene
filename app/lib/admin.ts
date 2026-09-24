@@ -22,11 +22,28 @@ const query = (params: Record<string, string | number | undefined>) => {
 
 // ── Overview ────────────────────────────────────────────────────────────────
 
+/** A listing at the head of the queue, as the overview shows it. */
+export type WaitingListing = {
+  id: string
+  slug: string
+  title: string | null
+  source: string
+  starts_at: string | null
+  updated_at: string
+  venue_name: string | null
+  organization_name: string | null
+  has_duplicate: boolean
+}
+
 export type Overview = {
   users: Record<Role, { total: number; inactive: number }>
   listings: Record<string, number>
   organizations: { total: number; verified: number }
   recent: AuditEntry[]
+  /** The oldest few waiting for review, oldest first. */
+  waiting: WaitingListing[]
+  /** The newest scrape run, whatever its state; null before the first. */
+  last_scrape: ScrapeRun | null
 }
 
 export const fetchOverview = () => request<Overview>('/api/admin/overview')

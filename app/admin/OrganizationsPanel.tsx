@@ -50,8 +50,7 @@ export function OrganizationsPanel() {
   const rows = list?.data ?? []
 
   return (
-    <section className="admin__section" aria-labelledby="admin-orgs">
-      <h2 id="admin-orgs">Organizations</h2>
+    <section className="admin__section" aria-labelledby="admin-heading">
 
       {error && <Alert tone="danger" title="Something went wrong">{error}</Alert>}
 
@@ -76,10 +75,10 @@ export function OrganizationsPanel() {
             <li key={org.id}>
               <Card className="admin__row">
                 <div className="admin__row-body">
-                  <h3 className="admin__row-title">
+                  <h2 className="admin__row-title">
                     <Link href={`/organizers/${org.slug}`}>{org.name}</Link>
                     {org.is_verified && <Badge tone="success">verified</Badge>}
-                  </h3>
+                  </h2>
                   <p className="board__meta">
                     {org.member_count} {org.member_count === 1 ? 'member' : 'members'}
                     {' · '}
@@ -187,7 +186,7 @@ function OrganizationDetailCard({ id, onChanged }: {
         </Button>
       </div>
 
-      <h4 className="admin__detail-title">Members</h4>
+      <h3 className="admin__detail-title">Members</h3>
       {detail.members.length === 0 && (
         <p className="board__meta">Nobody yet. Whoever is added first should be the owner.</p>
       )}

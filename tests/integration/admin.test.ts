@@ -82,6 +82,31 @@ describe('the overview', () => {
     expect(body.listings.pending_review).toBe(1)
     expect(body.organizations).toEqual({ total: 1, verified: 1 })
     expect(Array.isArray(body.recent)).toBe(true)
+    expect(body.waiting).toHaveLength(1)
+    expect(body.waiting[0]).toMatchObject({ has_duplicate: false })
+    expect(typeof body.waiting[0].title).toBe('string')
+    expect(body.last_scrape).toBeNull()
+  })
+
+  it('puts the oldest waiting listing first, and the latest scrape run beside it', async () => {
+    const { cookie } = await signIn('admin@example.np', 'admin')
+    await env.DB.batch([
+      env.DB.prepare(
+        `UPDATE listings SET status = 'pending_review', updated_at = '2020-01-01T00:00:00Z' WHERE id = 'lst_draft'`,
+      ),
+      env.DB.prepare(
+        `INSERT INTO scrape_runs (id, trigger, status, requested_at, finished_at, summary)
+         VALUES ('run_old', 'schedule', 'succeeded', '2026-09-01T00:00:00Z', '2026-09-01T01:00:00Z', NULL),
+                ('run_new', 'schedule', 'failed', '2026-09-02T00:00:00Z', '2026-09-02T01:00:00Z',
+                 '{"complete":true,"jobs":[{"name":"katajaam","success":false,"exit_code":1,"error":"boom"}]}')`,
+      ),
+    ])
+
+    const body = await (await get('/overview', cookie)).json() as any
+    expect(body.waiting).toHaveLength(2)
+    expect(body.waiting[0].id).toBe('lst_draft')
+    expect(body.last_scrape).toMatchObject({ id: 'run_new', status: 'failed' })
+    expect(body.last_scrape.summary.jobs[0]).toMatchObject({ name: 'katajaam', success: false })
   })
 })
 

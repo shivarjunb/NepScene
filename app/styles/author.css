@@ -526,13 +526,6 @@
   gap: var(--space-7);
 }
 
-.queue__header h1 { margin: 0; }
-
-.queue__signed-in {
-  margin: var(--space-2) 0 0;
-  color: var(--text-secondary);
-  font-size: var(--text-xs);
-}
 
 .queue__tabs {
   display: flex;

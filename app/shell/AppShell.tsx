@@ -30,6 +30,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const account = useAccount()
   useFocusTrap(menuRef, menuOpen, () => setMenuOpen(false))
+  const [accountOpen, setAccountOpen] = useState(false)
+  const accountRef = useRef<HTMLDivElement>(null)
+
+  // The account menu is a disclosure, not a dialog: it closes on Escape, on a
+  // click anywhere else, and when the page changes under it.
+  useEffect(() => { setAccountOpen(false) }, [path])
+  useEffect(() => {
+    if (!accountOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setAccountOpen(false)
+      accountRef.current?.querySelector<HTMLButtonElement>('.site-account__trigger')?.focus()
+    }
+    const onPointer = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [accountOpen])
 
   // A menu that stays open behind a widened viewport strands focus off-screen.
   useEffect(() => {
@@ -48,11 +71,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   // sign-out from a page that needed the account is sent home rather than
   // left on a page that will now refuse it.
   const signInHref = path === '/' || path === '/login' ? '/login' : `/login?next=${encodeURIComponent(path)}`
+  // Everything a signed-in person can reach, in one list the header's
+  // account menu and the phone menu both draw from. The console is for
+  // anyone who can moderate: an editor lands on the queue, an admin on the
+  // overview.
   const accountLinks = account === undefined ? null : account === null
     ? [{ href: signInHref, label: t('nav.signIn') }]
-    : [{ href: '/dashboard', label: t('nav.myListings') }]
+    : [
+        { href: '/dashboard', label: t('nav.myListings') },
+        { href: '/submit', label: t('nav.addListing') },
+        ...(account.permissions.includes('listing:moderate') || account.permissions.includes('user:manage')
+          ? [{ href: '/admin', label: t('nav.admin') }]
+          : []),
+      ]
   async function handleSignOut() {
     setMenuOpen(false)
+    setAccountOpen(false)
     await signOut()
     if (['/submit', '/dashboard', '/moderate', '/admin'].some((p) => path.startsWith(p))) navigate('/')
   }
@@ -97,7 +131,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="site-header__actions">
-            {accountLinks && (
+            {accountLinks && !account && (
               <nav className="site-account" aria-label={t('nav.account')}>
                 {accountLinks.map((item) => (
                   <Link key={item.href} className="site-nav__link site-account__link" href={item.href}
@@ -105,13 +139,45 @@ export function AppShell({ children }: { children: ReactNode }) {
                     {item.label}
                   </Link>
                 ))}
-                {account && (
-                  <Button variant="ghost" size="sm" className="site-account__link"
-                          onClick={() => void handleSignOut()}>
-                    {t('nav.signOut')}
-                  </Button>
-                )}
               </nav>
+            )}
+            {accountLinks && account && (
+              <div className="site-account" ref={accountRef}>
+                <button type="button" className="site-account__trigger"
+                        aria-expanded={accountOpen} aria-controls="account-menu"
+                        onClick={() => setAccountOpen((open) => !open)}>
+                  <span className="site-account__avatar" aria-hidden="true">{initials(account)}</span>
+                  <span className="site-account__name">{firstName(account)}</span>
+                  <span className="visually-hidden">{t('nav.accountMenu')}</span>
+                  <svg className="site-account__chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+                {accountOpen && (
+                  <nav id="account-menu" className="account-menu" aria-label={t('nav.account')}>
+                    <p className="account-menu__who">
+                      <span className="account-menu__name">{account.name ?? account.email}</span>
+                      {account.name && <span className="account-menu__email">{account.email}</span>}
+                    </p>
+                    <ul className="account-menu__list">
+                      {accountLinks.map((item) => (
+                        <li key={item.href}>
+                          <Link className="account-menu__item" href={item.href}
+                                aria-current={path === item.href ? 'page' : undefined}>
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                      <li className="account-menu__rule">
+                        <button type="button" className="account-menu__item account-menu__item--quiet"
+                                onClick={() => void handleSignOut()}>
+                          {t('nav.signOut')}
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                )}
+              </div>
             )}
             {/* Below 48rem these two go into the menu instead: with the
                 brand word they are 60px wider than a 320px screen, and the
@@ -219,4 +285,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       </footer>
     </>
   )
+}
+
+/** "RS" for Ram Sharma; the first letter of the email when there is no name. */
+function initials(account: { name: string | null; email: string }): string {
+  const words = (account.name ?? '').trim().split(/\s+/).filter(Boolean)
+  const letters = words.length > 0 ? words.slice(0, 2).map((word) => word[0]) : [account.email[0]]
+  return letters.join('').toUpperCase()
+}
+
+/** What the trigger says: a first name, or the part of the email before the @. */
+function firstName(account: { name: string | null; email: string }): string {
+  return account.name?.trim().split(/\s+/)[0] || account.email.split('@')[0] || account.email
 }
