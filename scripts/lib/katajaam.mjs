@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { parseFragment } from 'parse5'
 
 export const ORIGIN = 'https://katajaam.com'
 const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 24)
@@ -31,9 +32,20 @@ function destination(urls) {
   return valid.find((url) => !socialUrl(url)) ?? valid[0] ?? null
 }
 function pageDestination(html) {
-  const links = [...html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)]
-    .map((m) => ({ url: externalUrl(attrs(m[1]).href), label: clean(m[2].replace(/<[^>]+>/g, ' ')) }))
-    .filter(({ url }) => url)
+  const anchors = []
+  const skipped = new Set(['script', 'style', 'template', 'noscript'])
+  const labelText = (node) => skipped.has(node.tagName) ? ''
+    : node.nodeName === '#text' ? node.value : (node.childNodes ?? []).map(labelText).join(' ')
+  const walk = (node) => {
+    if (skipped.has(node.tagName)) return
+    if (node.tagName === 'a') anchors.push({
+      url: externalUrl(node.attrs.find((a) => a.name === 'href')?.value),
+      label: clean(labelText(node)),
+    })
+    for (const child of node.childNodes ?? []) walk(child)
+  }
+  walk(parseFragment(html))
+  const links = anchors.filter(({ url }) => url)
     // Map/calendar/share controls are utilities, not event destinations.
     .filter(({ url, label }) => !/calendar|maps|share/i.test(label)
       && !/calendar\.google\.com|maps\.google\.|google\.[^/]+\/maps|maps\.app\.goo\.gl|\/(?:sharer(?:\.php)?|intent|share)(?:[/?]|$)/i.test(url))

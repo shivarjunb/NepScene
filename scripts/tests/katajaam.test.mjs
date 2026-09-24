@@ -189,6 +189,8 @@ test('customer destination prefers external event links, then social posts and p
   assert.equal(map(parse(utilities + social)).external_url, 'https://instagram.com/p/event/')
   assert.equal(map(parse('<a href="https://facebook.com/organizer">Organizer</a>')).external_url, 'https://facebook.com/organizer')
   assert.equal(map(parse(utilities)).external_url, null)
+  const hidden = '<!-- <a href="https://hidden.example">Tickets</a> --><script>const link = \'<a href="https://script.example">Tickets</a>\';</script><template><a href="https://template.example">Tickets</a></template>'
+  assert.equal(map(parse(hidden + social)).external_url, 'https://instagram.com/p/event/')
   assert.equal(map(parse(utilities)).offer_url, null)
 })
 
