@@ -12,28 +12,43 @@ repositories get unlimited free minutes, so a minutes shortfall does not explain
 the block is account-level and lives at
 [github.com/settings/billing](https://github.com/settings/billing).
 
-Rather than wait on that, the pipeline runs on a macOS runner registered to this
-repository:
+Rather than wait on that, the pipeline runs on self-hosted runners registered to this
+repository. There are two, and every workflow asks for the Linux one:
+
+| | Linux | macOS (the laptop) |
+|---|---|---|
+| Labels | `self-hosted`, `Linux` | `self-hosted`, `macOS` |
+| Picked by | every workflow (`runs-on: [self-hosted, Linux]`) | nothing, except the manual `probe-selfhosted` |
+| Concurrency | **one job at a time** | one job at a time |
+
+Everything used to ask for plain `self-hosted`, so a job could land on either machine.
+On the laptop that meant jobs that stalled while it was asleep, and a preview deploy
+that finished every step and then hung for seventeen minutes in `actions/setup-node`'s
+post-run cache step, until it was cancelled and the check went red
+([#130](https://github.com/shivarjunb/NepScene/pull/130)). Pinning to Linux keeps
+the laptop out of the pipeline. The laptop's runner can stay registered as a spare:
+to use it again, drop `Linux` from a workflow's `runs-on`.
+
+The laptop's runner, for when it is needed:
 
 | | |
 |---|---|
 | Location | `~/actions-runner-nepscene` |
 | Runs as | a launchd service (`./svc.sh status`) |
-| Labels | `self-hosted` |
-| Concurrency | **one job at a time** |
 
 What follows from that, and is not optional to remember:
 
 - **CI is one job, not a matrix.** A four-way matrix runs serially here and pays for
   `npm ci` four times — thirteen minutes against the five-minute target. One job
   sharing one install comes in around three.
-- **The runner is a real machine that must be awake.** A queued run that never starts
-  usually means the laptop is asleep, not that Actions is broken again.
+- **The runner is a real machine that must be up.** A queued run that never starts
+  usually means the Linux runner is offline, not that Actions is broken again. Every
+  workflow waits for it, so while it is down nothing runs, deploys included.
 - **The repository is public, so workflow approval is not optional.** Actions is set
   to require approval for all outside contributors. Without it, anyone's fork PR would
   execute their code on this machine.
 
-If hosted runners are ever restored, changing `runs-on: self-hosted` back to
+If hosted runners are ever restored, changing `runs-on: [self-hosted, Linux]` to
 `ubuntu-latest` is the whole migration — and the matrix can come back with it.
 
 ### When runs sit in `queued` and nothing starts
