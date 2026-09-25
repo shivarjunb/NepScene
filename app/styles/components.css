@@ -548,6 +548,9 @@ body.map-is-fullscreen .hero__map {
 .rail__track::-webkit-scrollbar-thumb { border-radius: var(--radius-full); background: var(--border); }
 .rail__track::-webkit-scrollbar-track { background: transparent; }
 
+/* Show more is a phone control: wider screens scroll the whole row sideways. */
+.rail__toggle { position: relative; display: none; justify-content: center; }
+
 /* The li stretches to the tallest card in the rail and the card fills it, so a
    card whose footer wraps onto two lines does not leave its neighbours short
    and the row's bottom edge stays straight. */
@@ -781,17 +784,49 @@ body.map-is-fullscreen .hero__map {
 
 @media (max-width: 40rem) {        /* 640px */
   .grid { grid-template-columns: 1fr; gap: var(--space-5); }
-  .rail__track { gap: var(--space-5); }
+  .rail { gap: var(--space-5); }
   .rail__head { align-items: flex-start; }
+  .rail__title { font-size: var(--text-xl); }
+  .rail__rule { font-size: var(--text-xs); }
 
-  /* A phone sees more than one listing at a time. A rail card is narrow
-     enough that the next one shows at the edge, which is also what tells the
-     reader the row scrolls; a grid card becomes a row, poster beside the
-     text, so a screen holds four or five of them instead of one. */
+  /* A phone sees more than one listing at a time. The rows stop scrolling
+     sideways and become a two-by-two grid, with the rest one tap away behind
+     Show more — not dropped, because Featured, This weekend and Free entry
+     have no See all to reach them by. A results card becomes a row, poster
+     beside the text, so a screen holds four or five of them instead of one. */
+  .rail__track {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  .rail--collapsed .rail__track > li:nth-child(n + 5) { display: none; }
+  .rail__toggle { display: flex; }
+
   .listing-card { border-radius: var(--radius-2xl); }
-  .listing-card--row { width: 15rem; flex-basis: 15rem; }   /* 240px */
   .listing-card__body { gap: var(--space-2); padding: var(--space-5) var(--space-6) var(--space-2); }
   .listing-card__foot { padding: 0 var(--space-6) var(--space-5); }
+
+  /* Half a phone wide, so everything inside the card steps down a size. The
+     poster goes square: at 16:10 a half-width poster is a letterbox slot. */
+  .listing-card--row { width: auto; flex-basis: auto; border-radius: var(--radius-xl); }
+  .listing-card--row .listing-card__poster { aspect-ratio: 1 / 1; }
+  .listing-card--row .listing-card__body { gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-1); }
+  .listing-card--row .listing-card__foot { flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
+  .listing-card--row .listing-card__category { font-size: var(--text-3xs); }
+  .listing-card--row .listing-card__title { font-size: var(--text-sm); }
+  .listing-card--row .listing-card__when {
+    font-size: var(--text-2xs);
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .listing-card--row .listing-card__price { font-size: var(--text-xs); }
+  .listing-card--row .listing-card__date-day { font-size: var(--text-2xl); }
 
   /* The poster is taken out of the flow and pinned down the card's left edge,
      so it runs the full height — past the price, which sits outside the link. */
@@ -803,7 +838,7 @@ body.map-is-fullscreen .hero__map {
     aspect-ratio: auto;
   }
   .listing-card--grid .listing-card__title { min-height: 0; }
-  .listing-card--grid .listing-card__badge {
+  .listing-card__badge {
     top: var(--space-2);
     left: var(--space-2);
     padding: var(--space-1) var(--space-3);
