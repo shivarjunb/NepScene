@@ -328,26 +328,29 @@
    `.modal` gives it the scrim, the scroll and the shape; this is what differs
    from a form in a dialog: tighter padding, since the content has its own
    rhythm, and a close bar that stays put while the rest scrolls under it. */
-.listing-dialog { padding: var(--space-7); }
+/* The sheet itself has no padding: the bar is its first child and sticks at
+   its very top edge, so nothing can scroll into a gap above it. (Sticky
+   positioning measures from the scroller's padding edge, so a padded sheet
+   with a bar pulled up by negative margins left a strip the content showed
+   through, over and above the Back button.) The content carries the padding. */
+.listing-dialog { padding: 0; }
 
 .listing-dialog__bar {
   position: sticky;
   top: 0;
   z-index: var(--z-raised);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
-  /* Bleeds into the sheet's padding so the bar spans its full width and the
-     content scrolling underneath it disappears at the edge, not just under
-     the buttons. */
-  margin: calc(-1 * var(--space-7)) calc(-1 * var(--space-7)) var(--space-4);
   padding: var(--space-4) var(--space-7);
   background: var(--surface-overlay);
   border-bottom: 1px solid var(--border-hairline);
 }
 
-.listing-dialog__actions { display: flex; gap: var(--space-2); }
-.listing-dialog__bar .listing-dialog__back { display: none; }
+.listing-dialog__content { padding: var(--space-4) var(--space-7) var(--space-7); }
+
+.listing-dialog__actions { display: flex; gap: var(--space-2); margin-left: auto; }
 
 /* A phone has no room for a sheet with a margin round it: the dialog is the
    screen, and the scrim is what is left when there is none. */
@@ -362,9 +365,9 @@
   }
   /* The screen is the page here, so its bar is a page's: Back on the left,
      nothing else (see ListingDialog). */
-  .listing-dialog__bar { justify-content: flex-start; }
-  .listing-dialog__bar .listing-dialog__back { display: inline-flex; }
   .listing-dialog__actions { display: none; }
+  .listing-dialog__bar { padding-inline: var(--space-5); }
+  .listing-dialog__content { padding-inline: var(--space-5); }
 }
 
 .lineup, .tag-list, .share {
