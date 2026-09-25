@@ -26,7 +26,7 @@ jobs:
   # Split out, an unverified SHA is rejected before it costs anyone a click.
   gate:
     name: Confirm this SHA succeeded on staging
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     steps:
       - name: Confirm this SHA succeeded on staging
         uses: actions/github-script@v9
@@ -48,7 +48,7 @@ jobs:
   promote:
     name: Promote to production
     needs: gate
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     environment:
       name: production          # Requires a reviewer approval, configured in repo settings
       url: https://nepscene.bhattarai-shiva.workers.dev

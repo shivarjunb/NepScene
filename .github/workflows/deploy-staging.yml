@@ -16,7 +16,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy and smoke test
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     environment:
       name: staging
       url: https://nepscene-staging.bhattarai-shiva.workers.dev

@@ -20,7 +20,7 @@ jobs:
     # nothing to look at, and on one runner each preview deploy is ~4 minutes
     # other work waits behind.
     if: ${{ !github.event.pull_request.head.repo.fork && github.actor != 'dependabot[bot]' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     environment:
       name: preview
     steps:
