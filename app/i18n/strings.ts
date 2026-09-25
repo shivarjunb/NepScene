@@ -332,6 +332,7 @@ export const STRINGS = {
   'common.retry': { en: 'Try again', ne: 'फेरि प्रयास गर्नुहोस्' },
   'common.backHome': { en: 'Back to the homepage', ne: 'गृहपृष्ठमा फर्कनुहोस्' },
   'common.showMore': { en: 'Show more', ne: 'थप देखाउनुहोस्' },
+  'common.showFewer': { en: 'Show fewer', ne: 'कम देखाउनुहोस्' },
 } as const
 
 export type StringKey = keyof typeof STRINGS

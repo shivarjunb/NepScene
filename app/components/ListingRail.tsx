@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { Row } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from './ListingCard'
+import { Button } from './primitives'
 import { useT } from '../i18n'
 import { Link } from '../router'
 
@@ -11,13 +13,23 @@ import { Link } from '../router'
  * The rail scrolls horizontally with the keyboard as well as the mouse — it is
  * a focusable region, so a keyboard user can reach the cards further along
  * without tabbing through every one of them.
+ *
+ * On a phone the row is a two-by-two grid instead, and the rest of it sits
+ * behind Show more. The CSS does the hiding and shows the button only at that
+ * width, so on a wider screen the collapsed state changes nothing.
  */
+const PHONE_PREVIEW = 4
+
 export function ListingRail({ row }: { row: Row }) {
   const t = useT()
+  const [expanded, setExpanded] = useState(false)
   const empty = row.listings.length === 0
+  const collapsible = row.listings.length > PHONE_PREVIEW
+  const trackId = `rail-${row.id}-track`
 
   return (
-    <section className="rail" aria-labelledby={`rail-${row.id}`}>
+    <section className={`rail${collapsible && !expanded ? ' rail--collapsed' : ''}`}
+             aria-labelledby={`rail-${row.id}`}>
       <div className="rail__head">
         <div>
           <h2 className="rail__title" id={`rail-${row.id}`}>{row.title}</h2>
@@ -36,7 +48,7 @@ export function ListingRail({ row }: { row: Row }) {
         // that the rule ran at all.
         <p className="rail__empty">{row.empty}</p>
       ) : (
-        <ul className="rail__track" tabIndex={0} role="list"
+        <ul className="rail__track" id={trackId} tabIndex={0} role="list"
             aria-label={`${row.title}, scrollable`}>
           {row.listings.map((listing) => (
             <li key={listing.id}>
@@ -44,6 +56,16 @@ export function ListingRail({ row }: { row: Row }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {collapsible && (
+        <div className="rail__toggle">
+          <Button variant="secondary" size="sm" aria-expanded={expanded} aria-controls={trackId}
+                  onClick={() => setExpanded((open) => !open)}>
+            {t(expanded ? 'common.showFewer' : 'common.showMore')}
+            <span className="visually-hidden"> {row.title}</span>
+          </Button>
+        </div>
       )}
     </section>
   )
