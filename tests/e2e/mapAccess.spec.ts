@@ -64,7 +64,8 @@ test('the list obeys the same distance filter as the map', async ({ page }) => {
 
   // Art Week is 4.4km from Purple Haze, so 2km drops it on the list exactly as
   // it drops it from the map.
-  await page.getByRole('button', { name: '2 km' }).click()
+  await page.getByRole('button', { name: /^Distance, / }).click()
+  await page.getByRole('button', { name: '2 km', exact: true }).click()
   await expect(page.locator('.map-list__row')).toHaveCount(2)
   await expect(page.locator('.map-list__row').filter({ hasText: 'Art Week' })).toHaveCount(0)
   await expect(page.getByText(/2 listings within 2 km/)).toBeVisible()
@@ -113,10 +114,13 @@ test('every map control is reachable and operable by keyboard', async ({ page })
   await openMap(page)
   await page.getByRole('button', { name: 'Near me' }).click()
   await expect(page.getByRole('group', { name: /distance/i })).toBeVisible()
+  // The distances are behind their button; opening it is a keyboard action too.
+  await page.getByRole('button', { name: /^Distance, / }).focus()
+  await page.keyboard.press('Enter')
 
   // 'Near me' has become 'Centred on you' — the control reports its own state,
   // which is why it is named by what it says now rather than what it said.
-  for (const name of ['List', 'Centred on you', 'Full screen', '2 km', '100 km']) {
+  for (const name of ['List', 'Centred on you', 'Full screen', 'Distance, Any', '2 km', '100 km']) {
     const control = page.getByRole('button', { name, exact: true })
     await control.focus()
     await expect(control).toBeFocused()
@@ -133,10 +137,12 @@ test('focus is visible on every map control, in both themes', async ({ page }) =
   await page.getByRole('button', { name: 'Near me' }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('group', { name: /distance/i })).toBeVisible()
+  await page.getByRole('button', { name: /^Distance, / }).focus()
+  await page.keyboard.press('Enter')
 
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme })
-    for (const name of ['List', 'Full screen', '2 km', '100 km']) {
+    for (const name of ['List', 'Full screen', 'Distance, Any', '2 km', '100 km']) {
       const control = page.getByRole('button', { name, exact: true })
       await control.focus()
       const ring = await control.evaluate((el) => {

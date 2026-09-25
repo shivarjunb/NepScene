@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { loadGoogleMaps, MapsUnavailableError } from '../lib/googleMaps'
-import { Alert, Button, Spinner } from '../components/primitives'
+import { Alert, Spinner } from '../components/primitives'
 import { useT } from '../i18n'
 import { parsePopupConfig } from '../../api/author/popupConfig'
 import { ListingPopup } from './ListingPopup'
@@ -126,6 +126,9 @@ export function NepalMap({ onOpen, location }: Props) {
    * equivalent path, and it is what renders when the Maps API does not.
    */
   const [view, setView] = useState<'map' | 'list'>('map')
+  /** Whether the distance fan is spread out around its button. */
+  const [fanOpen, setFanOpen] = useState(false)
+  const fanToggleRef = useRef<HTMLButtonElement>(null)
   /**
    * What is open over the map: one listing's popup, or a venue's stack. Never
    * both — they occupy the same place, and a stack behind a popup is a card
@@ -133,14 +136,17 @@ export function NepalMap({ onOpen, location }: Props) {
    *
    * Not anchored to the pin. A card drawn above a pin was clipped by the map's
    * edge whenever the pin sat in its top half — and in the hero, which is
-   * short, that was most pins. The card opens in the middle of the map
-   * instead, where it always fits.
+   * short, that was most pins. The card opens across the top of the map
+   * instead, where it always fits, and the map moves the pin into the space
+   * below it (`focusAt`).
    */
   const [selected, setSelected] = useState<
     | { kind: 'listing'; pin: MapPin }
     | { kind: 'stack'; group: VenueGroup; venueName: string | null }
     | null
   >(null)
+  /** Where the open card came from, so the map can bring it into view. */
+  const [focusAt, setFocusAt] = useState<{ lat: number; lng: number } | null>(null)
 
   /**
    * What the query is scoped to.
@@ -317,8 +323,12 @@ export function NepalMap({ onOpen, location }: Props) {
         // And it is also the gesture that means "stop moving the map for me".
         movedRef.current = true
         setSelected(null)
+        setFanOpen(false)
       })
-      map.addListener('click', () => setSelected(null))
+      map.addListener('click', () => {
+        setSelected(null)
+        setFanOpen(false)
+      })
 
       setReady(true)
       setUnavailable(null)
@@ -347,16 +357,20 @@ export function NepalMap({ onOpen, location }: Props) {
   }, [fullscreen])
 
   useEffect(() => {
-    if (!fullscreen && !selected) return
+    if (!fullscreen && !selected && !fanOpen) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      // Innermost first: Escape closes the popup, and only then the fullscreen.
+      // Innermost first: Escape closes the popup or the fan, and only then
+      // the fullscreen.
       if (selected) setSelected(null)
-      else setFullscreen(false)
+      else if (fanOpen) {
+        setFanOpen(false)
+        fanToggleRef.current?.focus()
+      } else setFullscreen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [fullscreen, selected])
+  }, [fullscreen, selected, fanOpen])
 
   /**
    * Follow the resolved centre.
@@ -415,6 +429,37 @@ export function NepalMap({ onOpen, location }: Props) {
   const closeSelected = useCallback(() => setSelected(null), [])
   useFocusTrap(popupRef, selected !== null, closeSelected)
 
+  /**
+   * Bring the tapped place into the space the card leaves open.
+   *
+   * On a phone the card sits across the top of the map, and on a wider screen
+   * down its right-hand side — either way over part of the map, so a pin there
+   * would be underneath the card about it. Centre on the place, then shift it
+   * to the middle of what the card leaves, measured after the card has drawn.
+   */
+  const isOpen = selected !== null
+  useEffect(() => {
+    const map = mapRef.current
+    if (!isOpen || !focusAt || !map || view !== 'map') return
+    const frame = requestAnimationFrame(() => {
+      const box = containerRef.current?.getBoundingClientRect()
+      const card = popupRef.current?.getBoundingClientRect()
+      if (!box || !card || box.height === 0) return
+      // The pin is drawn above its point, so its point goes half a pin lower
+      // than the middle of the space.
+      const beside = card.width < box.width * 0.6
+      const x = beside ? (card.left - box.left) / 2 : box.width / 2
+      const top = beside ? 0 : card.bottom - box.top
+      const y = top + (box.height - top) / 2 + PIN_SIZE / 2
+      // A move the viewer asked for, by tapping: the follow effect must not
+      // pull the map back to their city afterwards.
+      movedRef.current = true
+      map.panTo(focusAt)
+      map.panBy(box.width / 2 - x, box.height / 2 - y)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [focusAt, isOpen, view])
+
   // ── Draw the pins ──────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current
@@ -465,6 +510,8 @@ export function NepalMap({ onOpen, location }: Props) {
           if (bounds.north - bounds.south < INSEPARABLE_SPAN
             && bounds.east - bounds.west < INSEPARABLE_SPAN) {
             const pins = cluster.groups.flatMap((group) => group.pins)
+            setFanOpen(false)
+            setFocusAt({ lat: cluster.lat, lng: cluster.lng })
             setSelected({
               kind: 'stack',
               group: { ...cluster.groups[0]!, key: cluster.key, pins, count: pins.length },
@@ -509,6 +556,8 @@ export function NepalMap({ onOpen, location }: Props) {
         // One listing opens its card directly. Making a single listing go
         // through a list of one would be a step that never told anybody
         // anything.
+        setFanOpen(false)
+        setFocusAt({ lat: group.lat, lng: group.lng })
         setSelected(group.count === 1
           ? { kind: 'listing', pin: group.primary }
           : { kind: 'stack', group, venueName: group.primary.popup.venue })
@@ -598,114 +647,155 @@ export function NepalMap({ onOpen, location }: Props) {
         </div>
       )}
 
-      <div className="nepal-map__controls">
+      {/* The map's own tools, stacked in the bottom-left corner as icons. They
+          used to be labelled pills in the top-right, and on a phone they
+          wrapped into a second row and met the distance chips coming the other
+          way, until the top third of the map could not be touched. Each keeps
+          its words as its accessible name and its tooltip. */}
+      <div className="nepal-map__tools">
         {/* The list is a peer of the map, not a fallback hidden behind a
             failure — somebody who finds pins hard to work with should be able
             to choose the list on a working map, and the criterion is that
             both offer the same filters and the same results. Hidden when the
             Maps API failed, because then there is nothing to switch back to. */}
         {!unavailable && (
-          <Button
-            type="button"
-            variant="secondary"
+          <ToolButton
+            label={view === 'list' ? t('map.showMap') : t('map.showList')}
             onClick={() => setView((current) => (current === 'map' ? 'list' : 'map'))}
-            aria-pressed={view === 'list'}
-          >
-            {view === 'list' ? t('map.showMap') : t('map.showList')}
-          </Button>
+            pressed={view === 'list'}
+            icon={view === 'list' ? 'map' : 'list'}
+          />
         )}
         {location && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={location.locate}
-            disabled={location.stage === 'locating'}
-            aria-pressed={location.precise}
-          >
-            {location.stage === 'locating' ? t('map.locating')
+          <ToolButton
+            label={location.stage === 'locating' ? t('map.locating')
               : location.precise ? t('map.centred')
               : t('map.nearMe')}
-          </Button>
+            onClick={location.locate}
+            disabled={location.stage === 'locating'}
+            pressed={location.precise}
+            icon="locate"
+          />
         )}
-        <Button
-          type="button"
-          variant="secondary"
+        <ToolButton
+          label={fullscreen ? 'Exit full screen' : 'Full screen'}
           onClick={() => setFullscreen((on) => !on)}
-          aria-pressed={fullscreen}
-        >
-          {fullscreen ? 'Exit full screen' : 'Full screen'}
-        </Button>
+          pressed={fullscreen}
+          icon={fullscreen ? 'shrink' : 'expand'}
+        />
       </div>
 
-      {/* The distance chips (#38). They appear only once there is a position
-          precise enough for "within 2km" to be true rather than decorative —
-          a geo-IP centroid is accurate to a district, and filtering a 2km
-          circle around one would quietly hide listings that are in fact
-          nearby. */}
+      {/* The distance filter (#38): one button in the bottom-right corner that
+          fans the five distances out in a quarter circle around itself, and
+          folds them away again once one is chosen. It appears only once there
+          is a position precise enough for "within 2km" to be true rather than
+          decorative — a geo-IP centroid is accurate to a district, and
+          filtering a 2km circle around one would quietly hide listings that
+          are in fact nearby. */}
       {location?.precise && (
         <div className="nepal-map__distances" role="group" aria-label={t('map.distanceGroup')}>
-          {DISTANCE_CHIPS_KM.map((km) => (
+          <button
+            type="button"
+            ref={fanToggleRef}
+            className="nepal-map__fan-toggle"
+            onClick={() => {
+              // One thing open over the map at a time: the fan and a popup
+              // want the same corner of the reader's attention.
+              setSelected(null)
+              setFanOpen((open) => !open)
+            }}
+            aria-expanded={fanOpen}
+            aria-label={`${t('map.distanceToggle')}, ${radiusKm === null
+              ? t('map.anyDistance')
+              : t('map.km', { km: String(radiusKm) })}`}
+          >
+            {fanOpen ? <Icon name="close" /> : (
+              <>
+                <Icon name="radius" size={18} />
+                <span className="nepal-map__fan-label" aria-hidden="true">
+                  {radiusKm === null ? t('map.anyDistance') : t('map.km', { km: String(radiusKm) })}
+                </span>
+              </>
+            )}
+          </button>
+          {/* After the toggle, so Tab goes from it into the distances. */}
+          {fanOpen && DISTANCE_CHIPS_KM.map((km, index) => (
             <button
               key={km}
               type="button"
               className="nepal-map__distance"
+              // The chip's place on the arc. A position, not a colour, so it
+              // is set here rather than given a token.
+              style={{ '--fan-angle': `${180 + index * (90 / (DISTANCE_CHIPS_KM.length - 1))}deg` } as React.CSSProperties}
               // A second press on the active chip clears it, which is how
               // every chip row in the app already behaves.
-              onClick={() => setRadiusKm((current) => (current === km ? null : km))}
+              onClick={() => {
+                setRadiusKm((current) => (current === km ? null : km))
+                setFanOpen(false)
+                // The chip is about to go; focus goes back to what opened it
+                // rather than falling to the top of the page.
+                fanToggleRef.current?.focus()
+              }}
               aria-pressed={radiusKm === km}
+              aria-label={t('map.km', { km: String(km) })}
             >
-              {t('map.km', { km: String(km) })}
+              <span className="nepal-map__distance-value">{km}</span>
+              <span className="nepal-map__distance-unit">{t('map.km', { km: '' }).trim()}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* The permission-denied path. Not an error — the map behind it is
-          working and showing a whole city. What it says is what actually
-          changed: distance filtering is unavailable, and here is how to get
-          it back. */}
-      {location?.denied && (
-        <p className="nepal-map__denied" role="status">
-          {t('map.denied', { city: location.city })}
-        </p>
-      )}
+      {/* The top-left corner says what the map is showing, and — when the
+          viewer said no to their location — what that changed. */}
+      <div className="nepal-map__top">
+        {/* The permission-denied path. Not an error — the map behind it is
+            working and showing a whole city. What it says is what actually
+            changed: distance filtering is unavailable, and here is how to get
+            it back. */}
+        {location?.denied && (
+          <p className="nepal-map__denied" role="status">
+            {t('map.denied', { city: location.city })}
+          </p>
+        )}
 
-      {/* Status, not decoration: a map that is quietly showing a subset is
-          worse than one that says it is. */}
-      <div className="nepal-map__status" role="status" aria-live="polite">
-        {wide && <span className="nepal-map__hint">{t('map.zoomIn')}</span>}
-        {loading && !wide && (
-          <span className="nepal-map__hint">
-            {/* Progressive rendering (#39) means the map is usable before the
-                last page lands, and a status saying only "loading" would hide
-                that. Once anything is drawn, the count leads. */}
-            {inView > 0 ? t('map.loadingSoFar', { count: countLabel }) : t('map.loading')}
-          </span>
-        )}
-        {error && <span className="nepal-map__hint nepal-map__hint--error">{error}</span>}
-        {!loading && !wide && !error && (
-          <span className="nepal-map__hint">
-            {inView === 0
-              // A filter that hides everything must say it was the filter. An
-              // empty map that blames the area is how somebody concludes there
-              // is nothing on and leaves.
-              ? radiusKm !== null
-                ? t('map.nothingWithin', { km: radiusKm })
-                : t('map.nothingHere')
-              // A clustered view is showing areas, not places, and a viewer
-              // who does not know that reads the bubbles as venues.
-              : plan.kind === 'clusters'
-                ? t('map.clustered', { count: countLabel })
-                : radiusKm !== null
-                  ? t('map.within', { count: countLabel, km: radiusKm })
-                  : t('map.inView', { count: countLabel })}
-          </span>
-        )}
+        {/* Status, not decoration: a map that is quietly showing a subset is
+            worse than one that says it is. */}
+        <div className="nepal-map__status" role="status" aria-live="polite">
+          {wide && <span className="nepal-map__hint">{t('map.zoomIn')}</span>}
+          {loading && !wide && (
+            <span className="nepal-map__hint">
+              {/* Progressive rendering (#39) means the map is usable before the
+                  last page lands, and a status saying only "loading" would hide
+                  that. Once anything is drawn, the count leads. */}
+              {inView > 0 ? t('map.loadingSoFar', { count: countLabel }) : t('map.loading')}
+            </span>
+          )}
+          {error && <span className="nepal-map__hint nepal-map__hint--error">{error}</span>}
+          {!loading && !wide && !error && (
+            <span className="nepal-map__hint">
+              {inView === 0
+                // A filter that hides everything must say it was the filter. An
+                // empty map that blames the area is how somebody concludes there
+                // is nothing on and leaves.
+                ? radiusKm !== null
+                  ? t('map.nothingWithin', { km: radiusKm })
+                  : t('map.nothingHere')
+                // A clustered view is showing areas, not places, and a viewer
+                // who does not know that reads the bubbles as venues.
+                : plan.kind === 'clusters'
+                  ? t('map.clustered', { count: countLabel })
+                  : radiusKm !== null
+                    ? t('map.within', { count: countLabel, km: radiusKm })
+                    : t('map.inView', { count: countLabel })}
+            </span>
+          )}
+        </div>
       </div>
 
       {selected && (
-        // Dims the pins behind the card so it reads as the thing in front, and
-        // gives a tap outside it somewhere to land that means "close".
+        // Gives a tap outside the card somewhere to land that means "close",
+        // rather than whatever control was underneath it.
         <div className="nepal-map__scrim" aria-hidden="true" onClick={closeSelected} />
       )}
 
@@ -752,5 +842,64 @@ export function NepalMap({ onOpen, location }: Props) {
         </div>
       )}
     </div>
+  )
+}
+
+type IconName = 'list' | 'map' | 'locate' | 'expand' | 'shrink' | 'radius' | 'close'
+
+/** Stroke paths on a 24px grid, drawn in the text colour of the control. */
+const ICON_PATHS: Record<IconName, string> = {
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  map: 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14',
+  locate: 'M12 2v3M12 19v3M2 12h3M19 12h3M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z',
+  expand: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
+  radius: 'M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zM12 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4z',
+  close: 'M6 6l12 12M18 6 6 18',
+}
+
+function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d={ICON_PATHS[name]} />
+    </svg>
+  )
+}
+
+/**
+ * A round icon control on the map. The words it would have shown are its
+ * accessible name and its tooltip, so nothing a label said is lost to a
+ * screen reader or to a pointer that hovers.
+ */
+function ToolButton({ label, icon, onClick, pressed, disabled }: {
+  label: string
+  icon: IconName
+  onClick: () => void
+  pressed?: boolean
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      className="nepal-map__tool"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      disabled={disabled}
+    >
+      <Icon name={icon} />
+    </button>
   )
 }
