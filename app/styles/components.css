@@ -615,25 +615,39 @@ body.map-is-fullscreen .hero__map {
      change nothing about the page's layout. 16:10 is the marketplace's frame. */
   position: relative;
   aspect-ratio: 16 / 10;
+  /* The date pill is raised within the poster, not the page: without this it
+     paints over a sticky bar the card scrolls under, such as the popup's Back. */
+  isolation: isolate;
   display: grid;
   place-items: center;
   overflow: hidden;
   background: var(--poster-ground);
 }
 
-/* `<picture>` is a wrapper with no box of its own; the img is what the grid
-   places, so the picture must not become a grid item in between. */
-.listing-card__poster picture { display: contents; }
-.listing-card__poster img {
+/* Each layer is pinned to the frame rather than placed by the grid: a
+   percentage height on a grid item in an auto row does not resolve, and the
+   image then falls back to its own aspect ratio and overflows the frame. */
+.listing-card__cover { position: absolute; inset: 0; display: block; }
+.listing-card__cover picture { display: contents; }
+.listing-card__cover img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transition: transform var(--duration-slow) var(--ease-out);
+}
+
+/* The blurred copy fills the letterbox bands in the poster's own colours. */
+.listing-card__cover--fill { overflow: hidden; }
+.listing-card__cover--fill img {
+  object-fit: cover;
+  filter: blur(1.25rem) brightness(0.7);
+  transform: scale(1.15);
 }
 
 /* The picture grows a little inside its frame while the card lifts. The frame
    does not move, so the two together read as depth rather than as a jump. */
-.listing-card:hover .listing-card__poster img { transform: scale(1.035); }
+.listing-card:hover .listing-card__cover:not(.listing-card__cover--fill) img { transform: scale(1.035); }
 
 /* The date, floated on the poster. It appears only over a photograph — when
    there is no cover the poster *is* the date, and two of them is one too many. */
