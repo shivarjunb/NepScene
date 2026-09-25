@@ -7,6 +7,19 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
+- **The map's controls are off the map.** On a phone the distance chips and
+  the List / Near me / Full screen pills wrapped over each other until the top
+  of the map could not be touched. Now:
+  - **List, Near me and Full screen are round icon buttons** stacked in the
+    bottom-left corner. Each keeps its words as its accessible name and its
+    tooltip.
+  - **Distance is one button in the bottom-right corner** that fans 2, 5, 10,
+    20 and 100 km out in a quarter circle and folds them away once one is
+    chosen. Folded, it shows the distance that is on.
+  - **A tapped pin's card opens across the top of the map** on a phone, and
+    down its right-hand side on a wider screen, and the map moves the place
+    into the space the card leaves open. Only one of the card and the fan is
+    open at a time.
 - **One admin console, reached from the header.** The console, the
   moderation queue and "Your listings" used to link to each other from
   buttons in each page's header, so the only way into admin was through your

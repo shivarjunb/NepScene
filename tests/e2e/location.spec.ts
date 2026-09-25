@@ -118,19 +118,30 @@ test('a distance chip filters the listings and says so', async ({ page }) => {
 
   const chips = page.getByRole('group', { name: /distance/i })
   await expect(chips).toBeVisible()
+  // The distances are folded into one button until it is pressed, and fold
+  // away again once one is chosen.
+  const toggle = chips.getByRole('button', { name: /^Distance, / })
+  const choose = async (name: string) => {
+    await toggle.click()
+    await chips.getByRole('button', { name, exact: true }).click()
+    await expect(chips.getByRole('button', { name, exact: true })).toHaveCount(0)
+  }
 
   // Art Week is 4.4km from Purple Haze, so a 2km circle around Purple Haze
   // excludes it and keeps the two listings at Purple Haze itself.
-  await chips.getByRole('button', { name: '2 km' }).click()
+  await choose('2 km')
   await expect(page.getByText(/2 listings within 2 km/)).toBeVisible()
+  // Folded, the button says which distance is on.
+  await expect(toggle).toHaveAccessibleName('Distance, 2 km')
 
   // 5km reaches it. The chips are nested, so widening never loses a listing.
-  await chips.getByRole('button', { name: '5 km' }).click()
+  await choose('5 km')
   await expect(page.getByText(/3 listings within 5 km/)).toBeVisible()
 
   // Pressing the active chip again clears it, as every chip row in the app does.
-  await chips.getByRole('button', { name: '5 km' }).click()
+  await choose('5 km')
   await expect(page.getByText(/3 listings in view/)).toBeVisible()
+  await expect(toggle).toHaveAccessibleName('Distance, Any')
 })
 
 test('the map draws before location resolution has finished', async ({ page }) => {

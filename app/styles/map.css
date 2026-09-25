@@ -57,68 +57,168 @@
   z-index: var(--z-raised);
 }
 
-.nepal-map__controls {
+/* ── The map's tools ─────────────────────────────────────────────────────────
+
+   Round icon buttons stacked in the bottom-left corner. As labelled pills in
+   the top-right they wrapped on a phone and met the distance chips coming the
+   other way, until the top of the map could not be touched at all. */
+
+.nepal-map__tools {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  z-index: var(--z-raised);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-/* ── Distance chips (#38) ────────────────────────────────────────────────────
-
-   Top-left, opposite the controls: a filter is a statement about what is on
-   the map, and it belongs with the map's other statement — the status line —
-   rather than in the pile of buttons that change the map's mode. */
-
-.nepal-map__distances {
-  position: absolute;
-  top: var(--space-3);
   left: var(--space-3);
+  bottom: var(--space-3);
   z-index: var(--z-raised);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
-  /* Never under the controls, however narrow the map gets. */
-  max-width: calc(100% - 12rem);
 }
 
-.nepal-map__distance {
-  padding: var(--space-1) var(--space-4);
+.nepal-map__tool {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   background: var(--surface-overlay);
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
+  color: var(--text-primary);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
 }
 
-.nepal-map__distance:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
+.nepal-map__tool:hover { border-color: var(--border-strong); }
+.nepal-map__tool[aria-pressed='true'] { color: var(--accent); }
+.nepal-map__tool:disabled { cursor: progress; opacity: 0.6; }
+
+/* ── Distance fan (#38) ──────────────────────────────────────────────────────
+
+   One button in the bottom-right corner, opposite the tools, which spreads the
+   distances out in a quarter circle around itself. Folded, the whole filter
+   costs the map one thumb-sized circle. */
+
+.nepal-map__distances {
+  --fan-toggle: 3.5rem;
+  --fan-chip: 2.875rem;
+  --fan-radius: 8.75rem;
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: var(--z-raised);
+  width: var(--fan-toggle);
+  height: var(--fan-toggle);
 }
 
-.nepal-map__distance[aria-pressed='true'] {
-  border-color: var(--accent-border);
+.nepal-map__fan-toggle {
+  position: relative;
+  /* Above the chips, which start underneath it and fly out. */
+  z-index: var(--z-raised);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
   background: var(--accent);
   color: var(--text-on-accent);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.nepal-map__fan-toggle:hover { background: var(--accent-hover); }
+
+.nepal-map__fan-label {
+  font-size: var(--text-3xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Every chip starts at the toggle's centre and is carried out along its own
+   angle: turned, pushed out by the radius, and turned back so its label
+   stays upright. */
+.nepal-map__distance {
+  position: absolute;
+  top: calc((var(--fan-toggle) - var(--fan-chip)) / 2);
+  left: calc((var(--fan-toggle) - var(--fan-chip)) / 2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: var(--fan-chip);
+  height: var(--fan-chip);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font: inherit;
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transform: rotate(var(--fan-angle)) translateX(var(--fan-radius)) rotate(calc(-1 * var(--fan-angle)));
+}
+
+.nepal-map__distance-value {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.nepal-map__distance-unit {
+  font-size: var(--text-3xs);
+}
+
+.nepal-map__distance:hover { border-color: var(--border-strong); }
+
+.nepal-map__distance[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nepal-map__distance {
+    animation: nepal-map-fan-out var(--duration-slow) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .nepal-map__distance:nth-of-type(2) { animation-delay: 30ms; }
+  .nepal-map__distance:nth-of-type(3) { animation-delay: 60ms; }
+  .nepal-map__distance:nth-of-type(4) { animation-delay: 90ms; }
+  .nepal-map__distance:nth-of-type(5) { animation-delay: 120ms; }
+  .nepal-map__distance:nth-of-type(6) { animation-delay: 150ms; }
+}
+
+/* From the toggle's centre; `to` is the chip's own place on the arc. */
+@keyframes nepal-map-fan-out {
+  from { opacity: 0; transform: scale(0.4); }
+}
+
+/* ── What the map is showing ─────────────────────────────────────────────────
+
+   Top-left: the status line, and above it the notice that location was
+   refused. Nothing here takes a tap, so none of it blocks the map. */
+
+.nepal-map__top {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: var(--z-raised);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  pointer-events: none;
 }
 
 /* Not an alert: the map behind this is working and showing a whole city. What
    changed is only that distance filtering is unavailable. */
 .nepal-map__denied {
-  position: absolute;
-  left: var(--space-3);
-  right: var(--space-3);
-  top: var(--space-3);
-  z-index: var(--z-raised);
   margin: 0;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
@@ -127,14 +227,11 @@
   color: var(--text-secondary);
   font-size: var(--text-sm);
   box-shadow: var(--shadow-sm);
+  pointer-events: auto;
 }
 
 .nepal-map__status {
-  position: absolute;
-  left: var(--space-3);
-  bottom: var(--space-3);
-  z-index: var(--z-raised);
-  max-width: calc(100% - var(--space-9));
+  max-width: 100%;
 }
 
 .nepal-map__hint {
@@ -153,30 +250,48 @@
   border-color: var(--danger);
 }
 
-/* Behind the card, over the pins: the card reads as the thing in front, and a
- * tap outside it lands somewhere that means "close". */
+/* Over the pins, under the card: a tap outside the card means "close", not
+ * whatever was underneath it. Clear rather than dimmed, because the map has
+ * just moved the tapped place into view below the card and the reader should
+ * be able to see it. */
 .nepal-map__scrim {
   position: absolute;
   inset: 0;
   z-index: var(--z-dropdown);
-  background: var(--scrim);
+  background: transparent;
 }
 
-/* In the middle of the map, not anchored to the pin. A card drawn above a pin
+/* Across the top of the map, not anchored to the pin. A card drawn above a pin
  * was clipped by the map's edge whenever the pin sat in the top half — and the
- * hero's map is short enough that that was most of them. Bounded by the map on
- * both axes, so it can never be cut off; anything taller scrolls inside it. */
+ * hero's map is short enough that that was most of them. The map moves the
+ * pin into the space the card leaves below it (NepalMap's `focusAt`). Bounded
+ * by the map, so it can never be cut off; anything taller scrolls inside it. */
 .nepal-map__popup {
   position: absolute;
-  top: 50%;
+  top: var(--space-3);
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   z-index: var(--z-dropdown);
-  width: min(20rem, calc(100% - var(--space-6)));
-  max-height: calc(100% - var(--space-6));
+  width: min(26rem, calc(100% - var(--space-6)));
+  /* The rest is for the place: on the homepage's short phone map, a card any
+     taller would leave the pin nowhere to be shown. */
+  max-height: calc(62% - var(--space-3));
   overflow-y: auto;
   overscroll-behavior: contain;
   border-radius: var(--radius-xl);
+}
+
+/* With room to the side, the card stands down the right-hand side instead and
+ * the place is shown to its left: a wide map is short, and a card across its
+ * top would have to scroll. It stops above the distance button. */
+@media (min-width: 48rem) {
+  .nepal-map__popup {
+    left: auto;
+    right: var(--space-3);
+    transform: none;
+    width: min(22rem, 45%);
+    max-height: calc(100% - 3.5rem - var(--space-3) * 3);
+  }
 }
 
 .nepal-map__popup .pin-card,
@@ -213,9 +328,20 @@ body.map-is-fullscreen {
   }
 }
 
+@media (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
+  .nepal-map__popup {
+    animation-name: nepal-map-popup-in-side;
+  }
+}
+
 @keyframes nepal-map-popup-in {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
-  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 0; transform: translate(-50%, -0.5rem); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes nepal-map-popup-in-side {
+  from { opacity: 0; transform: translateX(0.5rem); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ── The venue stack (#37) ───────────────────────────────────────────────────
@@ -389,6 +515,13 @@ body.map-is-fullscreen {
   list-style: none;
 }
 
+/* Over the list, the status line sits at the top and the tools and the
+   distance fan at the foot. The list scrolls clear of both. */
+.nepal-map--list .map-list {
+  padding-top: calc(var(--space-5) + 2.75rem);
+  padding-bottom: 11rem;
+}
+
 .map-list__venue {
   display: flex;
   flex-direction: column;
@@ -499,7 +632,8 @@ body.map-is-fullscreen {
    so the ring gets a ring: the outline in the accent, a white or midnight halo
    under it. Without this the focus indicator is invisible over roughly half of
    Nepal at satellite zoom, in whichever theme. */
-.nepal-map__controls :focus-visible,
+.nepal-map__tool:focus-visible,
+.nepal-map__fan-toggle:focus-visible,
 .nepal-map__distance:focus-visible {
   box-shadow: 0 0 0 4px var(--surface);
 }

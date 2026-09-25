@@ -166,6 +166,8 @@ export const STRINGS = {
   'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },
+  'map.distanceToggle': { en: 'Distance', ne: 'दूरी' },
+  'map.anyDistance': { en: 'Any', ne: 'जुनसुकै' },
   'map.zoomIn': { en: 'Zoom in to load listings.', ne: 'सूची लोड गर्न जुम इन गर्नुहोस्।' },
   'map.loading': { en: 'Loading listings…', ne: 'सूची लोड हुँदैछ…' },
   /**

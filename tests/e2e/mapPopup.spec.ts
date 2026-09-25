@@ -50,8 +50,12 @@ async function contrastOf(locator: Locator) {
   })
 }
 
-/** The popup sits wholly inside the map, and in the middle of it. */
-async function expectCentredInMap(page: Page) {
+/**
+ * The popup sits wholly inside the map, at its top: across it on a phone,
+ * leaving the lower part for the place it is about, and down the right-hand
+ * side where there is room, leaving the left.
+ */
+async function expectAtTopOfMap(page: Page) {
   const map = (await page.locator('.nepal-map').boundingBox())!
   const popup = (await page.locator('.nepal-map__popup').boundingBox())!
 
@@ -59,9 +63,17 @@ async function expectCentredInMap(page: Page) {
   expect(popup.y).toBeGreaterThanOrEqual(map.y)
   expect(popup.x + popup.width).toBeLessThanOrEqual(map.x + map.width + 0.5)
   expect(popup.y + popup.height).toBeLessThanOrEqual(map.y + map.height + 0.5)
+  expect(popup.y - map.y).toBeLessThan(20)
 
-  expect(Math.abs((popup.x + popup.width / 2) - (map.x + map.width / 2))).toBeLessThan(2)
-  expect(Math.abs((popup.y + popup.height / 2) - (map.y + map.height / 2))).toBeLessThan(2)
+  const wide = (page.viewportSize()?.width ?? 0) >= 768
+  if (wide) {
+    expect((map.x + map.width) - (popup.x + popup.width)).toBeLessThan(20)
+    expect(popup.width).toBeLessThan(map.width * 0.6)
+  } else {
+    expect(Math.abs((popup.x + popup.width / 2) - (map.x + map.width / 2))).toBeLessThan(2)
+    // Room is left below it for the pin the map moves there.
+    expect(popup.y + popup.height).toBeLessThan(map.y + map.height * 0.75)
+  }
 }
 
 async function openHero(page: Page) {
@@ -79,12 +91,12 @@ async function openHero(page: Page) {
 }
 
 test.describe('the popup in the homepage hero, on a phone', () => {
-  test('opens in the middle of the map, not clipped by its edge', async ({ page }) => {
+  test('opens across the top of the map, not clipped by its edge', async ({ page }) => {
     await openHero(page)
     await gesture(page, "window.google.maps.__clickMarker('Art Week')")
     await expect(page.locator('.nepal-map__popup')).toBeVisible()
 
-    await expectCentredInMap(page)
+    await expectAtTopOfMap(page)
     // The whole card is reachable, the action at its foot included.
     await expect(page.getByRole('button', { name: /see the listing/i })).toBeInViewport()
   })
@@ -108,7 +120,7 @@ test.describe('the popup in the homepage hero, on a phone', () => {
     await gesture(page, `window.google.maps.__clickMarker(${JSON.stringify(PURPLE_HAZE_PIN)})`)
     await expect(page.locator('.venue-stack')).toBeVisible()
 
-    await expectCentredInMap(page)
+    await expectAtTopOfMap(page)
     const title = page.locator('.venue-stack__title')
     expect(await contrastOf(title)).toBeGreaterThanOrEqual(4.5)
     expect(await contrastOf(page.locator('.venue-stack__name').first())).toBeGreaterThanOrEqual(4.5)
@@ -138,7 +150,7 @@ test.describe('the popup in the homepage hero, on a phone', () => {
 
 test.describe('the popup on /map', () => {
   for (const size of [{ width: 320, height: 568 }, { width: 1280, height: 800 }]) {
-    test(`is centred and whole at ${size.width}×${size.height}`, async ({ page }) => {
+    test(`is at the top and whole at ${size.width}×${size.height}`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.setViewportSize(size)
       await stubMapsSdk(page)
@@ -148,14 +160,14 @@ test.describe('the popup on /map', () => {
 
       await gesture(page, "window.google.maps.__clickMarker('Art Week')")
       await expect(page.locator('.nepal-map__popup')).toBeVisible()
-      await expectCentredInMap(page)
+      await expectAtTopOfMap(page)
 
       // A listing reached through the stack opens in the same place.
       await page.keyboard.press('Escape')
       await gesture(page, `window.google.maps.__clickMarker(${JSON.stringify(PURPLE_HAZE_PIN)})`)
       await page.locator('.venue-stack__row').first().click()
       await expect(page.locator('.pin-card')).toBeVisible()
-      await expectCentredInMap(page)
+      await expectAtTopOfMap(page)
     })
   }
 })
