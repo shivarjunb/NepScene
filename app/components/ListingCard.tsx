@@ -6,13 +6,13 @@ import { useLanguage, useT } from '../i18n'
 import { Link } from '../router'
 
 /**
- * A row card is 300px (82vw on a phone); a grid card is one column of a four,
- * two or one-up grid. Without a `sizes` hint the browser assumes full-viewport
+ * A row card is 300px (240px on a phone); a grid card is one column of a four
+ * or two-up grid, and on a phone a 6.5rem thumbnail beside its text. Without a `sizes` hint the browser assumes full-viewport
  * width and fetches the widest rung there is, which is the whole feature
  * undone.
  */
-const GRID_SIZES = '(max-width: 40rem) 100vw, (max-width: 68.75rem) 45vw, 25vw'
-const ROW_SIZES = '(max-width: 40rem) 82vw, 18.75rem'
+const GRID_SIZES = '(max-width: 40rem) 6.5rem, (max-width: 68.75rem) 45vw, 25vw'
+const ROW_SIZES = '(max-width: 40rem) 15rem, 18.75rem'
 
 /**
  * The listing card (#41), in two layouts: `grid` fills a responsive grid,

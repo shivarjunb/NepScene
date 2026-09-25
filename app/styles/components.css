@@ -780,9 +780,36 @@ body.map-is-fullscreen .hero__map {
 }
 
 @media (max-width: 40rem) {        /* 640px */
-  .grid { grid-template-columns: 1fr; }
-  .listing-card--row { width: 82vw; flex-basis: 82vw; }
+  .grid { grid-template-columns: 1fr; gap: var(--space-5); }
+  .rail__track { gap: var(--space-5); }
   .rail__head { align-items: flex-start; }
+
+  /* A phone sees more than one listing at a time. A rail card is narrow
+     enough that the next one shows at the edge, which is also what tells the
+     reader the row scrolls; a grid card becomes a row, poster beside the
+     text, so a screen holds four or five of them instead of one. */
+  .listing-card { border-radius: var(--radius-2xl); }
+  .listing-card--row { width: 15rem; flex-basis: 15rem; }   /* 240px */
+  .listing-card__body { gap: var(--space-2); padding: var(--space-5) var(--space-6) var(--space-2); }
+  .listing-card__foot { padding: 0 var(--space-6) var(--space-5); }
+
+  /* The poster is taken out of the flow and pinned down the card's left edge,
+     so it runs the full height — past the price, which sits outside the link. */
+  .listing-card--grid { min-height: var(--card-thumb); padding-left: var(--card-thumb); --card-thumb: 6.5rem; }
+  .listing-card--grid .listing-card__poster {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--card-thumb);
+    aspect-ratio: auto;
+  }
+  .listing-card--grid .listing-card__title { min-height: 0; }
+  .listing-card--grid .listing-card__badge {
+    top: var(--space-2);
+    left: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-3xs);
+  }
+  .listing-card--grid .listing-card__date-day { font-size: var(--text-2xl); }
 }
 
 /* The design-system gallery's section headings (#49).

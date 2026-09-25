@@ -7,6 +7,12 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
+- **Phones show more events at a glance.** A listing card took a whole phone
+  screen, so a results page showed one event at a time. On screens narrower
+  than 640px, a results card is now a row with a small poster beside the
+  text, so four or five fit on a screen. Cards in the home page rows are
+  240px wide instead of 82% of the screen, so the next card shows at the
+  edge. Padding and gaps are tighter too. Tablet and desktop are unchanged.
 - **The map's controls are off the map.** On a phone the distance chips and
   the List / Near me / Full screen pills wrapped over each other until the top
   of the map could not be touched. Now:
