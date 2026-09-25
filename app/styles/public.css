@@ -128,6 +128,15 @@
 
 .hero__search { max-width: 34rem; margin-inline: auto; width: 100%; }
 
+/*
+ * `.hero > *` puts the search and the map on the same `--z-raised`, and the
+ * map comes later in the DOM, so it painted over the suggestions list. Sticky
+ * rather than dropdown: `.hero` is not a stacking context, so this competes
+ * with the header, and the suggestions must still scroll under it. The
+ * fullscreen map lifts its frame to `--z-modal` and still wins.
+ */
+.hero > .hero__search { z-index: var(--z-sticky); }
+
 .site-header__search { display: none; flex: 1 1 20rem; max-width: 26rem; }
 
 @media (min-width: 62rem) {
