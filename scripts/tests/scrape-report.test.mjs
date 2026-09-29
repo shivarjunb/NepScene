@@ -45,6 +45,19 @@ test('finish uploads the archive first, then the verdict from summary.json', asy
   assert.deepEqual(verdict.summary, summary)
 })
 
+test('a run where some scrapers or venue sources fell short succeeded, with the shortfalls as its error', async () => {
+  const summary = { complete: false, ok: true, jobs: [
+    { name: 'ticketsanjal', success: false }, { name: 'venues', success: true, failed_sources: [{ id: 'ktm-154', status: 'partial' }] },
+    { name: 'katajaam-import', success: false, skipped: true },
+  ] }
+  const { fetch, calls } = fakeFetch(() => ({ body: { id: 'run_3' } }))
+  const result = await report(options(['finish', '--run-id', 'run_3', '--output', '/out']), { env, fetch, readFile: () => JSON.stringify(summary) })
+  assert.equal(result.status, 'succeeded')
+  const verdict = JSON.parse(calls[0].body)
+  assert.equal(verdict.status, 'succeeded')
+  assert.equal(verdict.error, 'ticketsanjal failed; katajaam-import skipped; venue sources: ktm-154 partial')
+})
+
 test('a missing summary or an oversized archive is reported as a failed run, not a crash', async () => {
   const { fetch, calls } = fakeFetch(() => ({ body: { id: 'run_2' } }))
   const result = await report(options(['finish', '--run-id', 'run_2', '--output', '/nowhere', '--archive', '/big.tgz']),

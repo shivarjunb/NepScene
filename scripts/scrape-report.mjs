@@ -66,10 +66,21 @@ export async function report(o, { env = process.env, fetch = globalThis.fetch, r
     if (size > MAX_ARCHIVE_BYTES) error = [error, `Output archive is ${size} bytes; the limit is ${MAX_ARCHIVE_BYTES}`].filter(Boolean).join('; ')
     else output = await call('PUT', `/${encodeURIComponent(o.runId)}/output`, readFile(o.archive), 'application/gzip')
   }
-  const status = summary?.complete ? 'succeeded' : 'failed'
-  if (summary && !summary.complete && !error) error = `${summary.jobs.filter(j => !j.success).map(j => j.name).join(', ')} failed`
+  // A run that got something done succeeded; what fell short goes in `error`
+  // and on each job, where the console marks it. `ok` is absent from
+  // summaries written before partial runs counted, so `complete` stands in.
+  const ok = summary?.ok ?? summary?.complete
+  const status = ok && !error ? 'succeeded' : 'failed'
+  if (summary && !summary.complete && !error) error = shortfalls(summary)
   const run = await call('PATCH', `/${encodeURIComponent(o.runId)}`, json({ status, summary, error }))
   return { id: run.id, status, output_key: output?.output_key ?? null }
+}
+
+/** One line naming every scraper that failed and every venue source that fell short. */
+function shortfalls(summary) {
+  const failed = summary.jobs.filter(j => !j.success).map(j => `${j.name} ${j.skipped ? 'skipped' : 'failed'}`)
+  const sources = summary.jobs.flatMap(j => j.failed_sources ?? []).map(f => `${f.id} ${f.status}`)
+  return [...failed, ...(sources.length ? [`venue sources: ${sources.join(', ')}`] : [])].join('; ')
 }
 
 /** Matches the API's cap; a scrape's output is a few megabytes of JSON and logs. */

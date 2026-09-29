@@ -70,14 +70,27 @@ export function runScrapers({ root = repository, output = join(root, 'scrape-out
   finally { closeSync(fd) }
   Object.assign(entry, { success: result.status === 0 && !result.error, exit_code: result.status ?? null, signal: result.signal ?? null, error: result.error?.message ?? null })
   if (job.requires) entry.import = importSummary(join(cwd, 'report.json'))
+  if (job.name === 'venues') entry.failed_sources = failedVenues(join(cwd, 'inventory.json'))
   report.jobs.push(entry); save()
-  console.log(`${job.name}: ${entry.success ? 'OK' : 'FAILED'}`)
+  const short = entry.failed_sources?.length ? ` (${entry.failed_sources.length} source(s) fell short: ${entry.failed_sources.map(f => f.id).join(', ')})` : ''
+  console.log(`${job.name}: ${entry.success ? 'OK' : 'FAILED'}${short}`)
  }
- report.complete = report.jobs.every(job => job.success)
+ // `complete`: everything worked. `ok`: something did — one scraper or one
+ // venue falling over is logged and reported, not a failed run. Only a run in
+ // which nothing succeeded is failed, since that is the runner or the
+ // network, not a source.
+ report.complete = report.jobs.every(job => job.success && !job.failed_sources?.length)
+ report.ok = report.jobs.length === 0 || report.jobs.some(job => job.success)
  report.finished_at = new Date().toISOString()
  save()
  console.log(`Results: ${output}`)
  return report
+}
+
+/** The venue sources the scrape saved as partial or failed; the scrape itself succeeds around them. */
+function failedVenues(file) {
+ if (!existsSync(file)) return []
+ try { return (JSON.parse(readFileSync(file, 'utf8')).failed_sources ?? []).map(({ id, name, status, errors }) => ({ id, name, status, error: errors?.[0] ?? null })) } catch { return [] }
 }
 
 /** The importer's own count of what it did, or null when it never got that far. */
@@ -101,5 +114,5 @@ export function options(args) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
- if (!runScrapers(options(process.argv.slice(2))).complete) process.exitCode = 1
+ if (!runScrapers(options(process.argv.slice(2))).ok) process.exitCode = 1
 }

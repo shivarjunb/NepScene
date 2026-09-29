@@ -108,7 +108,9 @@ jobs:
 
       # Scrape every source, then import what the importers know how to —
       # Kata Jaam, Taragaon and venues — as drafts. Never published from here: the
-      # moderation queue's "imported" filter is where a person publishes.
+      # moderation queue's "imported" filter is where a person publishes. A
+      # scraper or a venue site that falls over is a warning on the next step,
+      # not a failed run; this step fails only when nothing succeeded at all.
       - name: Run all public scrapers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -130,7 +132,15 @@ jobs:
             const { readFileSync, existsSync } = require('node:fs')
             const report = JSON.parse(readFileSync(process.argv[2], 'utf8'))
             console.log('| Scraper | Result | Exit |\n|---|---|---|')
-            for (const j of report.jobs) console.log(`| ${j.name} | ${j.success ? '✅ ok' : j.skipped ? '➖ skipped' : '❌ failed'} | ${j.exit_code ?? j.signal ?? j.error ?? '—'} |`)
+            for (const j of report.jobs) console.log(`| ${j.name} | ${j.success ? (j.failed_sources?.length ? '⚠️ ok, some sources short' : '✅ ok') : j.skipped ? '➖ skipped' : '❌ failed'} | ${j.exit_code ?? j.signal ?? j.error ?? '—'} |`)
+            const short = report.jobs.flatMap(j => j.failed_sources ?? [])
+            if (short.length) {
+              console.log('\n**Venue sources that fell short** — the others were imported without them:\n\n| Source | Result | First error |\n|---|---|---|')
+              for (const f of short) console.log(`| ${f.id} ${f.name} | ${f.status} | ${(f.error ?? '—').replace(/\|/g, '/')} |`)
+            }
+            // Annotations, so a run that stays green still says what fell short.
+            for (const j of report.jobs.filter(j => !j.success)) console.error(`::warning title=${j.name} ${j.skipped ? 'skipped' : 'failed'}::${j.error ?? 'exit ' + (j.exit_code ?? j.signal)}`)
+            for (const f of short) console.error(`::warning title=${f.id} ${f.status}::${f.name}: ${f.error ?? f.status}`)
             for (const j of report.jobs.filter(j => !j.success && !j.skipped)) {
               const tail = existsSync(j.log) ? readFileSync(j.log, 'utf8').trim().split('\n').slice(-40).join('\n') : '(no log)'
               console.log(`\n<details><summary>${j.name} — last 40 lines</summary>\n\n\`\`\`\n${tail}\n\`\`\`\n</details>`)

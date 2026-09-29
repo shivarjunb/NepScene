@@ -63,11 +63,25 @@ test('empty inventories succeed and date-only events remain drafts with unknown 
   })
 })
 
-test('incomplete inventories and unknown sources fail before database access', async () => {
+test('an inventory with sources that fell short imports what the others found and names the short ones', async () => {
+  await fixture(async ({ db, input, args, deps, out }) => {
+    writeFileSync(input, JSON.stringify({ complete: false, events: [event()],
+      failed_sources: [{ id: 'ktm-154', name: 'Trailmandu Nepal', status: 'partial', errors: ['Expected event markup missing'] }] }))
+    await main([...args, '--apply'], deps)
+    assert.equal(db.prepare('SELECT count(*) AS n FROM listings').get().n, 1)
+    const report = JSON.parse(readFileSync(join(out, 'report.json'), 'utf8'))
+    assert.equal(report.verified, true)
+    assert.deepEqual(report.summary.failed_sources, ['ktm-154'])
+  })
+})
+
+test('incomplete inventories that do not name their failures, and unknown sources, fail before database access', async () => {
   await fixture(async ({ save, input, args, deps }) => {
     const inaccessible = { ...deps, connect: () => { throw Error('Database must not be reached') } }
     writeFileSync(input, JSON.stringify({ complete: false, events: [event()] }))
     await assert.rejects(main(args, inaccessible), /incomplete/)
+    writeFileSync(input, JSON.stringify({ complete: true }))
+    await assert.rejects(main(args, inaccessible), /no events list/)
     save([event({ source_id: 'unknown' })])
     await assert.rejects(main(args, inaccessible), /Unknown or disabled/)
     assert.throws(() => options([...args, '--publish']), /Unknown option/)

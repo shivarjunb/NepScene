@@ -21,7 +21,38 @@ test('all sources run after a failure, with scrape-only imports and a failed sum
    assert.ok(call.args.includes('--scrape-only'))
    assert.ok(!call.args.includes('--apply'))
   }
+  assert.equal(report.ok, true, 'one failed scraper does not fail the run')
   assert.equal(JSON.parse(readFileSync(join(output, 'summary.json'))).complete, false)
+ } finally { rmSync(output, { recursive: true, force: true }) }
+})
+
+test('venue sources that fall short are carried on the venues job, and the venue import still runs', () => {
+ const output = mkdtempSync(join(tmpdir(), 'nepscene-short-venues-'))
+ try {
+  const calls = []
+  const report = runScrapers({ output, apply: 'production', execute: (node, args, config) => {
+   calls.push(args)
+   if (args[0].endsWith('scrape-venues.mjs')) writeFileSync(join(config.cwd, 'inventory.json'), JSON.stringify({
+    complete: false, events: [], failed_sources: [{ id: 'ktm-154', name: 'Trailmandu Nepal', status: 'partial', errors: ['Expected event markup missing', 'second'] }],
+   }))
+   return { status: 0 }
+  } })
+  const venues = report.jobs.find(j => j.name === 'venues')
+  assert.equal(venues.success, true)
+  assert.deepEqual(venues.failed_sources, [{ id: 'ktm-154', name: 'Trailmandu Nepal', status: 'partial', error: 'Expected event markup missing' }])
+  assert.equal(report.jobs.find(j => j.name === 'venues-import').success, true)
+  assert.ok(calls.some(args => args[0].endsWith('import-venues.mjs')))
+  assert.equal(report.complete, false, 'a short source keeps the run from being complete')
+  assert.equal(report.ok, true)
+ } finally { rmSync(output, { recursive: true, force: true }) }
+})
+
+test('a run in which nothing succeeded is not ok', () => {
+ const output = mkdtempSync(join(tmpdir(), 'nepscene-all-failed-'))
+ try {
+  const report = runScrapers({ output, apply: 'staging', execute: () => ({ status: 1 }) })
+  assert.equal(report.ok, false)
+  assert.ok(report.jobs.filter(j => j.name.endsWith('-import')).every(j => j.skipped))
  } finally { rmSync(output, { recursive: true, force: true }) }
 })
 
