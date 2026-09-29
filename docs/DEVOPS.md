@@ -203,13 +203,18 @@ to keep working against the new schema.
 ### `daily-scrape.yml` — every morning, and from the admin console
 
 Runs the public scrapers at 06:00 Kathmandu on the self-hosted Linux runner
-(`runs-on: [self-hosted, Linux]` — never the laptop), imports what Kata Jaam and
-Taragaon found into D1 **as drafts**, and reports to the site rather than to a GitHub
+(`runs-on: [self-hosted, Linux]` — never the laptop), imports what Kata Jaam, Taragaon and the enabled venues found into D1 **as drafts**, and reports to the site rather than to a GitHub
 artifact: a row in `scrape_runs` (migration 0015) and the output tarball in R2 under
 `scrapes/`. The admin console's Housekeeping screen shows the runs and starts one on
 demand, and the moderation queue's "only what the scrapers imported" filter — with
 "Publish all imported drafts" — is where the drafts go public. Nothing is published
 by a run.
+
+Admin scraper source switches are stored per environment in `scrape_source_settings`
+(migration 0016). Apply that migration before deploying these controls. Manual runs
+capture enabled source IDs in the workflow dispatch; scheduled and ad-hoc runs read
+`GET /api/internal/scrape-sources` with the reporting token. Failure to read settings
+stops the run, and an empty selection performs no scrapes or imports.
 
 How a run moves:
 

@@ -1,3 +1,4 @@
+import { scrapeSources } from '../scrapes/sources'
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ApiError, badRequest, notFound } from '../lib/http'
@@ -10,9 +11,8 @@ import {
  * The runner's side of the scrape-run ledger (`/api/internal/scrape-runs`).
  *
  * Not a user: a GitHub Actions job on the self-hosted runner, authenticated
- * by one shared token (SCRAPE_REPORT_TOKEN) rather than a session. It may do
- * three things and nothing else — register a scheduled run, report a run's
- * status, and upload a run's output — none of which touches a listing. The
+ * by one shared token (SCRAPE_REPORT_TOKEN) rather than a session. It may read source settings,
+ * register a scheduled run, report a run's status, and upload a run's output — none of which touches a listing. The
  * importers write drafts through wrangler with Cloudflare's own credentials;
  * this token cannot.
  */
@@ -35,6 +35,11 @@ internalScrapeRoutes.use('*', async (c, next) => {
     throw new ApiError(401, 'unauthenticated', 'That token does not open this')
   }
   await next()
+})
+
+internalScrapeRoutes.get('/scrape-sources', async (c) => {
+  const sources = (await scrapeSources(c.env)).filter(source => source.enabled).map(source => source.id)
+  return c.json(sources)
 })
 
 const loadRun = async (env: Env, id: string) => {

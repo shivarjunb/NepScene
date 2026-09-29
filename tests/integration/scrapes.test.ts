@@ -71,6 +71,7 @@ beforeEach(async () => {
   await seedCatalogue()
   await env.DB.batch([
     env.DB.prepare('DELETE FROM scrape_runs'),
+    env.DB.prepare('DELETE FROM scrape_source_settings'),
     env.DB.prepare('DELETE FROM user_sessions'),
     env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM users'),
@@ -105,7 +106,7 @@ describe('starting a run from the console', () => {
     expect(calls).toHaveLength(1)
     expect(calls[0]!.url).toBe('https://api.github.com/repos/shivarjunb/NepScene/actions/workflows/daily-scrape.yml/dispatches')
     const sent = JSON.parse(calls[0]!.init.body as string)
-    expect(sent).toEqual({ ref: 'main', inputs: { run_id: run.id, apply: 'preview', api_url: 'https://nepscene.test' } })
+    expect(sent).toEqual({ ref: 'main', inputs: { run_id: run.id, apply: 'preview', api_url: 'https://nepscene.test', sources: expect.any(String) } })
     expect((calls[0]!.init.headers as Record<string, string>).authorization).toBe('Bearer gh-token')
 
     const [audit] = (await env.DB.prepare("SELECT * FROM audit_log WHERE action = 'scrape_requested'").all<any>()).results
@@ -243,5 +244,47 @@ describe('the runner reporting back', () => {
     const run = await (await runner('POST', '', { trigger: 'schedule' })).json() as any
     expect((await admin('GET', `/system/scrape-runs/${run.id}/output`, cookie)).status).toBe(404)
     expect((await admin('GET', '/system/scrape-runs/nothing/output', cookie)).status).toBe(404)
+  })
+})
+
+describe('scraper source switches', () => {
+  it('persists individual switches and shares choices with the runner', async () => {
+    const { cookie } = await signIn('admin@example.np', 'admin')
+    const settings = await (await admin('GET', '/system/scrape-sources', cookie)).json() as any
+    expect(settings.sources.find((s: any) => s.id === 'ktm-026')).toMatchObject({ name: 'Martin Chautari', enabled: true })
+    expect((await admin('PATCH', '/system/scrape-sources/ktm-026', cookie, { enabled: false })).status).toBe(200)
+    const saved = await (await admin('GET', '/system/scrape-sources', cookie)).json() as any
+    expect(saved.sources.find((s: any) => s.id === 'ktm-026').enabled).toBe(false)
+    const runnerSettings = await SELF.fetch('https://nepscene.test/api/internal/scrape-sources', { headers: { authorization: 'Bearer runner-token' } })
+    const ids = await runnerSettings.json() as string[]
+    expect(ids).not.toContain('ktm-026')
+    expect(ids).toContain('katajaam')
+    const calls = stubGitHub()
+    expect((await admin('POST', '/system/scrape', cookie)).status).toBe(201)
+    const sent = JSON.parse(calls[0]!.init.body as string)
+    expect(JSON.parse(sent.inputs.sources)).toEqual(ids)
+    expect((await admin('PATCH', '/system/scrape-sources/ktm-026', cookie, { enabled: true })).status).toBe(200)
+    // The queued dispatch retains the earlier selection.
+    expect(JSON.parse(sent.inputs.sources)).not.toContain('ktm-026')
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action='scrape_source_updated'").first<any>()).n).toBe(2)
+  })
+
+  it('protects settings and validates switch values', async () => {
+    const { cookie } = await signIn('admin@example.np', 'admin')
+    const { cookie: editor } = await signIn('editor@example.np', 'editor')
+    expect((await admin('PATCH', '/system/scrape-sources/ktm-026', editor, { enabled: false })).status).toBe(403)
+    expect((await admin('GET', '/system/scrape-sources', '')).status).toBe(401)
+    expect((await admin('PATCH', '/system/scrape-sources/unknown', cookie, { enabled: true })).status).toBe(404)
+    expect((await admin('PATCH', '/system/scrape-sources/ktm-026', cookie, { enabled: 'false' })).status).toBe(400)
+    expect((await SELF.fetch('https://nepscene.test/api/internal/scrape-sources')).status).toBe(401)
+  })
+
+  it('refuses a manual run when every source is off', async () => {
+    const { cookie } = await signIn('admin@example.np', 'admin')
+    const { sources } = await (await admin('GET', '/system/scrape-sources', cookie)).json() as any
+    await env.DB.batch(sources.map((s: any) => env.DB.prepare('INSERT INTO scrape_source_settings VALUES (?1, 0, ?2)').bind(s.id, new Date().toISOString())))
+    const calls = stubGitHub()
+    expect((await admin('POST', '/system/scrape', cookie)).status).toBe(400)
+    expect(calls).toHaveLength(0)
   })
 })

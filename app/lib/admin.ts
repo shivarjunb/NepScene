@@ -273,3 +273,10 @@ export const mergeVenue = (id: string, into: string) =>
     `/api/admin/venues/${encodeURIComponent(id)}/merge`,
     { method: 'POST', body: JSON.stringify({ into }) },
   )
+
+export type ScrapeSource = { id: string; name: string; enabled: boolean }
+export const fetchScrapeSources = () => request<{ sources: ScrapeSource[] }>('/api/admin/system/scrape-sources')
+export const setScrapeSource = (id: string, enabled: boolean) =>
+  request<{ id: string; enabled: boolean }>(`/api/admin/system/scrape-sources/${encodeURIComponent(id)}`, {
+    method: 'PATCH', body: JSON.stringify({ enabled }),
+  })
