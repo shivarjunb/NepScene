@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, Field, Modal, Spinner, Textarea } from '../components/primitives'
 import {
-  AuthorError, fetchAccount, fetchQueue, mergeListing, moderate,
+  AuthorError, fetchQueue, mergeListing, moderate,
   type Account, type Queue, type QueueEntry, type Refusal,
 } from '../lib/author'
 import { ListingWizard, type WizardOutcome } from '../author/ListingWizard'
@@ -40,33 +40,12 @@ const TABS = [
   { status: 'archived', label: 'Archived' },
 ] as const
 
-export function QueuePage() {
-  const [account, setAccount] = useState<Account | null>(null)
-  const [checking, setChecking] = useState(true)
-
-  useEffect(() => {
-    void fetchAccount().then((found) => {
-      setAccount(found)
-      setChecking(false)
-    })
-  }, [])
-
-  if (checking) {
-    return <div className="wizard__loading"><Spinner label="Checking your account" /></div>
-  }
-
-  if (!account?.permissions.includes('listing:moderate')) {
-    return (
-      <Card raised>
-        <h1>Not for this account</h1>
-        <p>
-          The moderation queue is for editors. If you are looking for your own
-          listings, they are on <a href="/dashboard">your dashboard</a>.
-        </p>
-      </Card>
-    )
-  }
-
+/**
+ * The queue as a section of the admin console (/admin/moderation). The
+ * console checks `listing:moderate` before it renders this, and puts the
+ * section's heading above it; `/moderate` still works and lands here.
+ */
+export function ModerationPanel({ account }: { account: Account }) {
   return <Queue account={account} />
 }
 
@@ -113,7 +92,7 @@ function Queue({ account }: { account: Account }) {
     if (status !== 'pending_review') params.set('status', status)
     if (source) params.set('source', source)
     const query = params.toString()
-    navigate(`/moderate${query ? `?${query}` : ''}`, { replace: true })
+    navigate(`/admin/moderation${query ? `?${query}` : ''}`, { replace: true })
   }, [status, source, load])
 
   const apply = async (action: 'publish' | 'archive' | 'reject', ids: string[], reason?: string) => {
@@ -225,11 +204,7 @@ function Queue({ account }: { account: Account }) {
   const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
 
   return (
-    <div className="queue">
-      <header className="queue__header">
-        <h1>Moderation queue</h1>
-        <p className="queue__signed-in">Signed in as {account.email}</p>
-      </header>
+    <section className="queue" aria-labelledby="admin-heading">
 
       <nav className="queue__tabs" aria-label="Listings by state">
         {TABS.map((tab) => (
@@ -352,7 +327,7 @@ function Queue({ account }: { account: Account }) {
           </ul>
         </>
       )}
-    </div>
+    </section>
   )
 }
 

@@ -228,17 +228,15 @@ test('unfinished work on the device is offered here, not only on its own page', 
     .toBeNull()
 })
 
-test('an editor is offered the queue; an organizer is not', async ({ page }) => {
+test('the dashboard is only your listings: the console is in the account menu', async ({ page }) => {
   await serveDashboard(page, {
-    permissions: ['listing:create', 'listing:edit_own', 'listing:moderate', 'listing:publish'],
+    permissions: ['listing:create', 'listing:edit_own', 'listing:moderate', 'listing:publish', 'user:manage'],
   })
   await page.goto('/dashboard')
-  await expect(page.getByRole('button', { name: 'Moderation queue' })).toBeVisible()
-
-  await page.unrouteAll()
-  await serveDashboard(page)
-  await page.goto('/dashboard')
-  await expect(page.getByRole('button', { name: 'Moderation queue' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Your listings' })).toBeVisible()
+  const main = page.locator('main')
+  await expect(main.getByRole('button', { name: 'Moderation queue' })).toHaveCount(0)
+  await expect(main.getByRole('button', { name: 'Admin' })).toHaveCount(0)
 })
 
 test('nothing scrolls sideways at 320px', async ({ page }) => {

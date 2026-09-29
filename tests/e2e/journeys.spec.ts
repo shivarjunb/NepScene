@@ -169,11 +169,13 @@ test('authoring: sign in, create, place, submit for review', async ({ page }) =>
 
 test('moderation: an editor reaches the queue and can work it', async ({ page }) => {
   await signIn(page, EDITOR())
-  await page.goto(at('/moderate'))
+  await page.goto(at('/admin'))
 
-  // An editor has `listing:publish`, so the queue is theirs to see — the
-  // permission check is the real one against the real session.
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // An editor has `listing:moderate` and nothing else in the console, so
+  // /admin lands on the queue — the permission check is the real one against
+  // the real session.
+  await expect(page).toHaveURL(/\/admin\/moderation/)
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
   await expect(page.getByText(/not allowed|sign in/i)).toHaveCount(0)
   await assertAccessible(page, 'moderation queue')
 })
@@ -199,6 +201,12 @@ test('the discovery journey works with touch at phone size', async ({ page, isMo
   // On a phone the dialog is the screen, and it must not scroll sideways either.
   const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)
   expect(dialogOverflow).toBeLessThanOrEqual(0)
+  // Scrolled, the bar with Back stays flush with the sheet's top edge, with no
+  // strip above it for the content to show through.
+  await dialog.evaluate((el) => el.scrollTo(0, 400))
+  const gap = await dialog.evaluate((el) =>
+    el.querySelector('.listing-dialog__bar')!.getBoundingClientRect().top - el.getBoundingClientRect().top)
+  expect(Math.abs(gap)).toBeLessThanOrEqual(1)
   // A phone gets a page's Back, not the sheet's "Open as a page" and ✕.
   await expect(dialog.getByRole('link', { name: 'Open as a page' })).toBeHidden()
   await expect(dialog.getByRole('button', { name: 'Close the listing' })).toBeHidden()

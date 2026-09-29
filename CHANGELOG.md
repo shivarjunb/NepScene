@@ -6,6 +6,70 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **Phones show more events at a glance.** A listing card took up a whole
+  phone screen, so you saw one event at a time. On screens narrower than
+  640px:
+  - **Home page rows are a two-by-two grid** of smaller cards with square
+    posters, instead of a sideways scroll. Each row shows four events, and
+    **Show more** under it reveals the rest.
+  - **Results cards are rows**, with a small poster beside the text, so four
+    or five fit on a screen.
+  Tablet and desktop are unchanged.
+- **The map's controls are off the map.** On a phone the distance chips and
+  the List / Near me / Full screen pills wrapped over each other until the top
+  of the map could not be touched. Now:
+  - **List, Near me and Full screen are round icon buttons** stacked in the
+    bottom-left corner. Each keeps its words as its accessible name and its
+    tooltip.
+  - **Distance is one button in the bottom-right corner** that fans 2, 5, 10,
+    20 and 100 km out in a quarter circle and folds them away once one is
+    chosen. Folded, it shows the distance that is on.
+  - **A tapped pin's card opens across the top of the map** on a phone, and
+    down its right-hand side on a wider screen, and the map moves the place
+    into the space the card leaves open. Only one of the card and the fan is
+    open at a time.
+- **One admin console, reached from the header.** The console, the
+  moderation queue and "Your listings" used to link to each other from
+  buttons in each page's header, so the only way into admin was through your
+  own listings. Now:
+  - **The header has an account menu.** Signed in, "My listings" and "Sign
+    out" become one control with My listings, Add a listing, Admin console
+    (for editors and admins) and Sign out; the phone menu lists the same.
+    The Admin and Moderation queue buttons are gone from "Your listings".
+  - **The console has a sidebar of sections**, grouped as Content
+    (Moderation), People (Accounts, Organizations) and System (Audit trail,
+    Scrapers, Housekeeping), with the waiting count, the organizations still
+    to verify and a failed scrape marked on the section that deals with
+    them. On a phone the sidebar becomes a tab bar of the four groups.
+  - **The moderation queue moved into it**, at `/admin/moderation`.
+    `/moderate` still works and redirects there, filters included. An editor
+    sees only Moderation and lands on it.
+  - **Scrapers are their own section**, out of Housekeeping.
+  - **All listings** (`/admin/listings`): every listing in every state, one
+    search box, filtered by state and source, newest change first. Publish,
+    Archive and Edit work on the row, through the queue's own endpoint and
+    the queue's own wizard dialog. `GET /api/admin/listings`, for anyone with
+    `listing:moderate`.
+  - **Venues** (`/admin/venues`): search, with filters for venues that have
+    no map pin and venues nobody has verified. Edit a venue's details and pin
+    (validated with the wizard's own rules, answered per field), mark it
+    verified, or merge a duplicate into the venue it duplicates — its
+    listings move and it is deleted, in one batch, with the merge in the
+    audit log. `GET/PATCH /api/admin/venues`, `POST /api/admin/venues/:id/merge`,
+    for anyone with `venue:edit_any`.
+  - **The review count follows you.** For editors and admins, the header's
+    account menu shows a dot when something is waiting and the number beside
+    "Admin console"; `GET /api/author/queue/count` is one indexed COUNT.
+  - **The overview leads with what needs doing:** four counts (waiting,
+    published, accounts, the last scrape), the oldest waiting listings with
+    a Publish button, the venues with no map pin, the organizations not yet
+    verified, listings by state,
+    accounts by role and the recent activity. `GET /api/admin/overview`
+    returns the queue's head and the latest scrape run in the same single
+    round trip.
+  - `robots.txt` now disallows `/admin` in production, as it did `/moderate`.
+
 ### Added
 - **An admin console (#28).** `/admin`, for accounts whose role is `admin`:
   who can do what, whose organization is whose, what happened, and whether

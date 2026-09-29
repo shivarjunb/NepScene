@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * #33 — the moderation queue in a browser.
+ * #33 — the moderation queue in a browser, as a section of the admin console.
  *
  * The rules underneath are tested against a real D1 in
  * tests/integration/moderation.test.ts. What is settled here is the part only
@@ -73,7 +73,7 @@ async function serveQueue(page: Page, {
     json: {
       user: { id: 'usr_e', email: 'editor@nepscene.test', name: null, role },
       permissions: role === 'editor'
-        ? ['listing:create', 'listing:edit_own', 'listing:publish', 'listing:moderate']
+        ? ['listing:create', 'listing:edit_own', 'listing:publish', 'listing:moderate', 'venue:edit_any']
         : ['listing:create', 'listing:edit_own'],
     },
   }))
@@ -161,24 +161,49 @@ async function serveQueue(page: Page, {
 
 test('an account that cannot moderate is turned away, and pointed somewhere useful', async ({ page }) => {
   await serveQueue(page, { role: 'organizer' })
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await expect(page.getByRole('heading', { name: 'Not for this account' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'your dashboard' })).toBeVisible()
 })
 
+test('the old address still works, filters and all', async ({ page }) => {
+  await serveQueue(page)
+  await page.goto('/moderate?status=draft&source=import')
+
+  await expect(page).toHaveURL(/\/admin\/moderation\?status=draft&source=import$/)
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Only what the scrapers imported' })).toBeChecked()
+})
+
+test('an editor sees only the content sections in the console, and lands on the queue', async ({ page }) => {
+  await serveQueue(page)
+  await page.goto('/admin')
+
+  await expect(page).toHaveURL(/\/admin\/moderation$/)
+  // The sidebar on a desk, the tab bar on a phone: either way, one group.
+  await expect(page.locator('.console__nav .console__link-label')).toHaveText(['Moderation', 'All listings', 'Venues'])
+  await expect(page.locator('.console__tabs .console__tab')).toHaveCount(1)
+  await expect(page.getByText('No such section')).toHaveCount(0)
+
+  // An admin-only section sends an editor back to the one they have.
+  await page.goto('/admin/users')
+  await expect(page).toHaveURL(/\/admin\/moderation$/)
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
+})
+
 test('the queue shows what is waiting, with the counts on the tabs', async ({ page }) => {
   await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
-  await expect(page.getByRole('heading', { name: 'Moderation queue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Kutumba at Patan Durbar' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Waiting\s*2/ })).toBeVisible()
 })
 
 test('a flagged duplicate is on the row, not behind a click', async ({ page }) => {
   await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   // The whole point of flagging at submission is that the person about to
   // approve both can see it without opening anything.
@@ -189,7 +214,7 @@ test('a flagged duplicate is on the row, not behind a click', async ({ page }) =
 
 test('merging sends the flagged listing into the one it matched', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await page.getByRole('button', { name: 'Merge into it' }).click()
 
@@ -200,7 +225,7 @@ test('merging sends the flagged listing into the one it matched', async ({ page 
 
 test('publishing one listing is one call, and the row goes', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   // `exact`, because getByRole matches an accessible name by substring by
   // default and "Publish" is inside the "Published 12" tab, which comes first.
@@ -224,7 +249,7 @@ test('a refused publish opens a dialog that names the listing and what to fix', 
       },
     },
   })
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
   await page.getByRole('button', { name: 'Drafts' }).click()
   await page.getByRole('checkbox', { name: 'Select “Imported Gig”' }).check()
   await page.getByRole('group', { name: 'Actions for the selected listings' })
@@ -235,27 +260,27 @@ test('a refused publish opens a dialog that names the listing and what to fix', 
   await expect(dialog.getByRole('heading', { name: 'Imported Gig' })).toBeVisible()
   await expect(dialog.getByText('Some things still need filling in before this can be published')).toBeVisible()
   await expect(dialog.getByText('Pick at least one category — it decides the map pin')).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Edit' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
   // Nothing was done, so nothing claims to have been.
   await expect(page.getByText('Done')).toHaveCount(0)
 
   // Edit from the dialog opens the editor in place of it — one dialog at a time.
-  await dialog.getByRole('button', { name: 'Edit' }).click()
+  await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Imported Gig' })).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'This one could not be published' })).toHaveCount(0)
-  expect(new URL(page.url()).pathname).toBe('/moderate')
+  expect(new URL(page.url()).pathname).toBe('/admin/moderation')
 })
 
 test('editing opens the wizard over the queue, and publishing from it closes it', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
-  await page.getByRole('button', { name: 'Edit' }).first().click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).first().click()
 
   const dialog = page.getByRole('dialog', { name: 'Kutumba at Patan Durbar' })
   await expect(dialog).toBeVisible()
   // Still the queue underneath: no navigation to /submit/:id.
-  expect(new URL(page.url()).pathname).toBe('/moderate')
+  expect(new URL(page.url()).pathname).toBe('/admin/moderation')
   await expect(dialog.getByRole('heading', { name: /What is it/ })).toBeVisible()
 
   // A loaded listing has every step unlocked, so Review is one click away.
@@ -271,7 +296,7 @@ test('editing opens the wizard over the queue, and publishing from it closes it'
 
 test('a rejection cannot be sent without a reason', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await page.getByRole('button', { name: 'Reject…' }).first().click()
   await expect(page.getByRole('heading', { name: /Why is this coming back/ })).toBeVisible()
@@ -297,7 +322,7 @@ test('a rejection cannot be sent without a reason', async ({ page }) => {
 
 test('a bulk action covers every selected row in one call', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await page.getByLabel('Select everything on this page').check()
   await expect(page.getByText('2 selected')).toBeVisible()
@@ -314,7 +339,7 @@ test('a bulk action covers every selected row in one call', async ({ page }) => 
 
 test('a bulk rejection asks once and applies the same reason to all of them', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await page.getByLabel('Select everything on this page').check()
   await page.getByRole('button', { name: 'Reject…' }).first().click()
@@ -329,7 +354,7 @@ test('a bulk rejection asks once and applies the same reason to all of them', as
 
 test('the queue is worked through from the keyboard alone', async ({ page }) => {
   const api = await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   const first = page.getByRole('checkbox', { name: 'Select “Kutumba at Patan Durbar”' })
   await first.focus()
@@ -346,7 +371,7 @@ test('the queue is worked through from the keyboard alone', async ({ page }) => 
 
 test('an empty queue says so rather than showing an empty box', async ({ page }) => {
   await serveQueue(page)
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
   await page.getByRole('button', { name: /Drafts/ }).click()
   await expect(page.getByText('Nothing here.')).toBeVisible()
@@ -355,9 +380,9 @@ test('an empty queue says so rather than showing an empty box', async ({ page })
 test('nothing scrolls sideways at 320px', async ({ page }) => {
   await serveQueue(page)
   await page.setViewportSize({ width: 320, height: 720 })
-  await page.goto('/moderate')
+  await page.goto('/admin/moderation')
 
-  await expect(page.getByRole('heading', { name: 'Moderation queue' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(0)

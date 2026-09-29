@@ -120,6 +120,35 @@ export const register = (email: string, password: string) =>
     method: 'POST', body: JSON.stringify({ email, password }),
   })
 
+/**
+ * Whether this environment has Google credentials. Previews and local do not,
+ * and a button that answers 500 is worse than no button.
+ */
+export const fetchGoogleStatus = () =>
+  request<{ enabled: boolean }>('/api/auth/google/status')
+
+/**
+ * A full-page navigation, not a fetch: the flow leaves the site for Google and
+ * comes back to `returnTo` (the Worker re-checks that it is a local path).
+ */
+export const googleSignInUrl = (returnTo: string) =>
+  `/api/auth/google/start?return_to=${encodeURIComponent(returnTo)}`
+
+/** What /login says when the callback sends someone back with `?google_error=`. */
+export function googleErrorMessage(code: string): string {
+  switch (code) {
+    case 'oauth_cancelled': return 'Google sign-in was cancelled.'
+    case 'oauth_state_mismatch': return 'That sign-in attempt expired. Try again.'
+    case 'google_email_unverified':
+      return 'Your Google account has not verified this email address, so it cannot be linked to the existing account. Sign in with your password instead.'
+    case 'google_account_mismatch':
+      return 'This email is already linked to a different Google account.'
+    case 'account_disabled': return 'This account has been deactivated.'
+    case 'google_not_configured': return 'Google sign-in is not available here.'
+    default: return 'Google could not sign you in. Try again, or use your email and password.'
+  }
+}
+
 // ── Lookups ─────────────────────────────────────────────────────────────────
 
 export type Lookups = {
@@ -362,6 +391,9 @@ export const moderate = (action: 'publish' | 'reject' | 'archive', ids: string[]
   request<BulkResult>('/api/author/queue/actions', {
     method: 'POST', body: JSON.stringify({ action, ids, reason }),
   })
+
+/** How many listings are waiting for review; the header's badge for an editor. */
+export const fetchQueueCount = () => request<{ waiting: number }>('/api/author/queue/count')
 
 export const mergeListing = (id: string, into: string) =>
   request<{ merged: string; into: string; slug: string; inherited: string[] }>(

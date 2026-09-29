@@ -161,16 +161,6 @@ function Listings({ account }: { account: Account }) {
           <p className="board__signed-in">Signed in as {account.email}</p>
         </div>
         <div className="board__header-actions">
-          {account.permissions.includes('user:manage') && (
-            <Button variant="ghost" onClick={() => navigate('/admin')}>
-              Admin
-            </Button>
-          )}
-          {account.permissions.includes('listing:moderate') && (
-            <Button variant="ghost" onClick={() => navigate('/moderate')}>
-              Moderation queue
-            </Button>
-          )}
           <Button onClick={() => navigate('/submit')}>Add a listing</Button>
         </div>
       </header>

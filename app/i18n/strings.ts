@@ -38,6 +38,11 @@ export const STRINGS = {
   'nav.signOut': { en: 'Sign out', ne: 'साइन आउट' },
   'nav.myListings': { en: 'My listings', ne: 'मेरा सूचीहरू' },
   'nav.account': { en: 'Account', ne: 'खाता' },
+  'nav.addListing': { en: 'Add a listing', ne: 'सूची थप्नुहोस्' },
+  'nav.admin': { en: 'Admin console', ne: 'एडमिन कन्सोल' },
+  'nav.accountMenu': { en: 'Account menu', ne: 'खाता मेनु' },
+  'nav.waiting': { en: '{n} waiting for review', ne: '{n} समीक्षाको पर्खाइमा' },
+  'nav.waitingShort': { en: 'waiting', ne: 'पर्खाइमा' },
   'footer.tagline': { en: 'What’s happening around Nepal.', ne: 'नेपालभरि के-के भइरहेको छ।' },
   'footer.about': { en: 'About', ne: 'हाम्रो बारेमा' },
   'footer.submit': { en: 'Submit an event', ne: 'कार्यक्रम पठाउनुहोस्' },
@@ -161,6 +166,8 @@ export const STRINGS = {
   'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },
+  'map.distanceToggle': { en: 'Distance', ne: 'दूरी' },
+  'map.anyDistance': { en: 'Any', ne: 'जुनसुकै' },
   'map.zoomIn': { en: 'Zoom in to load listings.', ne: 'सूची लोड गर्न जुम इन गर्नुहोस्।' },
   'map.loading': { en: 'Loading listings…', ne: 'सूची लोड हुँदैछ…' },
   /**
@@ -325,6 +332,7 @@ export const STRINGS = {
   'common.retry': { en: 'Try again', ne: 'फेरि प्रयास गर्नुहोस्' },
   'common.backHome': { en: 'Back to the homepage', ne: 'गृहपृष्ठमा फर्कनुहोस्' },
   'common.showMore': { en: 'Show more', ne: 'थप देखाउनुहोस्' },
+  'common.showFewer': { en: 'Show fewer', ne: 'कम देखाउनुहोस्' },
 } as const
 
 export type StringKey = keyof typeof STRINGS

@@ -70,11 +70,11 @@ export function ListingDialog({ slug }: { slug: string }) {
         tabIndex={-1}
       >
         <div className="listing-dialog__bar">
-          {/* On a phone the dialog is the whole screen, so it reads as a page
-              and gets a page's way out: Back, where a thumb and an app expect
-              it. The link and the ✕ are for the sheet over a wider page; a
-              phone has no row behind to keep, and the address bar already
-              holds the page's link. CSS shows one set or the other. */}
+          {/* Back is part of the sheet, top left, on every screen: it is the
+              way out a thumb and an app expect. The link and the ✕ are for the
+              sheet over a wider page; a phone has no row behind to keep, and
+              the address bar already holds the page's link, so CSS hides them
+              there. */}
           <Button variant="ghost" size="sm" className="listing-dialog__back" onClick={closeOverlay}>
             <span aria-hidden="true">←</span> {t('listing.back')}
           </Button>
@@ -86,6 +86,7 @@ export function ListingDialog({ slug }: { slug: string }) {
           </span>
         </div>
 
+        <div className="listing-dialog__content">
         {loading && <ListingSkeleton bare />}
 
         {failed && (
@@ -102,6 +103,7 @@ export function ListingDialog({ slug }: { slug: string }) {
             <ListingContent listing={data} level={2} titleId={titleId} />
           </article>
         )}
+        </div>
       </div>
     </div>,
     document.body,

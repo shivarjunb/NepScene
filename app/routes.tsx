@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Placeholder, type Planned } from './pages/Placeholder'
 import { NotFound } from './pages/NotFound'
 import { Discover } from './pages/Discover'
@@ -14,6 +14,7 @@ import { AccessibilityPage } from './pages/Accessibility'
 import { Spinner } from './components/primitives'
 import { deferred } from './lib/deferred'
 import type { DynamicPrefix, StaticPath } from './lib/routePaths'
+import { navigate, useSearch } from './router'
 
 /**
  * The tools, in their own chunks (#39).
@@ -45,10 +46,18 @@ const DashboardPage = deferred(
   () => import('./author/DashboardPage').then((module) => module.DashboardPage),
   Loading,
 )
-const QueuePage = deferred(
-  () => import('./moderation/QueuePage').then((module) => module.QueuePage),
-  Loading,
-)
+
+/**
+ * The queue's old address. It moved into the console (/admin/moderation);
+ * this keeps bookmarks and the links in old emails working, filters and all.
+ */
+function ModerateRedirect() {
+  const search = useSearch().toString()
+  useEffect(() => {
+    navigate(`/admin/moderation${search ? `?${search}` : ''}`, { replace: true })
+  }, [search])
+  return Loading
+}
 const AdminPage = deferred(
   () => import('./admin/AdminPage').then((module) => module.AdminPage),
   Loading,
@@ -118,14 +127,14 @@ export const ROUTES = [
   },
   {
     path: '/moderate',
-    title: 'Moderation queue',
-    summary: 'Everything waiting for review, oldest first, with the duplicates already flagged.',
-    element: <QueuePage />,
+    title: 'Moderation',
+    summary: 'Moved into the admin console, at /admin/moderation.',
+    element: <ModerateRedirect />,
   },
   {
     path: '/admin',
     title: 'Admin',
-    summary: 'Accounts, organizations, the audit trail and the housekeeping jobs.',
+    summary: 'The admin console: moderation, accounts, organizations, the audit trail, the scrapers and the housekeeping jobs.',
     element: <AdminPage section="" />,
   },
   {

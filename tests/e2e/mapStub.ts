@@ -166,6 +166,7 @@ export async function stubMapsSdk(page: Page) {
       }
       setZoom() {}
       panTo() {}
+      panBy() {}
       fitBounds(bounds: { __box: { south: number; north: number; west: number; east: number } }) {
         const box = bounds.__box
         centre = { lat: (box.south + box.north) / 2, lng: (box.west + box.east) / 2 }

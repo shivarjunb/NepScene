@@ -281,3 +281,47 @@ test('nothing shifts when the feed arrives', async ({ page }) => {
   expect(after!.y).toBe(before!.y)
   expect(after!.height).toBe(before!.height)
 })
+
+/*
+ * On a phone a row is a two-by-two grid rather than a sideways scroll, so the
+ * fifth listing on is behind Show more. Featured has no See all, so if that
+ * button went missing its later listings would be unreachable on a phone.
+ */
+test('on a phone a row shows four listings and Show more reveals the rest', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const featured = ['one', 'two', 'three', 'four', 'five', 'six'].map((id) =>
+    listing({ id: `featured-${id}`, starts_at: '2026-09-25T13:00:00Z', is_featured: true }))
+  await serveCatalogue(page, { ...FULL, featured })
+  await page.goto('/')
+
+  // Hidden, not just off-screen: a screen reader hears four too.
+  const row = page.getByRole('region', { name: 'Featured' })
+  const cards = row.getByRole('article')
+  await expect(cards).toHaveCount(4)
+  await expect(row.locator('article')).toHaveCount(6)
+
+  const toggle = row.getByRole('button', { name: 'Show more Featured' })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await toggle.click()
+  await expect(cards).toHaveCount(6)
+  await expect(cards.nth(5)).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Show fewer Featured' }))
+    .toHaveAttribute('aria-expanded', 'true')
+
+  // Four or fewer need no button at all.
+  await expect(page.getByRole('region', { name: 'This weekend' }).getByRole('button'))
+    .toHaveCount(0)
+})
+
+test('on a wide screen the row scrolls and Show more is not there', async ({ page }) => {
+  const featured = ['one', 'two', 'three', 'four', 'five', 'six'].map((id) =>
+    listing({ id: `featured-${id}`, starts_at: '2026-09-25T13:00:00Z', is_featured: true }))
+  await serveCatalogue(page, { ...FULL, featured })
+  await page.goto('/')
+
+  const row = page.getByRole('region', { name: 'Featured' })
+  await expect(row.getByRole('article')).toHaveCount(6)
+  await expect(row.getByRole('button', { name: /Show more/ })).toBeHidden()
+  await row.getByRole('article').nth(5).scrollIntoViewIfNeeded()
+  await expect(row.getByRole('article').nth(5)).toBeVisible()
+})
