@@ -70,7 +70,7 @@ async function signIn(page: Page, email: string) {
 test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await page.goto(at('/'))
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/What.s happening around/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Events around/)
   // Real rows from the real catalogue, not an empty shell.
   await expect(page.locator('.listing-card').first()).toBeVisible()
   await assertAccessible(page, 'homepage')
@@ -89,7 +89,7 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await expect(page).toHaveURL(/\/listings\//)
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { level: 2 }).first()).toHaveText(title.trim())
-  await expect(dialog.getByRole('heading', { name: 'When' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Add to calendar' })).toBeVisible()
   await assertAccessible(page, 'listing dialog')
 
   // Escape is Back: the dialog goes, the filtered row is still there, and

@@ -75,16 +75,18 @@ async function serveCatalogue(page: Page, bootstrap: unknown) {
   })
 }
 
-test('the homepage renders the hero and four populated rows', async ({ page }) => {
+test('the homepage renders the map cover and four populated rows', async ({ page }) => {
   await serveCatalogue(page, FULL)
   await page.goto('/')
 
-  // The headline names the resolved city (#38). Nothing is stubbed here, so
-  // `/here` 404s against `vite preview` and resolution lands on its default —
-  // which is the case worth asserting on this page anyway: the hero must read
-  // as a finished sentence before any of it resolves.
-  await expect(page.getByRole('heading', { level: 1, name: /What.s happening around Kathmandu/ }))
-    .toBeVisible()
+  // The (visually hidden) h1 names the resolved city (#38). Nothing is stubbed
+  // here, so `/here` 404s against `vite preview` and resolution lands on its
+  // default — which is the case worth asserting on this page anyway: the
+  // heading must name a real place before any of it resolves.
+  await expect(page.getByRole('heading', { level: 1, name: /Events around Kathmandu/ }))
+    .toBeAttached()
+  // Nothing above the map: no headline, no second search box.
+  await expect(page.locator('main').getByRole('textbox')).toHaveCount(0)
 
   for (const row of ['Featured', 'This weekend', 'In Kathmandu', 'Free entry', 'Concerts']) {
     await expect(page.getByRole('heading', { level: 2, name: row, exact: true })).toBeVisible()
@@ -96,48 +98,48 @@ test('the homepage renders the hero and four populated rows', async ({ page }) =
 })
 
 /*
- * The hero slot. It held a labelled placeholder until the map core landed
- * (#36), so what these two settle is that the real map is mounted in it and
- * that the hero's own layout does not break the map — the frame around it is
- * the one place `.nepal-map` is styled by anything other than map.css.
+ * The cover. The map is the first thing under the header, so what these two
+ * settle is that the real map is mounted there and that the cover's own
+ * layout does not break the map — the frame around it is the one place
+ * `.nepal-map` is styled by anything other than map.css.
  */
-test('the hero mounts the real map, and it loads by viewport', async ({ page }) => {
+test('the cover mounts the real map, and it loads by viewport', async ({ page }) => {
   await stubMapsSdk(page)
   const catalog = await serveMapCatalog(page)
   await serveCatalogue(page, FULL)
   await page.goto('/')
 
-  await expect(page.locator('.hero .nepal-map')).toBeVisible()
+  await expect(page.locator('.discover__cover .nepal-map')).toBeVisible()
   await expect(page.getByText(/3 listings in view/)).toBeVisible()
 
-  // Bounded, exactly as on /map. A hero map that fell back to the unbounded
+  // Bounded, exactly as on /map. A cover map that fell back to the unbounded
   // feed would put the pattern the Catalog API replaced on the busiest page.
   expect(catalog.requested()).toHaveLength(1)
   expect(catalog.requested()[0]).toMatch(/^[\d.-]+,[\d.-]+,[\d.-]+,[\d.-]+$/)
 })
 
-test('full screen from the hero covers the header instead of painting under it', async ({ page }) => {
+test('full screen from the cover covers the header instead of painting under it', async ({ page }) => {
   await stubMapsSdk(page)
   await serveMapCatalog(page)
   await serveCatalogue(page, FULL)
   await page.goto('/')
-  await expect(page.locator('.hero .nepal-map')).toBeVisible()
+  await expect(page.locator('.discover__cover .nepal-map')).toBeVisible()
 
   await page.getByRole('button', { name: 'Full screen' }).click()
   await expect(page.locator('.nepal-map--fullscreen')).toBeVisible()
 
-  // The hero shortens the map, and that rule is more specific than the
-  // fullscreen one unless it excludes it — which reads as a 22rem map pinned
-  // to the top of an otherwise empty viewport.
+  // The cover shortens the map, and that rule is more specific than the
+  // fullscreen one unless it excludes it — which reads as a half-height map
+  // pinned to the top of an otherwise empty viewport.
   const height = (await page.locator('.nepal-map').boundingBox())!.height
   expect(height).toBe(page.viewportSize()!.height)
 
   /*
-   * `.hero > *` gives the frame a z-index, which makes it a stacking context,
-   * which caps everything inside it at the hero's level — under the sticky
-   * header. Nothing about the map's own CSS shows that, and it is invisible
-   * on /map where the frame does not exist, so it is asked here as the
-   * question a reader would ask: is the header covered?
+   * A z-index on the frame makes it a stacking context, which caps
+   * everything inside it at the frame's level — under the sticky header. The
+   * old hero did exactly that. Nothing about the map's own CSS shows it, and
+   * it is invisible on /map where the frame does not exist, so it is asked
+   * here as the question a reader would ask: is the header covered?
    */
   const covered = await page.locator('.site-header').evaluate((header) => {
     const box = header.getBoundingClientRect()
@@ -228,24 +230,10 @@ test('a catalogue that fails to load says so rather than showing a blank page', 
 
   await expect(page.getByRole('alert')).toContainText('The catalogue did not load')
 
-  // The heading is kept on this screen deliberately, and it is the one place
-  // .hero__title appears outside the dark hero. Stating the hero's ink on the
-  // class rather than inheriting it made this white on white — a heading that
-  // is present in the DOM, announced to a screen reader, and invisible to
-  // everyone else. Nothing else in the suite looks at a colour, which is
-  // exactly how it reached a deployed preview.
-  const contrast = await page.locator('.hero__title').evaluate((el) => {
-    const channels = (value: string) =>
-      (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number)
-    const luminance = (value: string) =>
-      channels(value).map((c) => c / 255)
-        .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-        .reduce((sum, c, i) => sum + [0.2126, 0.7152, 0.0722][i]! * c, 0)
-    const [a, b] = [luminance(getComputedStyle(el).color),
-                    luminance(getComputedStyle(document.body).backgroundColor)]
-    return (Math.max(a!, b!) + 0.05) / (Math.min(a!, b!) + 0.05)
-  })
-  expect(contrast).toBeGreaterThan(4.5)
+  // The heading is kept on this screen deliberately, so a screen reader is
+  // not left on a page with no identity. It is visually hidden, as the feed's
+  // is, so what matters is that it is there and names the page.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Events around Nepal')
 })
 
 test('the feed is usable at 320px with no horizontal scroll', async ({ page }) => {
@@ -271,12 +259,12 @@ test('nothing shifts when the feed arrives', async ({ page }) => {
   })
 
   await page.goto('/')
-  // The skeletons are the real cards' dimensions, so the hero must not move
+  // The skeletons are the real cards' dimensions, so the cover must not move
   // when the data lands.
-  const before = await page.locator('.hero').boundingBox()
+  const before = await page.locator('.discover__cover').boundingBox()
   release()
   await expect(page.getByRole('article').first()).toBeVisible()
-  const after = await page.locator('.hero').boundingBox()
+  const after = await page.locator('.discover__cover').boundingBox()
 
   expect(after!.y).toBe(before!.y)
   expect(after!.height).toBe(before!.height)
