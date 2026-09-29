@@ -28,7 +28,13 @@ export function options(args) {
 export async function main(args = process.argv.slice(2), { connect = database, now = new Date().toISOString() } = {}) {
   const o = options(args)
   const inventory = JSON.parse(readFileSync(o.input, 'utf8'))
-  if (inventory.complete !== true || !Array.isArray(inventory.events)) throw Error('Venue inventory is incomplete; refusing import')
+  if (!Array.isArray(inventory.events)) throw Error('Venue inventory has no events list; refusing import')
+  // A partial inventory is still imported: planning only inserts or matches,
+  // so a source that fell short cannot take anything away. An old-format
+  // inventory with no record of which sources fell short is still refused.
+  if (inventory.complete !== true && !Array.isArray(inventory.failed_sources)) throw Error('Venue inventory is incomplete and does not say which sources failed; refusing import')
+  const failedSources = inventory.failed_sources ?? []
+  for (const f of failedSources) console.warn(`WARNING ${f.id} ${f.name}: ${f.status} — ${f.errors?.join('; ') || 'no detail'}`)
   const candidates = inventory.events.map(raw => {
     const source = registry.find(s => s.id === raw.source_id && s.enabled)
     if (!source) throw Error(`Unknown or disabled venue source: ${raw.source_id}`)
@@ -50,7 +56,7 @@ export async function main(args = process.argv.slice(2), { connect = database, n
   const categories = new Set(db.query('SELECT id FROM categories WHERE is_active=1').map((x) => x.id))
   for (const e of candidates) if (!e.skip && !categories.has(e.category_id)) throw Error(`Missing/inactive category: ${e.category_id}`)
   const result = plan(candidates,existing,sources)
-  const summary = { source_entries:inventory.events.length, new_drafts:0,new_published:0,duplicates:0,excluded:0,changed_duplicates:0 }
+  const summary = { source_entries:inventory.events.length, new_drafts:0,new_published:0,duplicates:0,excluded:0,changed_duplicates:0,failed_sources:failedSources.map((f) => f.id) }
   for (const e of result) {
     if (e.action==='insert') summary[e.status==='published'?'new_published':'new_drafts']++
     else if (e.action==='duplicate') { summary.duplicates++; if(e.changed)summary.changed_duplicates++ }

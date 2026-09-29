@@ -162,9 +162,10 @@ function RunRow({ run }: { run: ScrapeRun }) {
         <ul className="admin__run-jobs" aria-label="Scrapers">
           {jobs.map((job) => (
             <li key={job.name} className={`admin__run-job${job.success ? '' : job.skipped ? ' is-skipped' : ' is-failed'}`}
-                title={job.error ?? undefined}>
+                title={job.error ?? job.failed_sources?.map((f) => `${f.name}: ${f.error ?? f.status}`).join('\n') ?? undefined}>
               {job.success ? '✓' : job.skipped ? '–' : '✕'} {job.name}
               {job.import?.new_drafts ? ` (${job.import.new_drafts} new)` : ''}
+              {job.failed_sources?.length ? ` (${job.failed_sources.length} ${job.failed_sources.length === 1 ? 'source' : 'sources'} short)` : ''}
             </li>
           ))}
         </ul>
@@ -176,7 +177,7 @@ function RunRow({ run }: { run: ScrapeRun }) {
             {failed.length > 0 && ` · ${failed.map((job) => job.name).join(', ')} failed`}
           </span>
         ) : null}
-        {run.error && run.status === 'failed' && failed.length === 0 && (
+        {run.error && failed.length === 0 && (
           <span className="board__meta">{run.error}</span>
         )}
         {run.output_key && <a href={scrapeOutputUrl(run.id)}>Download output</a>}

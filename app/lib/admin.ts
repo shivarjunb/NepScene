@@ -173,6 +173,8 @@ export type ScrapeJob = {
   exit_code: number | null
   error: string | null
   import?: { new_drafts?: number; duplicates?: number; excluded?: number } | null
+  /** Venue sources that came back partial or failed; the rest of the job went ahead without them. */
+  failed_sources?: { id: string; name: string; status: string; error: string | null }[]
 }
 
 export type ScrapeRun = {
