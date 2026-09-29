@@ -278,7 +278,18 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are se
 
 `GOOGLE_CLIENT_ID` is a plain var in `wrangler.jsonc` (it is public by design).
 Leaving both empty disables Google sign-in rather than breaking it, so a preview
-environment without credentials still runs. `.dev.vars.example` documents everything a
+environment without credentials still runs — `/login` asks `/api/auth/google/status`
+and simply shows no Google button.
+
+To turn it on for an environment: in Google Cloud Console create an OAuth client of
+type *Web application*, add `https://<that environment's host>/api/auth/google/callback`
+as an authorised redirect URI, put the client ID in that environment's `vars` in
+`wrangler.jsonc`, and `wrangler secret put GOOGLE_CLIENT_SECRET --env <environment>`.
+Previews get no redirect URI (their hosts change per PR), so they stay password-only.
+
+A Google sign-in links to an existing account with the same email only when Google
+says the address is verified; otherwise the person is sent back to `/login` with
+`?google_error=google_email_unverified`. `.dev.vars.example` documents everything a
 developer needs locally; nothing in it is a shared credential.
 
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are set as **Environment** secrets
