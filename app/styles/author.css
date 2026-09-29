@@ -291,6 +291,22 @@
 .wizard__save--error { color: var(--danger); }
 
 /* The sign-in gate is a panel, because it is the only thing on the page. */
+.wizard__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.wizard__divider::before,
+.wizard__divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
 .wizard__signin {
   gap: var(--space-7);
   max-width: 26rem;

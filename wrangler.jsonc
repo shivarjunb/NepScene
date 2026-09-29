@@ -94,7 +94,7 @@
     "production": {
       "name": "nepscene",
       "triggers": { "crons": ["15 18 * * *"] },
-      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "", "GITHUB_REPOSITORY": "shivarjunb/NepScene" },
+      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "78687781796-irdmic2bqg768713v8h38iai23jroite.apps.googleusercontent.com", "GITHUB_REPOSITORY": "shivarjunb/NepScene" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-production", "database_id": "63c61f55-3138-44d8-8226-05330926231e" }
       ],
