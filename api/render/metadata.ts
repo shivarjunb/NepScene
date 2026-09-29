@@ -64,7 +64,14 @@ export function readableDate(iso: string, timeZone: string): string {
 
 export type Origin = string
 
-const url = (origin: Origin, path: string) => `${origin}${path}`
+/**
+ * Absolute against our origin, unless it already is absolute. Every image the
+ * catalogue serializer hands over is either ours (a path, including an
+ * imported cover's opaque one) or an authored URL, and prefixing the origin to
+ * the second produced `https://nepscene.nphttps://…`.
+ */
+const url = (origin: Origin, path: string) =>
+  /^https?:\/\//i.test(path) ? path : `${origin}${path}`
 
 /** The brand card, for everything with no picture of its own. */
 export const FALLBACK_IMAGE = '/brand/og-card.png'

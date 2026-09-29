@@ -353,6 +353,7 @@ export const openApiDocument = {
     '/api/catalog/tags': { get: { summary: 'Tags in use on upcoming listings, most used first', responses: { '200': { description: 'Up to 40 tags with upcoming counts' } } } },
     '/api/catalog/here': { get: { summary: 'Which of twenty Nepali cities the request appears to come from, for the opening map view (#38)', responses: { '200': { description: 'A city, its centroid, and whether it was guessed from the IP or defaulted' } } } },
     '/api/catalog/bootstrap': { get: { summary: 'Everything the homepage needs, in one request', responses: { '200': { description: 'Categories, upcoming and featured listings' } } } },
+    '/api/media/cover/{id}/{version}': { get: { summary: 'An imported listing’s cover from our own origin: mirrored into R2 on first read, never the source URL', responses: { '200': { description: 'The image bytes, cacheable as immutable' }, '302': { description: 'A stale version, sent on to the current one' }, '404': { description: 'Unknown, unpublished, or not an imported cover' }, '502': { description: 'The source could not supply an acceptable image' } } } },
     '/api/health': { get: { summary: 'Liveness and version. Touches no dependency.', responses: { '200': { description: 'ok' } } } },
     '/api/cache/status': { get: { summary: 'Live read/write probes of the cache, KV and D1 with measured latency', responses: { '200': { description: 'ok or degraded' }, '503': { description: 'D1 unreachable' } } } },
   },
