@@ -10,6 +10,10 @@ on:
         description: The scrape_runs row the admin console created for this run (blank for an ad-hoc run)
         required: false
         default: ''
+      sources:
+        description: JSON source selection captured by the console (blank reads saved settings)
+        required: false
+        default: ''
       apply:
         description: Which D1 the importers write drafts into
         type: choice
@@ -42,7 +46,7 @@ jobs:
     # every morning without running a step. Pinned to Linux so a scheduled run
     # never lands on the developer's laptop, which may be asleep at 06:00.
     runs-on: [self-hosted, Linux]
-    timeout-minutes: 75
+    timeout-minutes: 135
     # Its own environment, not `production`: that one requires a reviewer's
     # approval, which is right for a deploy and wrong for a job that runs at
     # six every morning. `scrape` holds a Cloudflare token that can edit D1
@@ -94,18 +98,25 @@ jobs:
           [ "$APPLY" != none ] && args+=(--apply "$APPLY")
           node scripts/scrape-report.mjs start "${args[@]}"
 
+      - name: Load enabled sources
+        env:
+          SCRAPE_SOURCES: ${{ inputs.sources }}
+        run: node scripts/scrape-settings.mjs "$RUNNER_TEMP/scrape-sources.json"
+
       - name: Test scrapers and daily runner
         run: npm run test:scrapers
 
       # Scrape every source, then import what the importers know how to —
-      # Kata Jaam and Taragaon — as drafts. Never published from here: the
+      # Kata Jaam, Taragaon and venues — as drafts. Never published from here: the
       # moderation queue's "imported" filter is where a person publishes.
       - name: Run all public scrapers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ "$APPLY" = none ]; then npm run scrape:all; else npm run scrape:all -- --apply "$APPLY"; fi
+          args=(--sources-file "$RUNNER_TEMP/scrape-sources.json")
+          [ "$APPLY" != none ] && args+=(--apply "$APPLY")
+          npm run scrape:all -- "${args[@]}"
 
       # Each scraper's verdict goes to the job summary, and the tail of every
       # failed one to the log as well — the same thing the admin console

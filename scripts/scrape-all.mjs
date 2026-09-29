@@ -4,6 +4,8 @@ import { existsSync, mkdirSync, openSync, closeSync, readFileSync, writeFileSync
 import { dirname, resolve, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { sourceIds, venueIds, validateSources } from './lib/scrape-sources.mjs'
+
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 export const APPLY_ENVIRONMENTS = ['preview', 'staging', 'production']
@@ -17,26 +19,29 @@ export const APPLY_ENVIRONMENTS = ['preview', 'staging', 'production']
 const IMPORTS = [
  { name: 'katajaam-import', scrape: 'katajaam', script: 'scripts/import-katajaam.mjs' },
  { name: 'taragaon-import', scrape: 'taragaon', script: 'scripts/import-taragaon.mjs' },
+ { name: 'venues-import', scrape: 'venues', script: 'scripts/import-venues.mjs' },
 ]
 
-export function runScrapers({ root = repository, output = join(root, 'scrape-output', new Date().toISOString().replace(/[:.]/g, '-')), execute = spawnSync, apply = null } = {}) {
+export function runScrapers({ root = repository, output = join(root, 'scrape-output', new Date().toISOString().replace(/[:.]/g, '-')), execute = spawnSync, apply = null, sources = sourceIds } = {}) {
  if (apply !== null && !APPLY_ENVIRONMENTS.includes(apply)) throw Error(`--apply must be one of ${APPLY_ENVIRONMENTS.join(', ')}`)
+ validateSources(sources)
+ const selectedVenues = sources.filter(id => venueIds.includes(id))
  mkdirSync(output, { recursive: true })
  const jobs = [
   { name: 'ticketsanjal', script: 'ticketsanjal-scraper/scrape.mjs', args: [] },
   { name: 'khalti', script: 'scripts/scrape-khalti.mjs', args: [join(output, 'khalti')] },
   { name: 'katajaam', script: 'scripts/import-katajaam.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'katajaam')] },
   { name: 'taragaon', script: 'scripts/import-taragaon.mjs', args: ['--scrape-only', '--repo', root, '--out', join(output, 'taragaon')] },
-  { name: 'venues', script: 'scripts/scrape-venues.mjs', args: ['--scrape-only', '--out', join(output, 'venues')] },
- ]
+  { name: 'venues', script: 'scripts/scrape-venues.mjs', args: ['--scrape-only', '--out', join(output, 'venues'), '--source', selectedVenues.join(',')] },
+ ].filter(job => job.name === 'venues' ? selectedVenues.length > 0 : sources.includes(job.name))
  // Drafts only: `--publish` is deliberately not offered here. What a scrape
  // found goes into the queue for a person to publish (the moderation queue's
  // "imported" filter), never straight onto the public site.
- if (apply) for (const i of IMPORTS) jobs.push({
+ if (apply) for (const i of IMPORTS.filter(item => jobs.some(job => job.name === item.scrape))) jobs.push({
   name: i.name, script: i.script, requires: i.scrape,
   args: ['--env', apply, '--apply', '--repo', root, '--input', join(output, i.scrape, 'inventory.json'), '--out', join(output, i.name)],
  })
- const report = { started_at: new Date().toISOString(), apply, complete: false, jobs: [] }
+ const report = { started_at: new Date().toISOString(), apply, sources, complete: false, jobs: [] }
  const save = () => writeFileSync(join(output, 'summary.json'), JSON.stringify(report, null, 2))
  for (const job of jobs) {
   const cwd = join(output, job.name)
@@ -87,7 +92,10 @@ export function options(args) {
   if (args[i] === '--apply') {
    if (!args[i + 1] || args[i + 1].startsWith('--')) throw Error('Missing value for --apply')
    o.apply = args[++i]
-  } else throw Error('Usage: node scripts/scrape-all.mjs [--apply preview|staging|production]')
+  } else if (args[i] === '--sources-file') {
+   if (!args[i + 1] || args[i + 1].startsWith('--')) throw Error('Missing value for --sources-file')
+   o.sources = validateSources(JSON.parse(readFileSync(args[++i], 'utf8')))
+  } else throw Error('Usage: node scripts/scrape-all.mjs [--apply preview|staging|production] [--sources-file FILE]')
  }
  return o
 }

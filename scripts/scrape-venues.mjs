@@ -122,7 +122,7 @@ export async function main(args=process.argv.slice(2)) {
  reports.sort((a,b)=>a.id.localeCompare(b.id))
  const events=reports.flatMap(r=>r.events),review=reports.flatMap(r=>r.review)
  const candidates=events.map(e=>transform(e,sources.find(s=>s.id===e.source_id),checked_at))
- writeFileSync(join(out,'inventory.json'),JSON.stringify({checked_at,events},null,2))
+ writeFileSync(join(out,'inventory.json'),JSON.stringify({checked_at,complete:!reports.some(r=>['partial','failed'].includes(r.status)),events},null,2))
  writeFileSync(join(out,'review.json'),JSON.stringify(review,null,2))
  writeFileSync(join(out,'report.json'),JSON.stringify({mode:'scrape-only',checked_against_database:false,checked_at,events:plan(candidates)},null,2))
  writeFileSync(join(out,'coverage.json'),JSON.stringify({checked_at,sources:reports.map(({events,review,...r})=>({...r,event_count:events.length,review_count:review.length}))},null,2))

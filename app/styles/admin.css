@@ -300,3 +300,11 @@ a.queue__tab { text-decoration: none; }
 
 .admin__run-job.is-failed { color: var(--danger); }
 .admin__run-job.is-skipped { opacity: 0.7; }
+
+.admin__scrape-sources { border: 0; padding: 0; margin: var(--space-4) 0; min-width: 0; }
+.admin__scrape-sources legend { font-weight: var(--weight-bold); }
+.admin__source-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: var(--space-2); }
+.admin__source-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); min-height: 44px; border: 1px solid currentColor; border-radius: var(--radius-sm); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.admin__source-toggle[aria-checked="true"] { font-weight: var(--weight-bold); }
+.admin__source-toggle:disabled { opacity: 0.65; cursor: wait; }
+.admin__source-state { flex-shrink: 0; }

@@ -3,8 +3,8 @@ import { Link } from '../router'
 import { Alert, Badge, Button, Card } from '../components/primitives'
 import { AuthorError } from '../lib/author'
 import {
-  fetchScrapeRuns, runArchive, scrapeOutputUrl, startScrapeRun, sweepMedia,
-  type ScrapeRun, type ScrapeRuns, type Sweep,
+  fetchScrapeSources, setScrapeSource, fetchScrapeRuns, runArchive, scrapeOutputUrl, startScrapeRun, sweepMedia,
+  type ScrapeSource, type ScrapeRun, type ScrapeRuns, type Sweep,
 } from '../lib/admin'
 import { when } from './shared'
 
@@ -137,6 +137,9 @@ function ScrapeCard({ busy, running, onRun }: {
   running: boolean
   onRun: (work: () => Promise<void>) => Promise<void>
 }) {
+  const [sources, setSources] = useState<ScrapeSource[] | null>(null)
+  const [savingSource, setSavingSource] = useState<string | null>(null)
+  const [sourceError, setSourceError] = useState<string | null>(null)
   const [runs, setRuns] = useState<ScrapeRuns | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -150,6 +153,21 @@ function ScrapeCard({ busy, running, onRun }: {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    void fetchScrapeSources().then(result => setSources(result.sources)).catch(() => setSourceError('Could not load source settings. Reload the page to try again.'))
+  }, [])
+
+  const toggleSource = async (source: ScrapeSource) => {
+    setSavingSource(source.id)
+    setSourceError(null)
+    try {
+      const saved = await setScrapeSource(source.id, !source.enabled)
+      setSources(current => current?.map(item => item.id === saved.id ? { ...item, enabled: saved.enabled } : item) ?? null)
+    } catch (caught) {
+      setSourceError(caught instanceof AuthorError ? caught.message : 'Could not save this source. Try again.')
+    } finally { setSavingSource(null) }
+  }
 
   const active = runs?.data.some((run) => run.status === 'queued' || run.status === 'running') ?? false
   useEffect(() => {
@@ -166,8 +184,8 @@ function ScrapeCard({ busy, running, onRun }: {
       <div className="admin__row-body">
         <h3 className="admin__row-title">Scrape the sources</h3>
         <p className="board__meta">
-          Runs every morning at six, Kathmandu time, on the runner. Every source
-          is read and what is new goes into the queue as drafts; nothing is
+          Runs every morning at six, Kathmandu time, on the runner. Enabled sources
+          are read and supported imports go into the queue as drafts; nothing is
           published by a run.
         </p>
 
@@ -177,6 +195,26 @@ function ScrapeCard({ busy, running, onRun }: {
             This environment has no token for starting a run. The nightly schedule still runs.
           </Alert>
         )}
+
+        <fieldset className="admin__scrape-sources" disabled={savingSource !== null}>
+          <legend>Sources</legend>
+          <p className="board__meta">Changes save automatically for future manual and scheduled runs. Queued and running jobs keep their selection.</p>
+          {sourceError && <Alert tone="danger" title="Source settings">{sourceError}</Alert>}
+          {!sources && !sourceError && <p role="status">Loading sources…</p>}
+          <div className="admin__source-grid">
+            {sources?.map(source => (
+              <button key={source.id} type="button" className="admin__source-toggle"
+                      role="switch" aria-checked={source.enabled} aria-label={source.name}
+                      onClick={() => void toggleSource(source)}>
+                <span>{source.name}</span>
+                <span className="admin__source-state" aria-hidden="true">
+                  {savingSource === source.id ? 'Saving…' : source.enabled ? 'On' : 'Off'}
+                </span>
+              </button>
+            ))}
+          </div>
+          {sources && !sources.some(source => source.enabled) && <p role="status">All sources are off. Turn one on to start a run.</p>}
+        </fieldset>
 
         {pending > 0 && (
           <Alert tone="info" title={`${pending} imported ${pending === 1 ? 'draft is' : 'drafts are'} waiting`}>
@@ -194,7 +232,7 @@ function ScrapeCard({ busy, running, onRun }: {
         )}
       </div>
       <div className="admin__row-actions">
-        <Button type="button" loading={running} disabled={busy || active || runs?.configured === false}
+        <Button type="button" loading={running} disabled={busy || active || savingSource !== null || !sources?.some(source => source.enabled) || runs?.configured === false}
                 onClick={() => void onRun(async () => { await startScrapeRun(); await load() })}>
           {active ? (latest?.status === 'queued' ? 'Queued…' : 'Running…') : 'Run now'}
         </Button>

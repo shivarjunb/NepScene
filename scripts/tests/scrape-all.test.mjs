@@ -38,10 +38,10 @@ test('--apply adds draft-only imports that read the saved inventories, and skips
    }
    return { status: 0 }
   } })
-  // Five scrapes, then only the taragaon import ran; the katajaam import was skipped, not attempted.
-  assert.equal(calls.length, 6)
+  // Five scrapes, then the taragaon and venue imports ran; the katajaam import was skipped, not attempted.
+  assert.equal(calls.length, 7)
   assert.equal(report.apply, 'production')
-  assert.deepEqual(report.jobs.map(j => j.name), ['ticketsanjal', 'khalti', 'katajaam', 'taragaon', 'venues', 'katajaam-import', 'taragaon-import'])
+  assert.deepEqual(report.jobs.map(j => j.name), ['ticketsanjal', 'khalti', 'katajaam', 'taragaon', 'venues', 'katajaam-import', 'taragaon-import', 'venues-import'])
   const katajaamImport = report.jobs.find(j => j.name === 'katajaam-import')
   assert.equal(katajaamImport.skipped, true)
   assert.equal(katajaamImport.success, false)
@@ -49,7 +49,7 @@ test('--apply adds draft-only imports that read the saved inventories, and skips
   const taragaonImport = report.jobs.find(j => j.name === 'taragaon-import')
   assert.equal(taragaonImport.success, true)
   assert.deepEqual(taragaonImport.import, { new_drafts: 4, duplicates: 2 })
-  const applyCall = calls.at(-1).args
+  const applyCall = calls.find(c => c.args.some(a => a.endsWith('import-taragaon.mjs')) && c.args.includes('--apply')).args
   assert.ok(applyCall.includes('--apply'))
   assert.ok(!applyCall.includes('--publish'), 'imports must never publish')
   assert.equal(applyCall[applyCall.indexOf('--env') + 1], 'production')
@@ -63,4 +63,52 @@ test('refuses an unknown --apply target before anything runs', () => {
  assert.throws(() => options(['--apply']), /Missing value/)
  assert.deepEqual(options(['--apply', 'staging']), { apply: 'staging' })
  assert.deepEqual(options([]), { apply: null })
+})
+
+test('venue import uses the saved inventory and reports draft counts; a failed venue scrape skips it', () => {
+ for (const failed of [false, true]) {
+  const output = mkdtempSync(join(tmpdir(), 'nepscene-venue-runner-'))
+  try {
+   const calls = []
+   const report = runScrapers({ output, apply: 'staging', execute: (node, args, config) => {
+    calls.push(args)
+    if (args[0].endsWith('scrape-venues.mjs') && failed) return { status: 1 }
+    if (args[0].endsWith('import-venues.mjs')) {
+     assert.equal(args[args.indexOf('--input') + 1], join(output, 'venues', 'inventory.json'))
+     assert.equal(args[args.indexOf('--env') + 1], 'staging')
+     assert.ok(args.includes('--apply'))
+     assert.ok(!args.includes('--publish'))
+     writeFileSync(join(config.cwd, 'report.json'), JSON.stringify({ summary: { new_drafts: 3 } }))
+    }
+    return { status: 0 }
+   } })
+   const job = report.jobs.find(j => j.name === 'venues-import')
+   assert.equal(job.success, !failed)
+   if (failed) {
+    assert.equal(job.skipped, true)
+    assert.ok(!calls.some(args => args[0].endsWith('import-venues.mjs')))
+   } else assert.equal(job.import.new_drafts, 3)
+  } finally { rmSync(output, { recursive: true, force: true }) }
+ }
+})
+
+test('source switches select individual venues and omit disabled scrapers and imports', () => {
+ for (const sources of [['ktm-026', 'khalti'], ['katajaam'], []]) {
+  const output = mkdtempSync(join(tmpdir(), 'nepscene-selection-'))
+  try {
+   const calls = []
+   const report = runScrapers({ output, sources, apply: 'staging', execute: (node, args) => {
+    calls.push(args); return { status: 0 }
+   } })
+   assert.equal(report.complete, true)
+   assert.deepEqual(report.sources, sources)
+   if (sources.includes('ktm-026')) {
+    assert.deepEqual(report.jobs.map(j => j.name), ['khalti', 'venues', 'venues-import'])
+    const venue = calls.find(args => args[0].endsWith('scrape-venues.mjs'))
+    assert.equal(venue[venue.indexOf('--source') + 1], 'ktm-026')
+   } else if (sources.length) assert.deepEqual(report.jobs.map(j => j.name), ['katajaam', 'katajaam-import'])
+   else assert.equal(calls.length, 0)
+  } finally { rmSync(output, { recursive: true, force: true }) }
+ }
+ assert.throws(() => runScrapers({ sources: ['unknown'] }), /supported source IDs/)
 })
