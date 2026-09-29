@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Badge, Button, Card, Field, Input } from '../components/primitives'
+import { Alert, Badge, Button, Card, Checkbox, Field, Input } from '../components/primitives'
 import { AuthorError } from '../lib/author'
-import { deployToProduction, fetchDeployState, type DeployState, type ProductionRun } from '../lib/admin'
+import { deployToProduction, fetchDeployState, setAutoPromote, type DeployState, type ProductionRun } from '../lib/admin'
 
 /**
  * "Deploy to production", on the staging console only: the API answers 404
@@ -12,6 +12,10 @@ import { deployToProduction, fetchDeployState, type DeployState, type Production
  * production workflow. Approval still happens in GitHub; the workflow
  * @mentions the reviewers when it gets there, and this card says so while a
  * deploy is waiting.
+ *
+ * The switch below makes staging's own deploy press the button after each
+ * green run. It says, right beside it, that approval still does not: that is
+ * the one thing someone turning it on must not have to guess.
  */
 export function DeployCard() {
   const [state, setState] = useState<DeployState | null>(null)
@@ -20,6 +24,7 @@ export function DeployCard() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [started, setStarted] = useState<string | null>(null)
+  const [switching, setSwitching] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -59,6 +64,19 @@ export function DeployCard() {
     }
   }
 
+  const toggleAuto = async (enabled: boolean) => {
+    setSwitching(true)
+    setError(null)
+    try {
+      const { auto_promote } = await setAutoPromote(enabled)
+      setState((current) => current && { ...current, auto_promote })
+    } catch (caught) {
+      setError(caught instanceof AuthorError ? caught.message : 'That did not work')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
   const candidate = state?.candidate
   const active = state?.active
   return (
@@ -79,6 +97,14 @@ export function DeployCard() {
               {' '}{candidate
                 ? <>Staging is {state.ahead.length === 1 ? 'one commit' : `${state.ahead.length} commits`} ahead.</>
                 : <>Staging has nothing production is missing.</>}
+            </p>
+            <Checkbox label="Promote to production automatically after a green staging deploy"
+                      checked={state.auto_promote} disabled={switching}
+                      onChange={(event) => void toggleAuto(event.target.checked)} />
+            <p className="board__meta">
+              {state.auto_promote ? 'On' : 'Off'}. Automatic only starts the deploy — it still waits
+              for a reviewer to approve it in GitHub, exactly like one started here. Nothing reaches
+              production without that approval.
             </p>
             {active && <ActiveDeploy run={active} />}
             {started && !active && !finished && (
@@ -104,6 +130,19 @@ export function DeployCard() {
                   )}
                 </Field>
               </>
+            )}
+            {state.recent.length > 0 && <p className="board__meta">Recent production deploys:</p>}
+            {state.recent.length > 0 && (
+              <ul className="admin__keys" aria-label="Recent production deploys">
+                {state.recent.map((run) => (
+                  <li key={run.url}>
+                    <a href={run.url} target="_blank" rel="noreferrer">{run.sha ? <code>{short(run.sha)}</code> : 'Deploy'}</a>{' '}
+                    {run.automatic && <><Badge tone="accent">Automatic</Badge>{' '}</>}
+                    {run.status === 'completed' ? (run.conclusion ?? 'stopped') : run.status.replace('_', ' ')}
+                    {' · '}{new Date(run.created_at).toLocaleString()}
+                  </li>
+                ))}
+              </ul>
             )}
           </>
         )}

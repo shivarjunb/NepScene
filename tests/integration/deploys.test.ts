@@ -7,7 +7,10 @@ import { defaultReason } from '../../api/admin/deploys'
  * What is settled here: the routes exist on staging only; the button offers
  * the newest green staging commit that production lacks, named after what it
  * brings in; and a promotion is refused when it could not pass the
- * workflow's gate, or while another deploy is under way.
+ * workflow's gate, or while another deploy is under way. And the automatic
+ * path: a switch only a user manager can flip, audited; a callback only the
+ * staging deploy's token opens; and, when on, the same refusals and the same
+ * dispatch as the button, for the run that called and nothing else.
  */
 
 let ipCounter = 0
@@ -41,11 +44,21 @@ const productionRun = (n: number, status = 'completed', conclusion: string | nul
   html_url: `https://github.com/runs/p${n}`, created_at: `2026-09-2${n}T01:00:00Z`,
 })
 
+/**
+ * Staging's deploy of commit 4, calling back from its last step: still
+ * `in_progress`, so not yet among the successful runs GitHub lists.
+ */
+const callingRun = (overrides: Record<string, unknown> = {}) => ({
+  ...stagingRun(4, 'feat: auto-promote (#138)'), status: 'in_progress', conclusion: null,
+  head_branch: 'main', path: '.github/workflows/deploy-staging.yml', ...overrides,
+})
+
 /** GitHub, stubbed: staging has commits 3 (newest), 2 and 1; production is whatever the test says. */
-function stubGitHub(production: unknown[], dispatchStatus = 204) {
+function stubGitHub(production: unknown[], dispatchStatus = 204, calling: unknown = callingRun()) {
   const dispatches: { url: string; body: any }[] = []
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (/\/actions\/runs\/\d+$/.test(url)) return Response.json(calling)
     if (url.includes('/deploy-staging.yml/runs')) {
       return Response.json({ workflow_runs: [stagingRun(3, 'fix: scrapes (#137)'), stagingRun(2, 'feat: sources (#136)'), stagingRun(1, 'feat: sign-in (#134)')] })
     }
@@ -65,7 +78,10 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM audit_log'),
     env.DB.prepare('DELETE FROM users'),
   ])
+  await env.SETTINGS.delete('deploy:auto-promote')
   env.GITHUB_DISPATCH_TOKEN = 'gh-token'
+  env.DEPLOY_CALLBACK_TOKEN = 'deploy-token'
+  env.SCRAPE_REPORT_TOKEN = 'scrape-token'
   env.ENVIRONMENT = 'staging'
 })
 
@@ -144,6 +160,125 @@ describe('deploy to production from the staging console', () => {
     expect((await admin('POST', cookie, { sha: sha(3), reason: 'go' })).status).toBe(502)
     env.GITHUB_DISPATCH_TOKEN = undefined
     expect((await admin('GET', cookie)).status).toBe(503)
+  })
+})
+
+const setAuto = (cookie: string, enabled: unknown) =>
+  SELF.fetch('https://nepscene.test/api/admin/system/deploy/auto', {
+    method: 'PUT', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ enabled }),
+  })
+
+const callback = (body: unknown, token = 'deploy-token') =>
+  SELF.fetch('https://nepscene.test/api/internal/staging-deploys', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+describe('promoting automatically after a green staging deploy', () => {
+  it('is off until a user manager turns it on, and each change is audited', async () => {
+    const cookie = await signIn('admin@example.np', 'admin')
+    const editor = await signIn('editor@example.np', 'editor')
+    stubGitHub([productionRun(1)])
+    expect(((await (await admin('GET', cookie)).json()) as any).auto_promote).toBe(false)
+
+    expect((await setAuto(editor, true)).status).toBe(403)
+    expect((await setAuto(cookie, 'yes')).status).toBe(400)
+    expect(((await (await admin('GET', cookie)).json()) as any).auto_promote).toBe(false)
+
+    expect(((await (await setAuto(cookie, true)).json()) as any).auto_promote).toBe(true)
+    expect(((await (await admin('GET', cookie)).json()) as any).auto_promote).toBe(true)
+    expect((await setAuto(cookie, false)).status).toBe(200)
+    expect(((await (await admin('GET', cookie)).json()) as any).auto_promote).toBe(false)
+
+    const { results } = await env.DB.prepare(
+      `SELECT a.action, u.email FROM audit_log a JOIN users u ON u.id = a.actor_id
+        WHERE a.action LIKE 'production_autodeploy_%' ORDER BY a.created_at, a.rowid`,
+    ).all<{ action: string; email: string }>()
+    expect(results).toEqual([
+      { action: 'production_autodeploy_enabled', email: 'admin@example.np' },
+      { action: 'production_autodeploy_disabled', email: 'admin@example.np' },
+    ])
+
+    env.ENVIRONMENT = 'production'
+    expect((await setAuto(cookie, true)).status).toBe(404)
+  })
+
+  it('opens the callback to the staging deploy’s token only', async () => {
+    const dispatches = stubGitHub([productionRun(2)])
+    await env.SETTINGS.put('deploy:auto-promote', 'on')
+    const body = { sha: sha(4), run_id: 4 }
+    expect((await callback(body, 'wrong-token')).status).toBe(401)
+    // The scrape runner's token opens the scrape routes, not this one.
+    expect((await callback(body, 'scrape-token')).status).toBe(401)
+    expect((await SELF.fetch('https://nepscene.test/api/internal/staging-deploys', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    })).status).toBe(401)
+    // …and this token does not open the scrape routes.
+    expect((await SELF.fetch('https://nepscene.test/api/internal/scrape-sources', {
+      headers: { authorization: 'Bearer deploy-token' },
+    })).status).toBe(401)
+    env.DEPLOY_CALLBACK_TOKEN = undefined
+    expect((await callback(body)).status).toBe(503)
+    expect(dispatches).toHaveLength(0)
+  })
+
+  it('does nothing while the switch is off', async () => {
+    const dispatches = stubGitHub([productionRun(2)])
+    const response = await callback({ sha: sha(4), run_id: 4 })
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ promoted: false, reason: 'disabled' })
+    expect(dispatches).toHaveLength(0)
+  })
+
+  it('when on, promotes the run that called — green or not in GitHub’s list yet — named "Auto: …"', async () => {
+    const dispatches = stubGitHub([productionRun(2)])
+    await env.SETTINGS.put('deploy:auto-promote', 'on')
+    const response = await callback({ sha: sha(4), run_id: 4 })
+    expect(response.status).toBe(202)
+    expect(((await response.json()) as any).promoted).toBe(true)
+    const reason = 'Auto: feat: auto-promote (#138); fix: scrapes (#137)'
+    expect(dispatches).toHaveLength(1)
+    expect(dispatches[0]!.body).toEqual({ ref: 'main', inputs: { sha: sha(4), reason } })
+    const audit = await env.DB.prepare("SELECT actor_id, actor_role, details FROM audit_log WHERE action = 'production_deploy_requested'")
+      .first<{ actor_id: string | null; actor_role: string | null; details: string }>()
+    expect(audit!.actor_id).toBeNull()
+    expect(audit!.actor_role).toBeNull()
+    expect(JSON.parse(audit!.details)).toEqual({ sha: sha(4), reason, automatic: true, staging_run: 4 })
+  })
+
+  it('when on, starts nothing while another production deploy is under way', async () => {
+    const dispatches = stubGitHub([productionRun(3, 'waiting', null), productionRun(2)])
+    await env.SETTINGS.put('deploy:auto-promote', 'on')
+    const response = await callback({ sha: sha(4), run_id: 4 })
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as any).reason).toBe('already_deploying')
+    expect(dispatches).toHaveLength(0)
+  })
+
+  it('when on, starts nothing for a commit production already has, or a run that is not the one claimed', async () => {
+    await env.SETTINGS.put('deploy:auto-promote', 'on')
+    // A re-run of staging for the commit production is already on.
+    let dispatches = stubGitHub([productionRun(3)], 204, callingRun({ id: 3, head_sha: sha(3) }))
+    let response = await callback({ sha: sha(3), run_id: 3 })
+    expect(((await response.json()) as any).reason).toBe('not_on_staging')
+    expect(dispatches).toHaveLength(0)
+
+    // The body names one commit; the run it names deployed another, from a
+    // branch, or failed.
+    const mismatches: [Record<string, unknown>, string][] = [
+      [callingRun(), sha(9)],
+      [callingRun({ head_branch: 'feature' }), sha(4)],
+      [callingRun({ status: 'completed', conclusion: 'failure' }), sha(4)],
+      [callingRun({ path: '.github/workflows/preview.yml' }), sha(4)],
+    ]
+    for (const [calling, claimed] of mismatches) {
+      vi.restoreAllMocks()
+      dispatches = stubGitHub([productionRun(2)], 204, calling)
+      response = await callback({ sha: claimed, run_id: 4 })
+      expect(((await response.json()) as any).reason).toBe('not_this_run')
+      expect(dispatches).toHaveLength(0)
+    }
   })
 })
 

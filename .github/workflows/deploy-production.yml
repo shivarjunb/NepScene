@@ -43,14 +43,25 @@ jobs:
         with:
           script: |
             const sha = context.payload.inputs.sha
-            const runs = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner, repo: context.repo.repo,
-              workflow_id: 'deploy-staging.yml', head_sha: sha
-            })
-            const conclusions = runs.data.workflow_runs.map((r) => r.conclusion)
+            // An automatic promotion is dispatched by the staging run's own last
+            // step, so that run can still be finishing when this starts. Wait for
+            // it — up to ten minutes — rather than refuse it; what passes is
+            // unchanged: a staging run of this SHA that concluded `success`.
+            let conclusions = []
+            for (let attempt = 0; ; attempt++) {
+              const runs = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner, repo: context.repo.repo,
+                workflow_id: 'deploy-staging.yml', head_sha: sha
+              })
+              conclusions = runs.data.workflow_runs.map((r) => r.conclusion)
+              const unfinished = runs.data.workflow_runs.some((r) => r.status !== 'completed')
+              if (conclusions.includes('success') || !unfinished || attempt >= 40) break
+              core.info(`A staging run for ${sha} is still running; checking again in 15s`)
+              await new Promise((resolve) => setTimeout(resolve, 15000))
+            }
             // Logged either way: a gate that can only be observed when it fails is
             // one you cannot tell apart from a gate that is broken open.
-            core.info(`Staging runs for ${sha}: ${conclusions.length ? conclusions.join(', ') : 'none'}`)
+            core.info(`Staging runs for ${sha}: ${conclusions.length ? conclusions.map((c) => c ?? 'unfinished').join(', ') : 'none'}`)
             if (!conclusions.includes('success')) {
               core.setFailed(`No successful staging deploy for ${sha}. Promote a verified commit.`)
             }
