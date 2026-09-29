@@ -1,5 +1,10 @@
 name: Deploy to production
 
+# The commit goes in the title: a dispatched run's own head SHA is main at the
+# moment it was started, not the commit it deployed, and the staging console
+# (api/admin/deploys.ts) reads what production is running from here.
+run-name: Deploy ${{ inputs.sha }} — ${{ inputs.reason }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -27,6 +32,11 @@ jobs:
   gate:
     name: Confirm this SHA succeeded on staging
     runs-on: self-hosted
+    permissions:
+      actions: read             # deploy-staging.yml's run history
+      contents: read
+      pull-requests: write      # the reviewers' @mention, on the commit's PR
+      issues: write             # …or on an issue, for a commit with no PR
     steps:
       - name: Confirm this SHA succeeded on staging
         uses: actions/github-script@v9
@@ -43,6 +53,34 @@ jobs:
             core.info(`Staging runs for ${sha}: ${conclusions.length ? conclusions.join(', ') : 'none'}`)
             if (!conclusions.includes('success')) {
               core.setFailed(`No successful staging deploy for ${sha}. Promote a verified commit.`)
+            }
+
+      # `promote` is about to wait at the production environment's approval
+      # gate. GitHub's own "review requested" notice is easy to miss, and when
+      # the reviewer started the run themselves it may not come at all; an
+      # @mention from the Actions bot does — email and a GitHub-app push, from
+      # which the deploy can be approved. Reviewers: the PRODUCTION_REVIEWERS repo
+      # variable (space- or comma-separated logins), else the repo's owner.
+      # Best effort: a notice that fails to post must not block the deploy.
+      - name: Tell the reviewers a deploy is waiting
+        continue-on-error: true
+        uses: actions/github-script@v9
+        env:
+          REVIEWERS: ${{ vars.PRODUCTION_REVIEWERS }}
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const { sha, reason } = context.payload.inputs
+            const mentions = (process.env.REVIEWERS || owner).split(/[\s,]+/).filter(Boolean).map((r) => '@' + r.replace(/^@/, '')).join(' ')
+            const url = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`
+            const body = `${mentions} a production deploy of \`${sha.slice(0, 7)}\` is waiting for your approval.\n\n**Reason:** ${reason}\n\n**[Review and approve →](${url})**`
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({ owner, repo, commit_sha: sha })
+            if (prs.length) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prs[0].number, body })
+              core.info(`Asked ${mentions} on #${prs[0].number}`)
+            } else {
+              const { data: issue } = await github.rest.issues.create({ owner, repo, title: `Production deploy of ${sha.slice(0, 7)} is waiting for approval`, body })
+              core.info(`Asked ${mentions} on #${issue.number}`)
             }
 
   promote:
@@ -93,7 +131,13 @@ jobs:
       - name: Smoke test
         run: node scripts/smoke.mjs https://nepscene.bhattarai-shiva.workers.dev production
 
+      # Through the environment, not `${{ }}` in the script: the reason is
+      # free text typed into the staging console, and pasted into a shell line
+      # a `$(…)` in it would run.
       - name: Record the release
+        env:
+          SHA: ${{ inputs.sha }}
+          REASON: ${{ inputs.reason }}
         run: |
-          echo "Promoted ${{ inputs.sha }} to production"
-          echo "Reason: ${{ inputs.reason }}"
+          echo "Promoted $SHA to production"
+          echo "Reason: $REASON"

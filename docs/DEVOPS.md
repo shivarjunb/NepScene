@@ -187,6 +187,24 @@ The `gate` job logs which staging runs it found for that SHA whether it passes o
 fails — a gate you can only observe when it refuses is indistinguishable from one
 that is broken open.
 
+**From the staging console.** System → Housekeeping on *staging* has a "Deploy to
+production" card (`api/admin/deploys.ts`; every other environment answers 404). It
+pre-fills the newest commit that went green on staging, names the deploy after the
+commits production lacks, and dispatches this workflow — the same thing as the
+command above, audited as `production_deploy_requested`. It refuses a commit the
+gate would refuse, and a second deploy while one is queued, running or waiting.
+It reads what production runs from each run's title (`run-name`, which carries the
+SHA), so runs from before that existed count as "unknown" and only the newest
+staging commit is offered. It needs `GITHUB_DISPATCH_TOKEN` on the **staging**
+Worker; the token can start a deploy but not approve one.
+
+**Being told it is waiting.** When `gate` passes, it @mentions the reviewers on
+the commit's PR (or a new issue, for a commit with no PR) with a link to the run.
+A mention from the Actions bot reaches you by email and GitHub-app push even when
+you started the deploy yourself, and the GitHub mobile app can approve from there.
+Reviewers are the `PRODUCTION_REVIEWERS` repository variable (logins, space- or
+comma-separated), or the repository owner when it is unset.
+
 ### Rollback
 
 One command, from a clean checkout:
@@ -253,6 +271,7 @@ openssl rand -hex 32                                        # one value, used tw
 gh secret set SCRAPE_REPORT_TOKEN --env scrape
 npx wrangler secret put SCRAPE_REPORT_TOKEN --env production
 npx wrangler secret put GITHUB_DISPATCH_TOKEN --env production
+npx wrangler secret put GITHUB_DISPATCH_TOKEN --env staging    # the deploy button lives here
 gh secret set CLOUDFLARE_API_TOKEN --env scrape             # the D1-only token
 gh secret set CLOUDFLARE_ACCOUNT_ID --env scrape
 ```
@@ -277,7 +296,7 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are se
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Environment secret | Deploy workflows |
 | `VITE_GOOGLE_MAPS_API_KEY` | GitHub Environment secret | Build — referrer-restricted per environment |
 | `GOOGLE_CLIENT_SECRET` | Cloudflare secret binding | Worker, per environment |
-| `GITHUB_DISPATCH_TOKEN` | Cloudflare secret binding | Worker — the admin console's "run the scrapers" |
+| `GITHUB_DISPATCH_TOKEN` | Cloudflare secret binding | Worker — the admin console's "run the scrapers", and staging's "Deploy to production" |
 | `SCRAPE_REPORT_TOKEN` | Cloudflare secret binding **and** `scrape` Environment secret | Worker and the daily scrape, one shared value |
 | `CLOUDFLARE_API_TOKEN` (D1-only) | `scrape` Environment secret | Daily scrape's importers — a different token from the deploy one |
 

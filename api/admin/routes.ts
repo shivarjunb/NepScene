@@ -9,6 +9,7 @@ import { adminUserRoutes } from './users'
 import { adminOrganizationRoutes } from './organizations'
 import { adminAuditRoutes, serialiseEntry } from './audit'
 import { adminScrapeRoutes } from './scrapes'
+import { adminDeployRoutes } from './deploys'
 import { adminListingRoutes } from './listings'
 import { adminVenueRoutes } from './venues'
 import { SELECT_RUN, serialiseRun, type ScrapeRunRow } from '../scrapes/runs'
@@ -33,6 +34,7 @@ adminRoutes.route('/', adminUserRoutes)
 adminRoutes.route('/', adminOrganizationRoutes)
 adminRoutes.route('/', adminAuditRoutes)
 adminRoutes.route('/', adminScrapeRoutes)
+adminRoutes.route('/', adminDeployRoutes)
 adminRoutes.route('/', adminListingRoutes)
 adminRoutes.route('/', adminVenueRoutes)
 

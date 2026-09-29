@@ -40,10 +40,10 @@ export function applyEnvironmentFor(environment: Env['ENVIRONMENT']): ApplyEnvir
     : 'preview'
 }
 
-/** GitHub's answer to a dispatch, reduced to what the row records. */
-export async function dispatchWorkflow(env: Env, inputs: Record<string, string>, fetcher = fetch): Promise<{ ok: true } | { ok: false; error: string }> {
+/** GitHub's answer to a dispatch, reduced to what the row records. The deploy button (./deploys.ts) shares it. */
+export async function dispatchWorkflow(env: Env, inputs: Record<string, string>, fetcher = fetch, workflow = WORKFLOW): Promise<{ ok: true } | { ok: false; error: string }> {
   const response = await fetcher(
-    `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW}/dispatches`,
+    `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${workflow}/dispatches`,
     {
       method: 'POST',
       headers: {
