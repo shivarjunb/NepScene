@@ -70,10 +70,20 @@ export function ListingDialog({ slug }: { slug: string }) {
         tabIndex={-1}
       >
         <div className="listing-dialog__bar">
-          {/* A plain link, so the reader who wants the page — to bookmark it,
-              to read it without the row behind — has it one click away. */}
-          <Link className="btn btn--ghost btn--sm" href={`/listings/${slug}`}>{t('listing.openPage')}</Link>
-          <Button variant="ghost" size="sm" onClick={closeOverlay} aria-label={t('listing.close')}>✕</Button>
+          {/* On a phone the dialog is the whole screen, so it reads as a page
+              and gets a page's way out: Back, where a thumb and an app expect
+              it. The link and the ✕ are for the sheet over a wider page; a
+              phone has no row behind to keep, and the address bar already
+              holds the page's link. CSS shows one set or the other. */}
+          <Button variant="ghost" size="sm" className="listing-dialog__back" onClick={closeOverlay}>
+            <span aria-hidden="true">←</span> {t('listing.back')}
+          </Button>
+          <span className="listing-dialog__actions">
+            {/* A plain link, so the reader who wants the page — to bookmark it,
+                to read it without the row behind — has it one click away. */}
+            <Link className="btn btn--ghost btn--sm" href={`/listings/${slug}`}>{t('listing.openPage')}</Link>
+            <Button variant="ghost" size="sm" onClick={closeOverlay} aria-label={t('listing.close')}>✕</Button>
+          </span>
         </div>
 
         {loading && <ListingSkeleton bare />}

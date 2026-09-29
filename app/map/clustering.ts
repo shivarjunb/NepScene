@@ -51,10 +51,34 @@ export type Cluster = {
   bounds: Bounds
 }
 
-/** What the map should draw right now: either groups, or clusters of them. */
+/**
+ * How close two pins can be, in pixels, before they are drawn as one bubble.
+ * A pin is 40px tall and about 30px wide; at this distance two of them overlap
+ * enough that the one underneath cannot be tapped and its colour cannot be
+ * read — which is what "the map looks congested" meant on a phone.
+ */
+export const OVERLAP_PX = 40
+
+/**
+ * What the map should draw right now: groups, clusters of them, or — when only
+ * some pins collide — both. `clusters` is the density path, where the whole
+ * screen is a grid; `mixed` is the overlap path, where only pins that would
+ * sit on top of each other are merged.
+ */
 export type MarkerPlan =
   | { kind: 'groups'; groups: VenueGroup[]; clusters: [] }
   | { kind: 'clusters'; groups: []; clusters: Cluster[] }
+  | { kind: 'mixed'; groups: VenueGroup[]; clusters: Cluster[] }
+
+export type PlanOptions = {
+  threshold?: number
+  /**
+   * `OVERLAP_PX` expressed in degrees at the current zoom. Absent when there
+   * is no drawn map to measure — the list view, a unit test — in which case
+   * nothing is merged for being close.
+   */
+  overlap?: { lat: number; lng: number } | null
+}
 
 /**
  * Cut the held groups down to what is on screen, then cluster if that is still
@@ -67,13 +91,60 @@ export type MarkerPlan =
 export function planMarkers(
   groups: VenueGroup[],
   viewport: Bounds | null,
-  threshold = CLUSTER_THRESHOLD,
+  { threshold = CLUSTER_THRESHOLD, overlap = null }: PlanOptions = {},
 ): MarkerPlan {
   if (!viewport) return { kind: 'groups', groups: [], clusters: [] }
 
   const visible = groups.filter((group) => inside(viewport, group))
-  if (visible.length <= threshold) return { kind: 'groups', groups: visible, clusters: [] }
-  return { kind: 'clusters', groups: [], clusters: clusterGroups(visible, viewport) }
+  if (visible.length > threshold) {
+    return { kind: 'clusters', groups: [], clusters: clusterGroups(visible, viewport) }
+  }
+  if (!overlap || overlap.lat <= 0 || overlap.lng <= 0) {
+    return { kind: 'groups', groups: visible, clusters: [] }
+  }
+
+  const merged = mergeOverlapping(visible, overlap)
+  return merged.clusters.length === 0
+    ? { kind: 'groups', groups: merged.groups, clusters: [] }
+    : { kind: 'mixed', groups: merged.groups, clusters: merged.clusters }
+}
+
+/**
+ * Below the density threshold, merge only the pins that would be drawn on top
+ * of each other.
+ *
+ * Greedy, busiest place first: each unclaimed group claims every unclaimed
+ * group within `overlap` of it. The busiest leads so that a bubble sits where
+ * most of what it holds is, and so the grouping is stable across redraws
+ * rather than depending on the order the API happened to return rows in.
+ * Quadratic, which is fine: it only runs under `CLUSTER_THRESHOLD` groups.
+ */
+function mergeOverlapping(
+  groups: VenueGroup[],
+  overlap: { lat: number; lng: number },
+): { groups: VenueGroup[]; clusters: Cluster[] } {
+  const order = [...groups].sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+  const claimed = new Set<VenueGroup>()
+  const singles: VenueGroup[] = []
+  const clusters: Cluster[] = []
+
+  for (const leader of order) {
+    if (claimed.has(leader)) continue
+    claimed.add(leader)
+    const members = [leader]
+    for (const other of order) {
+      if (claimed.has(other)) continue
+      if (Math.abs(other.lat - leader.lat) < overlap.lat
+        && Math.abs(other.lng - leader.lng) < overlap.lng) {
+        claimed.add(other)
+        members.push(other)
+      }
+    }
+    if (members.length === 1) singles.push(leader)
+    else clusters.push(asCluster(`o:${leader.key}`, members))
+  }
+
+  return { groups: singles, clusters }
 }
 
 const inside = (bounds: Bounds, at: { lat: number; lng: number }) =>

@@ -129,12 +129,32 @@ export function customEvents(html,url,adapter) {
    events.push({name:text(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]).replace(/^KathaSatha - /,''),url,source_page:url,startDate,location:{name:d[5]}})
   }
  } else if(adapter==='artofliving') {
-  const title=html.match(/class="course-details-title"[^>]*>\s*<b[^>]*>([\s\S]*?)<\/b>/)?.[1]
-  const date=html.match(/class=['"]course-details-combined_date['"][^>]*>([\s\S]*?)<\/span>/)?.[1],dates=dateRange(date)
-  const location=html.match(/class="course-details-venue"[\s\S]*?class="course_venue_value[^>]*>([\s\S]*?)<\/div>/)?.[1]
-  const time=html.match(/class="course-details-times"[\s\S]*?class="course_venue_value[^>]*>([\s\S]*?)<\/div>/)?.[1]
-  const reg=attrs(html.match(/<a[^>]*data-sao-id=[^>]*>/)?.[0]??'')
-  if(title&&dates)events.push({name:text(title),url,source_page:url,source_key:reg['data-sao-id']??hash(text(title)+dates.startDate),...dates,location:{name:text(location)},description:'Published weekly session times: '+text(time),offers:{url:reg.href}})
+  const page=parseFragment(html)
+  const find=(node,predicate)=>{
+   if(!node||['script','style','template'].includes(node.tagName))return null
+   if(predicate(node))return node
+   for(const child of node.childNodes??[]){const match=find(child,predicate);if(match)return match}
+   return null
+  }
+  const hasClass=(node,name)=>node.attrs?.find(a=>a.name==='class')?.value.split(/\s+/).includes(name)
+  const byClass=(name,node=page)=>find(node,n=>hasClass(n,name))
+  const nodeText=node=>{
+   if(!node||['script','style','template'].includes(node.tagName))return ''
+   return node.nodeName==='#text'?node.value:(node.childNodes??[]).map(nodeText).join(' ')
+  }
+  const value=node=>nodeText(node).replace(/\s+/g,' ').trim()
+  const title=value(find(byClass('course-details-title'),n=>n.tagName==='b'))
+  const date_text=value(byClass('course-details-combined_date')),dates=dateRange(date_text)
+  const recurring=/^Every\s+(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s*(?:,|and|&)\s*)?)+$/i.test(date_text)
+  const location=value(byClass('course_venue_value',byClass('course-details-venue')))
+  const time=value(byClass('course_weekday_value')??byClass('course_venue_value',byClass('course-details-times')))
+  const registration=find(page,n=>n.tagName==='a'&&n.attrs?.some(a=>a.name==='data-sao-id'))
+  const reg=Object.fromEntries((registration?.attrs??[]).map(a=>[a.name,a.value]))
+  const courseId=value(byClass('course_detail_value',byClass('course-details-course-id')??{childNodes:[]}))
+  if(title&&(dates||recurring))events.push({name:title,url,source_page:url,
+   source_key:reg['data-sao-id']||courseId||hash(title+'|'+date_text),...dates,date_text,
+   location:{name:location},description:'Published session times: '+time,offers:{url:reg.href?publicUrl(reg.href,url):null},
+   ...(recurring?{review_only:true,review_reason:'Recurring weekly session: individual occurrence dates require review',recurrence_text:date_text,session_times:time}:{})})
  } else if(adapter==='pashupati') {
   const block=html.match(/class="scroll-date"[^>]*>([^<]+)<\/div>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/)?.[0]??''
   const day=text(block.match(/class="scroll-date"[^>]*>([^<]+)/)?.[1]).match(/^(\d+)-([A-Za-z]+)-(\d{4})/),date=day&&dateRange(`${day[2]} ${day[1]} ${day[3]}`)?.startDate

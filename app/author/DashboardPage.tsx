@@ -63,7 +63,7 @@ export function DashboardPage() {
       <Card raised>
         <h1>Sign in to see your listings</h1>
         <p>Your drafts and published events live here once you have an account.</p>
-        <Button onClick={() => navigate('/submit')}>Sign in</Button>
+        <Button onClick={() => navigate('/login?next=/dashboard')}>Sign in</Button>
       </Card>
     )
   }
@@ -161,6 +161,11 @@ function Listings({ account }: { account: Account }) {
           <p className="board__signed-in">Signed in as {account.email}</p>
         </div>
         <div className="board__header-actions">
+          {account.permissions.includes('user:manage') && (
+            <Button variant="ghost" onClick={() => navigate('/admin')}>
+              Admin
+            </Button>
+          )}
           {account.permissions.includes('listing:moderate') && (
             <Button variant="ghost" onClick={() => navigate('/moderate')}>
               Moderation queue

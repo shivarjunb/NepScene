@@ -4,7 +4,8 @@ import { ApiError, badRequest } from '../lib/http'
 import { auditStatement } from '../lib/audit'
 import { bumpCatalogVersion } from '../lib/cache'
 import { hashPassword, randomToken, sha256Hex, verifyPassword } from './password'
-import { isRole, type Role } from './roles'
+import { isRole } from './roles'
+import { changeRole } from './manage'
 import { rateLimit } from './rateLimit'
 import { requireAuth, requirePermission, type AuthVariables } from './middleware'
 import { clearedSessionCookie, revokeAllSessions } from './sessions'
@@ -163,34 +164,12 @@ accountRoutes.post('/password/change', requireAuth, async (c) => {
 
 // ─── PATCH /api/auth/users/:id/role ──────────────────────────────────────────
 accountRoutes.patch('/users/:id/role', requirePermission('user:manage'), async (c) => {
-  const actor = c.get('user')
-  const subjectId = c.req.param('id')
   const body = await readJson(c.req.raw)
   const role = body.role
-
   if (!isRole(role)) throw badRequest('invalid_role', 'role must be visitor, organizer, editor or admin')
 
-  const subject = await c.env.DB.prepare('SELECT id, role FROM users WHERE id = ?1')
-    .bind(subjectId).first<{ id: string; role: Role }>()
-  if (!subject) throw new ApiError(404, 'not_found', 'No such user')
-
-  if (subject.id === actor.id && role !== actor.role) {
-    throw badRequest('cannot_change_own_role', 'Ask another admin to change your own role')
-  }
-
-  await c.env.DB.batch([
-    c.env.DB.prepare('UPDATE users SET role = ?1, updated_at = ?2 WHERE id = ?3')
-      .bind(role, new Date().toISOString(), subject.id),
-    auditStatement(c.env, {
-      entityType: 'user', entityId: subject.id, action: 'role_changed',
-      actorId: actor.id, actorRole: actor.role,
-      details: { from: subject.role, to: role },
-    }),
-  ])
-
-  // No session invalidation needed: the role is read from `users` on every
-  // request, so the change is in force on the subject's very next call.
-  return c.json({ id: subject.id, role, previous_role: subject.role })
+  // The rule itself lives in identity/manage.ts, shared with the admin console.
+  return c.json(await changeRole(c.env, c.get('user'), c.req.param('id'), role))
 })
 
 // ─── POST /api/auth/email/change ─────────────────────────────────────────────

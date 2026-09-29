@@ -5,7 +5,8 @@
  * There is no sign-up path to `admin`: POST /api/auth/register hardcodes
  * 'visitor', which is correct — a public endpoint that can mint an admin is
  * not an endpoint, it is a door. So the first admin of any environment has to
- * be written directly, and this is the supported way to do it.
+ * be written directly, and this is the supported way to do it. Every admin
+ * after the first is made in the console at /admin (docs/RUNBOOK.md).
  *
  * It is an upsert, so it is also the password reset: an environment whose
  * admin password was set by hand and then forgotten is not locked out, because

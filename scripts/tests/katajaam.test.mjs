@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { transform, plan, buildSql, eventPage, listingPage, crawl, sameEvent } from '../lib/katajaam.mjs'
-import { options, runWrangler, parseD1Output } from '../import-katajaam.mjs'
+import { options, runWrangler, parseD1Output, main } from '../import-katajaam.mjs'
 
 const now = '2026-09-09T00:00:00.000Z'
 const raw = (id='a', changes={}) => ({ '@type':'Event',url:`https://katajaam.com/events/${id}`,
@@ -155,4 +156,62 @@ test('D1 JSON parsing accepts import progress but rejects failures and malformed
   assert.throws(() => parseD1Output('[{"success":false,"error":"SQL failed"}]'), /SQL failed/)
   assert.throws(() => parseD1Output('{"error":"D1_RESET_DO"}'), /D1_RESET_DO/)
   assert.throws(() => parseD1Output('[{}]'), /unsuccessful/)
+})
+
+test('listing cards without posters are included, while navigation is ignored',()=>{
+  const html='<main>2 events across the valley<a href="/events/a"><span>🏃</span><h3>Run</h3></a><a href="/events/b"><img src="poster"><h3>Music</h3></a><a href="/events/category">Browse</a></main>'
+  assert.deepEqual(listingPage(html).urls,['https://katajaam.com/events/a','https://katajaam.com/events/b'])
+})
+test('failed completeness checks retain discovered URLs and page evidence',async()=>{
+  const snapshots=[]
+  await assert.rejects(crawl(async url=>url.endsWith('sitemap.xml')?'<urlset/>':'<main>2 events across the valley<a href="/events/a"><h3>Run</h3></a></main>',{checkpoint:s=>snapshots.push(JSON.parse(JSON.stringify(s)))}),/Inventory incomplete/)
+  assert.equal(snapshots.at(-1).complete,false)
+  assert.equal(snapshots.at(-1).expected_count,2)
+  assert.deepEqual(snapshots.at(-1).urls,['https://katajaam.com/events/a'])
+})
+
+test('saved partial inventories cannot reach the import stage',async()=>{
+  const dir=mkdtempSync(join(tmpdir(),'katajaam-partial-'))
+  try {
+    const input=join(dir,'partial.json')
+    writeFileSync(input,JSON.stringify({complete:false,events:[raw()]}))
+    await assert.rejects(main(['--input',input,'--out',dir,'--apply']),/Inventory is incomplete/)
+    assert.equal(existsSync(join(dir,'import.sql')),false)
+  } finally { rmSync(dir,{recursive:true,force:true}) }
+})
+
+test('customer destination prefers external event links, then social posts and profiles', () => {
+  const event = raw('links', { offers: { url: 'https://katajaam.com/events/links' } })
+  const parse = (body) => eventPage(`<header><a href="https://instagram.com/kata.jaam">Instagram</a></header><main>${body}<h2>More events</h2><a href="https://unrelated.example">Tickets</a></main><footer><a href="https://facebook.com/katajaam">Facebook</a></footer><script type="application/ld+json">${JSON.stringify(event)}</script>`, event.url)
+  const social = '<a href="https://instagram.com/organizer">Organizer</a><a href="https://instagram.com/p/event/">View on Instagram</a>'
+  const utilities = '<a href="https://calendar.google.com/calendar/render">Google Calendar</a><a href="https://www.google.com/maps/search/">Venue</a><a href="https://organizer.katajaam.com/claim">Claim</a><a href="https://facebook.com/sharer/sharer.php?u=event">Facebook</a>'
+  assert.equal(map(parse(social + '<a href="https://tickets.example/event?a=1&amp;b=2">Get Tickets</a>')).external_url, 'https://tickets.example/event?a=1&b=2')
+  assert.equal(map(parse(utilities + social)).external_url, 'https://instagram.com/p/event/')
+  assert.equal(map(parse('<a href="https://facebook.com/organizer">Organizer</a>')).external_url, 'https://facebook.com/organizer')
+  assert.equal(map(parse(utilities)).external_url, null)
+  const hidden = '<!-- <a href="https://hidden.example">Tickets</a> --><script>const link = \'<a href="https://script.example">Tickets</a>\';</script><template><a href="https://template.example">Tickets</a></template>'
+  assert.equal(map(parse(hidden + social)).external_url, 'https://instagram.com/p/event/')
+  assert.equal(map(parse(utilities)).offer_url, null)
+})
+
+test('structured destinations and overrides reject showcase and unsafe URLs', () => {
+  assert.equal(map(raw()).external_url, 'https://example.com/event')
+  const event = raw('social', { offers: [{ url: 'https://www.katajaam.com/events/social' }], organizer: { sameAs: 'https://instagram.com/organizer' } })
+  assert.equal(map(event).external_url, 'https://instagram.com/organizer')
+  assert.equal(map(event, { external_url: 'https://official.example/event' }).external_url, 'https://official.example/event')
+  for (const external_url of ['javascript:alert(1)', 'https://user:password@example.com', 'https://katajaam.com./events/a', 'https://organizer.katajaam.com/event', null]) {
+    assert.equal(map(event, { external_url }).external_url, null)
+  }
+})
+
+test('SQL stores destination separately from source and retains free-event social links', () => {
+  const d = db()
+  const e = map(raw('free-social', { isAccessibleForFree: true, offers: {}, external_url: 'https://instagram.com/p/event/' }))
+  d.exec(buildSql(plan([e])))
+  const listing = d.prepare('SELECT external_url, offer_url, listing_type FROM listings').get()
+  assert.equal(listing.external_url, 'https://instagram.com/p/event/')
+  assert.equal(listing.offer_url, null)
+  assert.equal(listing.listing_type, 'free')
+  assert.equal(d.prepare('SELECT source_url FROM import_sources').get().source_url, e.url)
+  d.close()
 })

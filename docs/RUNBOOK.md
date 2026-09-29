@@ -115,6 +115,27 @@ errors are for something more specific.
 
 ---
 
+## Accounts, roles and the audit trail
+
+The admin console is at `/admin` on every environment, for any account whose
+role is `admin`. From there: promote or demote an account, switch one off,
+add someone to an organization, mark an organization verified, read the audit
+trail, and run the archive sweep or the media sweep by hand. Everything it
+does is recorded in `audit_log` with the actor's id and role at the time.
+
+**The first admin of an environment is the one exception**, because a console
+that only an admin can open cannot create the first admin. That one is written
+directly with `npm run db:admin -- --env staging --email you@example.com`
+(`scripts/create-admin.mjs`); every admin after it is a select on the Accounts
+screen. The script is also the password reset of last resort, and it refuses
+production without `--force`.
+
+Two things the console will not do, on purpose: change the role of the account
+doing the changing, or deactivate it. Both are refused by the API as well as
+greyed out in the console, so an administrator cannot lock themselves out —
+another admin can always undo a mistake, and a mistake that needs a second
+person is one that gets a second look.
+
 ## What is not wired up yet
 
 Honest gaps, so nobody goes looking for a dashboard that does not exist:

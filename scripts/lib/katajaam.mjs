@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import { parseFragment } from 'parse5'
 
 export const ORIGIN = 'https://katajaam.com'
 const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 24)
@@ -18,6 +19,42 @@ const slug = (s) => normal(s).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').
 const safeUrl = (value) => {
   try { const u = new URL(value); return /^https?:$/.test(u.protocol) && !u.username && !u.password ? u.href : null } catch { return null }
 }
+// Customer destinations must never point back to the showcase (including subdomains).
+const externalUrl = (value) => {
+  const url = safeUrl(value)
+  if (!url) return null
+  const host = new URL(url).hostname.toLowerCase().replace(/\.$/, '')
+  return host === 'katajaam.com' || host.endsWith('.katajaam.com') ? null : url
+}
+const socialUrl = (url) => /(^|\.)(instagram\.com|facebook\.com|fb\.com|fb\.me|tiktok\.com|twitter\.com|x\.com|youtube\.com|youtu\.be|linkedin\.com|threads\.net|threads\.com)$/i.test(new URL(url).hostname)
+function destination(urls) {
+  const valid = urls.flat(Infinity).map(externalUrl).filter(Boolean)
+  return valid.find((url) => !socialUrl(url)) ?? valid[0] ?? null
+}
+function pageDestination(html) {
+  const anchors = []
+  const skipped = new Set(['script', 'style', 'template', 'noscript'])
+  const labelText = (node) => skipped.has(node.tagName) ? ''
+    : node.nodeName === '#text' ? node.value : (node.childNodes ?? []).map(labelText).join(' ')
+  const walk = (node) => {
+    if (skipped.has(node.tagName)) return
+    if (node.tagName === 'a') anchors.push({
+      url: externalUrl(node.attrs.find((a) => a.name === 'href')?.value),
+      label: clean(labelText(node)),
+    })
+    for (const child of node.childNodes ?? []) walk(child)
+  }
+  walk(parseFragment(html))
+  const links = anchors.filter(({ url }) => url)
+    // Map/calendar/share controls are utilities, not event destinations.
+    .filter(({ url, label }) => !/calendar|maps|share/i.test(label)
+      && !/calendar\.google\.com|maps\.google\.|google\.[^/]+\/maps|maps\.app\.goo\.gl|\/(?:sharer(?:\.php)?|intent|share)(?:[/?]|$)/i.test(url))
+  const explicit = links.filter(({ label }) => /tickets?|register|registration|book|external|website|visit|official|more info/i.test(label))
+  const social = links.filter(({ url }) => socialUrl(url))
+  const posts = social.filter(({ url, label }) => /post|view on/i.test(label) || /\/(?:p|reel|reels|events|posts|status|video)\//i.test(new URL(url).pathname))
+  return destination([...explicit.map((l) => l.url), ...links.filter(({ url }) => !socialUrl(url)).map((l) => l.url)])
+    ?? posts[0]?.url ?? social[0]?.url ?? null
+}
 export function sourceUrl(value) {
   const u = new URL(value, ORIGIN)
   if (u.origin !== ORIGIN || !/^\/events\/(?:series\/)?[^/]+$/.test(u.pathname)) throw Error(`Invalid event URL: ${value}`)
@@ -31,7 +68,7 @@ export function listingPage(html) {
   const main = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1]
   if (!main) throw Error('Kata Jaam listing page has no main element')
   const links = [...main.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)]
-  const urls = links.filter((m) => /<h3\b/i.test(m[2]) && /<img\b/i.test(m[2]))
+  const urls = links.filter((m) => /<h3\b/i.test(m[2]))
     .map((m) => attrs(m[1]).href).filter((u) => u?.startsWith('/events/')).map(sourceUrl)
   const nextHref = links.find((m) => clean(m[2].replace(/<[^>]+>/g, '')) === 'Next')
   let next = nextHref ? new URL(attrs(nextHref[1]).href, ORIGIN) : null
@@ -66,14 +103,16 @@ export function eventPage(html, url) {
   const glance = text.match(/At a glance\s+When\s+([^\n]+)/i)?.[1] ?? ''
   const crumb = objects.find((o) => o['@type'] === 'BreadcrumbList')
   const category = crumb?.itemListElement?.find((x) => String(x.item).includes('/category/'))?.name?.replace(/ Events$/, '') ?? ''
-  return { ...event, url: sourceUrl(url), category, page_text: text,
+  return { ...event, url: sourceUrl(url), category, page_text: text, external_url: pageDestination(own),
     date_tbd: /to be decided|to be announced/i.test(glance) || /EventPostponed|EventCancelled/.test(event.eventStatus ?? '') }
 }
-export async function crawl(read) {
+export async function crawl(read, { checkpoint = () => {} } = {}) {
   const sitemap = await read(`${ORIGIN}/sitemap.xml`)
   const sitemapUrls = new Set([...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => decode(m[1])))
   const urls = new Set(), pages = new Set()
   let next = `${ORIGIN}/events`, expected
+  const events = []
+  const snapshot = (complete = false) => ({ checked_at: new Date().toISOString(), complete, expected_count: expected, count: events.length, pages: [...pages], urls: [...urls], events })
   while (next) {
     if (pages.has(next) || pages.size >= 100) throw Error('Pagination loop or unexpected page count')
     pages.add(next)
@@ -82,17 +121,18 @@ export async function crawl(read) {
     if (expected !== undefined && page.count !== expected) throw Error('Inventory changed during scrape; run again')
     expected = page.count
     for (const u of page.urls) urls.add(u)
+    checkpoint(snapshot())
     next = page.next
   }
   if (!urls.size || urls.size !== expected) throw Error(`Inventory incomplete: found ${urls.size}, expected ${expected}`)
-  const events = []
   // Sequential requests deliberately keep the public site load low.
   for (const url of urls) {
     const e = eventPage(await read(url), url)
     e.in_sitemap = sitemapUrls.has(url)
     events.push(e)
+    checkpoint(snapshot())
   }
-  return { checked_at: new Date().toISOString(), count: events.length, pages: [...pages], events }
+  return snapshot(true)
 }
 const categoryMap = {
   Music: 'cat_concert', 'Nightlife & Parties': 'cat_nightlife', 'Screenings & Watch Parties': 'cat_film',
@@ -143,7 +183,9 @@ export function transform(raw, overrides = {}, publish = false, now = new Date()
   const price = overrides.price ?? offer.lowPrice ?? offer.price
   const paisa = price !== null && price !== undefined && price !== '' && /^\d+(\.\d{1,2})?$/.test(String(price))
     ? Math.round(Number(price) * 100) : null
-  const offerUrl = safeUrl(overrides.offer_url ?? offer.url)
+  const offerUrl = externalUrl(overrides.offer_url ?? offer.url)
+  const external_url = overrides.external_url !== undefined ? externalUrl(overrides.external_url)
+    : destination([raw.external_url, offerUrl, raw.sameAs ?? [], org?.url, org?.sameAs ?? []])
   const image = Array.isArray(raw.image) ? raw.image[0] : raw.image
   const cover = safeUrl(overrides.cover_image_url ?? (typeof image === 'object' ? image.url : image))
   let category_id = overrides.category_id ?? categoryMap[raw.category] ?? 'cat_community'
@@ -158,7 +200,7 @@ export function transform(raw, overrides = {}, publish = false, now = new Date()
   if (description.length > 20000) warnings.push('Description exceeds NepScene limit')
   const key = `katajaam:${id}`
   const fingerprint = 'katajaam:' + hash(`${titleKey(title)}|${starts_at ?? ('unknown:'+id)}|${normal(venueName.split(',')[0])}|${normal(city)}`)
-  return { id: `kj_${hash(key)}`, source_id: key, fingerprint, url, title, description,
+  return { id: `kj_${hash(key)}`, source_id: key, fingerprint, url, external_url, title, description,
     starts_at, ends_at, timezone: 'Asia/Kathmandu', venue, organizer, organizer_url: organizerUrl,
     category_id, cover_image_url: cover, listing_type: isFree ? 'free' : offerUrl ? 'ticketed_external' : 'announcement',
     offer_url: isFree ? null : offerUrl, offer_price_from_paisa: isFree ? null : paisa,
@@ -221,7 +263,7 @@ export function buildSql(items, existingVenues = [], existingOrgs = []) {
         }
       }
       const columns = 'id,slug,title,description,listing_type,source,status,organization_id,venue_id,starts_at,ends_at,timezone,cover_image_url,external_url,offer_url,offer_provider,offer_price_from_paisa,offer_currency,offer_sold_out,offer_checked_at,location_lat,location_lng,published_at,created_at,updated_at,import_source_id,import_fingerprint'
-      statements.push(`INSERT INTO listings (${columns}) SELECT ${values([e.id,slug(e.title)+'-'+hash(e.id).slice(0,8),e.title,e.description,e.listing_type,'import',e.status,orgId,venueId,e.starts_at,e.ends_at,e.timezone,e.cover_image_url,e.url,e.offer_url,e.offer_url?'external':null,e.offer_price_from_paisa,e.offer_currency,e.offer_sold_out,e.now,e.venue?.latitude,e.venue?.longitude,e.status==='published'?e.now:null,e.now,e.now,e.source_id,e.fingerprint])} WHERE NOT EXISTS (SELECT 1 FROM import_sources WHERE source_id=${q(e.source_id)}) ON CONFLICT DO NOTHING;`)
+      statements.push(`INSERT INTO listings (${columns}) SELECT ${values([e.id,slug(e.title)+'-'+hash(e.id).slice(0,8),e.title,e.description,e.listing_type,'import',e.status,orgId,venueId,e.starts_at,e.ends_at,e.timezone,e.cover_image_url,e.external_url,e.offer_url,e.offer_url?'external':null,e.offer_price_from_paisa,e.offer_currency,e.offer_sold_out,e.now,e.venue?.latitude,e.venue?.longitude,e.status==='published'?e.now:null,e.now,e.now,e.source_id,e.fingerprint])} WHERE NOT EXISTS (SELECT 1 FROM import_sources WHERE source_id=${q(e.source_id)}) ON CONFLICT DO NOTHING;`)
       // Guard child inserts as well: a repeated or interrupted SQL file is harmless.
       statements.push(`INSERT INTO listing_categories (listing_id,category_id,is_primary) SELECT id,${q(e.category_id)},1 FROM listings WHERE id=${q(e.id)} AND import_source_id=${q(e.source_id)} AND NOT EXISTS (SELECT 1 FROM listing_categories WHERE listing_id=${q(e.id)}) ON CONFLICT DO NOTHING;`)
       statements.push(`INSERT INTO audit_log (id,entity_type,entity_id,action,actor_role,details,created_at) SELECT ${q('kja_'+hash(e.id))},'listing',id,'imported','importer',${q(JSON.stringify({source:e.url,status:e.status,warnings:e.warnings}))},${q(e.now)} FROM listings WHERE id=${q(e.id)} ON CONFLICT(id) DO NOTHING;`)

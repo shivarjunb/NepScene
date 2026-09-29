@@ -5,6 +5,7 @@ import {
   type Account, type Queue, type QueueEntry, type Refusal,
 } from '../lib/author'
 import { ListingWizard, type WizardOutcome } from '../author/ListingWizard'
+import { navigate, useSearch } from '../router'
 
 /**
  * The moderation queue (#33) — the screen an editor works through.
@@ -69,8 +70,18 @@ export function QueuePage() {
   return <Queue account={account} />
 }
 
+/** The bulk endpoint's ceiling per call; "publish all" walks the queue in these. */
+const BULK = 50
+
 function Queue({ account }: { account: Account }) {
-  const [status, setStatus] = useState<string>('pending_review')
+  // The tab and the filter live in the URL, so the admin console's "review
+  // the imported drafts" link lands on exactly that view and so a queue
+  // filtered to imports can be sent to someone.
+  const search = useSearch()
+  const initialStatus = TABS.some((tab) => tab.status === search.get('status')) ? search.get('status')! : 'pending_review'
+  const [status, setStatus] = useState<string>(initialStatus)
+  const [importedOnly, setImportedOnly] = useState(search.get('source') === 'import')
+  const source = importedOnly ? 'import' : null
   const [queue, setQueue] = useState<Queue | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,18 +98,23 @@ function Queue({ account }: { account: Account }) {
     setLoading(true)
     setError(null)
     try {
-      setQueue(await fetchQueue(which))
+      setQueue(await fetchQueue(which, null, source))
     } catch (caught) {
       setError(caught instanceof AuthorError ? caught.message : 'The queue did not load')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [source])
 
   useEffect(() => {
     setSelected(new Set())
     void load(status)
-  }, [status, load])
+    const params = new URLSearchParams()
+    if (status !== 'pending_review') params.set('status', status)
+    if (source) params.set('source', source)
+    const query = params.toString()
+    navigate(`/moderate${query ? `?${query}` : ''}`, { replace: true })
+  }, [status, source, load])
 
   const apply = async (action: 'publish' | 'archive' | 'reject', ids: string[], reason?: string) => {
     setBusy(true)
@@ -115,6 +131,43 @@ function Queue({ account }: { account: Account }) {
       }
       if (result.refused.length > 0) setRefused({ action, rows: result.refused })
       setRejecting(null)
+      setSelected(new Set())
+      await load(status)
+    } catch (caught) {
+      setError(caught instanceof AuthorError ? caught.message : 'That did not work')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * Every imported draft, not just this page. The API's bulk action is
+   * capped at fifty on purpose (it checks every row), so this walks the
+   * filtered queue collecting ids and then sends them fifty at a time. What
+   * the API refuses — drafts still missing a category or a date — comes back
+   * in the same dialog a hand-picked selection would get.
+   */
+  const publishAllImported = async () => {
+    setBusy(true)
+    setNote(null)
+    setRefused(null)
+    try {
+      const ids: string[] = []
+      let after: string | null = null
+      do {
+        const page: Queue = await fetchQueue('draft', after, 'import')
+        ids.push(...page.data.map((row) => row.id))
+        after = page.next
+      } while (after && ids.length < 2000)
+      let applied = 0
+      const refusals: Refusal[] = []
+      for (let i = 0; i < ids.length; i += BULK) {
+        const result = await moderate('publish', ids.slice(i, i + BULK))
+        applied += result.applied.length
+        refusals.push(...result.refused)
+      }
+      setNote(`${applied} imported ${applied === 1 ? 'draft' : 'drafts'} published.`)
+      if (refusals.length > 0) setRefused({ action: 'publish', rows: refusals })
       setSelected(new Set())
       await load(status)
     } catch (caught) {
@@ -191,6 +244,25 @@ function Queue({ account }: { account: Account }) {
           </button>
         ))}
       </nav>
+
+      <div className="queue__filters">
+        <label className="queue__select-all">
+          <input type="checkbox" checked={importedOnly}
+                 onChange={(event) => setImportedOnly(event.target.checked)} />
+          Only what the scrapers imported
+        </label>
+        {status === 'draft' && importedOnly && rows.length > 0 && (
+          <Button type="button" size="sm" loading={busy}
+                  onClick={() => {
+                    const n = queue?.counts.draft
+                    if (window.confirm(`Publish every complete imported draft${n ? ` (up to ${n})` : ''}? Anything still missing a date or category is left as a draft.`)) {
+                      void publishAllImported()
+                    }
+                  }}>
+            Publish all imported drafts
+          </Button>
+        )}
+      </div>
 
       {note && <Alert tone="success" title="Done">{note}</Alert>}
       {error && <Alert tone="danger" title="Something went wrong">{error}</Alert>}

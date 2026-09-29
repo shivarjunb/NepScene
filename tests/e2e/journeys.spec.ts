@@ -59,6 +59,10 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill(PASSWORD())
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  // Signed in for real before anything navigates away: WebKit abandons the
+  // login request if the next `goto` comes first, and every journey after
+  // this line then runs as nobody.
+  await expect(page.getByRole('heading', { name: /Sign in/ })).toHaveCount(0)
 }
 
 // ── 1. Discovery ─────────────────────────────────────────────────────────────
@@ -140,8 +144,7 @@ test('search: query with a typo, refine by facet, open a result', async ({ page 
 test('authoring: sign in, create, place, submit for review', async ({ page }) => {
   await signIn(page, EDITOR())
 
-  // Signed in for real — the wizard, not the sign-in card.
-  await expect(page.getByRole('heading', { name: /Sign in/ })).toHaveCount(0)
+  // The wizard, not the sign-in card.
   await assertAccessible(page, 'wizard, first step')
 
   const title = `Journey listing ${Date.now()}`
@@ -196,7 +199,10 @@ test('the discovery journey works with touch at phone size', async ({ page, isMo
   // On a phone the dialog is the screen, and it must not scroll sideways either.
   const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)
   expect(dialogOverflow).toBeLessThanOrEqual(0)
-  await dialog.getByRole('button', { name: 'Close the listing' }).tap()
+  // A phone gets a page's Back, not the sheet's "Open as a page" and ✕.
+  await expect(dialog.getByRole('link', { name: 'Open as a page' })).toBeHidden()
+  await expect(dialog.getByRole('button', { name: 'Close the listing' })).toBeHidden()
+  await dialog.getByRole('button', { name: 'Back' }).tap()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page).toHaveURL(/\/$/)
 })

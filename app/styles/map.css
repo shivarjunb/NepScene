@@ -20,6 +20,10 @@
   overflow: hidden;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
+  /* The hero around the homepage map sets light-on-dark text, and without
+     this every card drawn over the map inherited it: a white title on a white
+     card, which read as a popup with its title and values missing. */
+  color: var(--text-primary);
 }
 
 .nepal-map__canvas {
@@ -149,14 +153,35 @@
   border-color: var(--danger);
 }
 
-/* Anchored to the pin's own pixel position, so the card points at the thing it
- * describes. Translated up and centred: the pin's tip is its position, and a
- * card drawn from that point downwards covers the pin it belongs to. */
+/* Behind the card, over the pins: the card reads as the thing in front, and a
+ * tap outside it lands somewhere that means "close". */
+.nepal-map__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-dropdown);
+  background: var(--scrim);
+}
+
+/* In the middle of the map, not anchored to the pin. A card drawn above a pin
+ * was clipped by the map's edge whenever the pin sat in the top half — and the
+ * hero's map is short enough that that was most of them. Bounded by the map on
+ * both axes, so it can never be cut off; anything taller scrolls inside it. */
 .nepal-map__popup {
   position: absolute;
-  transform: translate(-50%, calc(-100% - var(--space-9)));
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: var(--z-dropdown);
-  width: min(20rem, calc(100vw - var(--space-8)));
+  width: min(20rem, calc(100% - var(--space-6)));
+  max-height: calc(100% - var(--space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-xl);
+}
+
+.nepal-map__popup .pin-card,
+.nepal-map__popup .venue-stack {
+  width: 100%;
 }
 
 .nepal-map__popup-close {
@@ -189,8 +214,8 @@ body.map-is-fullscreen {
 }
 
 @keyframes nepal-map-popup-in {
-  from { opacity: 0; transform: translate(-50%, calc(-100% - var(--space-5))); }
-  to   { opacity: 1; transform: translate(-50%, calc(-100% - var(--space-9))); }
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* ── The venue stack (#37) ───────────────────────────────────────────────────
@@ -207,6 +232,7 @@ body.map-is-fullscreen {
   border-radius: var(--radius-xl);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-overlay);
+  color: var(--text-primary);
   overflow: hidden;
 }
 

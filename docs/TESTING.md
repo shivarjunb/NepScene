@@ -189,9 +189,12 @@ npm run typecheck         # four tsconfigs: worker, app, node, e2e
 A single file: `npx vitest run tests/unit/ranking.test.ts`, or
 `npx playwright test tests/e2e/map.spec.ts`.
 
-CI runs all of it plus the guards (`npm run ci:guards`) — migration numbering,
-the commerce scope guard, and a committed-credential check that covers what
-GitHub push protection does not.
+CI runs unit/integration, coverage, typecheck, budget and the guards
+(`npm run ci:guards`) — migration numbering, the commerce scope guard, and a
+committed-credential check that covers what GitHub push protection does not.
+`test:e2e` is temporarily out of `ci.yml` (see the comment there) because the
+self-hosted runner host can't currently install Playwright's browsers; run it
+locally in the meantime.
 
 ---
 

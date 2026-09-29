@@ -13,6 +13,7 @@ import { ArtistPage } from './pages/ArtistPage'
 import { AccessibilityPage } from './pages/Accessibility'
 import { Spinner } from './components/primitives'
 import { deferred } from './lib/deferred'
+import type { DynamicPrefix, StaticPath } from './lib/routePaths'
 
 /**
  * The tools, in their own chunks (#39).
@@ -36,12 +37,20 @@ const SubmitPage = deferred(
   () => import('./author/SubmitPage').then((module) => module.SubmitPage),
   Loading,
 )
+const LoginPage = deferred(
+  () => import('./author/LoginPage').then((module) => module.LoginPage),
+  Loading,
+)
 const DashboardPage = deferred(
   () => import('./author/DashboardPage').then((module) => module.DashboardPage),
   Loading,
 )
 const QueuePage = deferred(
   () => import('./moderation/QueuePage').then((module) => module.QueuePage),
+  Loading,
+)
+const AdminPage = deferred(
+  () => import('./admin/AdminPage').then((module) => module.AdminPage),
   Loading,
 )
 const DesignSystem = deferred(
@@ -56,9 +65,9 @@ const DesignSystem = deferred(
  * it, it has a row here. A link with no row is the bug this table exists to
  * make impossible — that is how /organizers came to serve the design system.
  */
-type Route = Planned & { path: string; element?: ReactNode }
+type Route = Planned & { path: StaticPath; element?: ReactNode }
 
-export const ROUTES: Route[] = [
+export const ROUTES = [
   {
     path: '/',
     title: 'Discover',
@@ -96,6 +105,12 @@ export const ROUTES: Route[] = [
     element: <SubmitPage listingId={null} />,
   },
   {
+    path: '/login',
+    title: 'Sign in',
+    summary: 'Sign in, or create an account, and carry on where you were.',
+    element: <LoginPage />,
+  },
+  {
     path: '/dashboard',
     title: 'Your listings',
     summary: 'Everything you have listed, what state it is in, and how many people looked.',
@@ -106,6 +121,12 @@ export const ROUTES: Route[] = [
     title: 'Moderation queue',
     summary: 'Everything waiting for review, oldest first, with the duplicates already flagged.',
     element: <QueuePage />,
+  },
+  {
+    path: '/admin',
+    title: 'Admin',
+    summary: 'Accounts, organizations, the audit trail and the housekeeping jobs.',
+    element: <AdminPage section="" />,
   },
   {
     path: '/about',
@@ -129,9 +150,21 @@ export const ROUTES: Route[] = [
     summary: 'Every token and every component in every state.',
     element: <DesignSystem />,
   },
-]
+] as const satisfies readonly Route[]
 
-export function routeFor(path: string) {
+/**
+ * The Worker answers 404 for any path not in app/lib/routePaths.ts, so a row
+ * here with a path missing there would never be reached — `path: StaticPath`
+ * above forbids that. This is the other direction: a path the Worker serves
+ * as a page must have a row here, or it serves the shell for a 404 page.
+ */
+type Unrouted = Exclude<StaticPath, (typeof ROUTES)[number]['path']>
+const _everyStaticPathHasARoute: Unrouted extends never ? true : Unrouted = true
+void _everyStaticPathHasARoute
+
+export function routeFor(path: string): Route | undefined {
+  // Widened: the literal table above is what makes the coverage check
+  // possible, but a caller only needs to know a row's shape.
   return ROUTES.find((route) => route.path === path)
 }
 
@@ -156,7 +189,18 @@ const DYNAMIC = [
     // rather than starting a second empty one.
     render: (id: string) => <SubmitPage listingId={id} />,
   },
-] as const
+  {
+    prefix: '/admin/',
+    title: 'Admin',
+    // The section is the whole segment (/admin/users, /admin/audit); the page
+    // answers an unknown one with the overview and a note, not a 404.
+    render: (section: string) => <AdminPage section={section} />,
+  },
+] as const satisfies readonly { prefix: DynamicPrefix; title: string; render: (slug: string) => ReactNode }[]
+
+type Unhandled = Exclude<DynamicPrefix, (typeof DYNAMIC)[number]['prefix']>
+const _everyPrefixIsHandled: Unhandled extends never ? true : Unhandled = true
+void _everyPrefixIsHandled
 
 function dynamicMatch(path: string) {
   for (const route of DYNAMIC) {

@@ -34,6 +34,10 @@ export const STRINGS = {
   'nav.close': { en: 'Close', ne: 'बन्द गर्नुहोस्' },
   'nav.primary': { en: 'Primary', ne: 'मुख्य' },
   'nav.skip': { en: 'Skip to content', ne: 'सामग्रीमा जानुहोस्' },
+  'nav.signIn': { en: 'Sign in', ne: 'साइन इन' },
+  'nav.signOut': { en: 'Sign out', ne: 'साइन आउट' },
+  'nav.myListings': { en: 'My listings', ne: 'मेरा सूचीहरू' },
+  'nav.account': { en: 'Account', ne: 'खाता' },
   'footer.tagline': { en: 'What’s happening around Nepal.', ne: 'नेपालभरि के-के भइरहेको छ।' },
   'footer.about': { en: 'About', ne: 'हाम्रो बारेमा' },
   'footer.submit': { en: 'Submit an event', ne: 'कार्यक्रम पठाउनुहोस्' },
@@ -268,6 +272,7 @@ export const STRINGS = {
   'listing.externalTickets': { en: 'Tickets elsewhere', ne: 'टिकट अन्यत्र' },
   'listing.gallery': { en: 'Pictures', ne: 'तस्बिरहरू' },
   'listing.close': { en: 'Close the listing', ne: 'सूची बन्द गर्नुहोस्' },
+  'listing.back': { en: 'Back', ne: 'पछाडि' },
   'listing.openPage': { en: 'Open as a page', ne: 'पृष्ठको रूपमा खोल्नुहोस्' },
 
   // ── Venues, organizers, artists ──────────────────────────────────────────

@@ -1628,12 +1628,12 @@
   {
     "id": "ktm-154",
     "name": "Trailmandu Nepal",
-    "url": "https://www.race.trailmandu.com/",
+    "url": "https://trailmandu.com/",
     "evidence": "Official website",
     "audit_date": "2026-09-11",
     "audit_note": "Validated profile; see source audit and per-run coverage for dates, errors and review requirements.",
     "seeds": [
-      "https://www.race.trailmandu.com/races"
+      "https://trailmandu.com/races"
     ],
     "enabled": true,
     "audit_status": "parsed"

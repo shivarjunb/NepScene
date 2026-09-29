@@ -17,8 +17,10 @@
   top: 0;
   z-index: var(--z-header);
   background: var(--surface-glass);
+  /* Unprefixed only: the build (Lightning CSS) adds -webkit- itself, and
+     handed both it kept just the prefixed one, which Chrome and Firefox
+     ignore — no glass on either, and only Safari saw it. */
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border-hairline);
 }
 
@@ -128,6 +130,20 @@
 
 .site-header__menu-button { display: none; }
 
+/* Sign in / my listings / sign out sit with the other controls, drawn as the
+   nav's pills so the header has one kind of link. Below 48rem the menu
+   carries them and this row goes. */
+.site-account { display: flex; align-items: center; gap: var(--space-1); }
+
+.site-account__link {
+  min-height: 2.75rem;
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--text-md);
+  font-weight: var(--weight-extrabold);
+  white-space: nowrap;
+}
+
 .mobile-menu {
   position: fixed;
   inset: var(--header-height) 0 0;
@@ -152,6 +168,18 @@
   text-decoration: none;
   font-size: var(--text-lg);
   font-weight: var(--weight-extrabold);
+}
+
+/* Sign out is a button in the same list; it must read as one more row. */
+button.mobile-menu__link {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-extrabold);
+  text-align: left;
+  cursor: pointer;
 }
 
 .mobile-menu__link:hover { background: var(--accent-wash); color: var(--accent); }
@@ -199,9 +227,24 @@
 .site-footer__list a { color: var(--text-secondary); }
 .site-footer__list a:hover { color: var(--accent); }
 
-/* Below 48rem the inline nav becomes the menu button. */
+.site-header__settings { display: contents; }
+
+/* Language and theme, as one row of the menu. The toggles keep their own
+   pill styling; this only spaces them and lets them wrap on the narrowest
+   screen, where side by side they would be the header overflow all over again. */
+.mobile-menu__settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Below 48rem the inline nav becomes the menu button, and the language and
+   theme toggles go with it (#106): brand word + both toggles + the button is
+   374px, which at 320px left the button off the screen and unreachable — no
+   horizontal scrollbar to show for it, because the body clips overflow. */
 @media (max-width: 47.99rem) {
-  .site-nav { display: none; }
+  .site-nav, .site-account, .site-header__settings { display: none; }
   .site-header__menu-button { display: inline-flex; }
 }
 

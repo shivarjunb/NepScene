@@ -903,6 +903,10 @@
   border-radius: var(--radius-xl);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-overlay);
+  /* Its own text colour, not whatever it is drawn inside: the homepage hero
+     is light-on-dark, and an inherited white title on this white card was
+     invisible. */
+  color: var(--text-primary);
 }
 
 .pin-card__title {
@@ -1071,3 +1075,12 @@
 .wizard__optional[open] > summary { margin-bottom: var(--space-4); }
 
 .wizard__optional .field + .field { margin-top: var(--space-4); }
+
+.queue__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
