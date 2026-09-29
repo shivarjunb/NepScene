@@ -18,7 +18,7 @@ The default run selects validated profiles. The audit command probes official we
 ## Results and review
 
 - inventory.json: dated source records, including historical entries, with source identity and original date evidence.
-- report.json: normalized draft candidates and exclusion decisions, using the existing Kata Jaam planning conventions. Standalone scraping does not access the database. Housekeeping “Run now” and scheduled runs then import this inventory as drafts, checking existing listings and source identities for duplicates. Failed or partial venue batches are not imported; manual-review records remain in review.json. Nothing is published automatically.
+- report.json: normalized draft candidates and exclusion decisions, using the existing Kata Jaam planning conventions. Standalone scraping does not access the database. The admin scraper “Run now” button and scheduled runs then import this inventory as drafts, checking existing listings and source identities for duplicates. Failed or partial venue batches are not imported; manual-review records remain in review.json. Nothing is published automatically.
 - review.json: records whose dates or production/show distinction require manual review; these may be historical.
 - coverage.json and per-source JSON: pages visited, errors, source status and record counts.
 
@@ -64,6 +64,6 @@ Requests use a descriptive User-Agent, same-site URL/redirect restrictions, four
 
 ## Source switches
 
-Housekeeping → Sources saves an on/off choice for each supported source, including individual venues. New sources default to on. Choices apply to Run now and the nightly schedule in that environment. Run now captures the selection when clicked; later changes do not alter that queued run. Turning everything off pauses scheduled scraping and disables Run now. Existing listings are unaffected.
+Admin → Scrapers → Sources saves an on/off choice for each supported source, including individual venues. New sources default to on. Choices apply to Run now and the nightly schedule in that environment. Run now captures the selection when clicked; later changes do not alter that queued run. Turning everything off pauses scheduled scraping and disables Run now. Existing listings are unaffected.
 
 The workflow reads saved choices using its reporting token and stops if settings cannot be loaded. Apply migration `0016_scrape_source_settings.sql` before deploying the API and workflow. Local `npm run scrape:all` still selects all supported sources unless passed `--sources-file FILE` containing a JSON array of source IDs.

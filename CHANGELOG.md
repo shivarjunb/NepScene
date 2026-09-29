@@ -7,6 +7,7 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
+- **Scraper sources can be switched on or off** in Admin → Scrapers. Choices persist for manual and scheduled runs, and enabled venue results are imported as drafts with duplicate checks.
 - **Phones show more events at a glance.** A listing card took up a whole
   phone screen, so you saw one event at a time. On screens narrower than
   640px:

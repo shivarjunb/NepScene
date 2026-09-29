@@ -210,7 +210,7 @@ demand, and the moderation queue's "only what the scrapers imported" filter — 
 "Publish all imported drafts" — is where the drafts go public. Nothing is published
 by a run.
 
-Housekeeping source switches are stored per environment in `scrape_source_settings`
+Admin scraper source switches are stored per environment in `scrape_source_settings`
 (migration 0016). Apply that migration before deploying these controls. Manual runs
 capture enabled source IDs in the workflow dispatch; scheduled and ad-hoc runs read
 `GET /api/internal/scrape-sources` with the reporting token. Failure to read settings
