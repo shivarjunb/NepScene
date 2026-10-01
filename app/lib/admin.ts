@@ -282,3 +282,29 @@ export const setScrapeSource = (id: string, enabled: boolean) =>
   request<{ id: string; enabled: boolean }>(`/api/admin/system/scrape-sources/${encodeURIComponent(id)}`, {
     method: 'PATCH', body: JSON.stringify({ enabled }),
   })
+
+/** The staging console's "Deploy to production" (api/admin/deploys.ts). Every other environment answers 404. */
+export type DeployCommit = { sha: string; title: string; deployed_at: string; run_url: string }
+export type ProductionRun = { sha: string | null; title: string; status: string; conclusion: string | null; url: string; created_at: string; automatic: boolean }
+export type DeployState = {
+  production: { sha: string; deployed_at: string; url: string } | null
+  candidate: DeployCommit | null
+  ahead: DeployCommit[]
+  reason: string
+  active: ProductionRun | null
+  recent: ProductionRun[]
+  auto_promote: boolean
+}
+
+export const fetchDeployState = () => request<DeployState>('/api/admin/system/deploy')
+
+export const deployToProduction = (sha: string, reason: string) =>
+  request<{ sha: string; reason: string; actions_url: string }>('/api/admin/system/deploy', {
+    method: 'POST', body: JSON.stringify({ sha, reason }),
+  })
+
+/** "Promote to production automatically after a green staging deploy." */
+export const setAutoPromote = (enabled: boolean) =>
+  request<{ auto_promote: boolean }>('/api/admin/system/deploy/auto', {
+    method: 'PUT', body: JSON.stringify({ enabled }),
+  })
