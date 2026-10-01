@@ -109,14 +109,16 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
 
 // ── 2. Search ────────────────────────────────────────────────────────────────
 
-test('search: query with a typo, refine by facet, open a result', async ({ page }) => {
+test('search: query with a typo, refine by facet, open a result', async ({ page, isMobile }) => {
   await page.goto(at('/'))
+  // Below 62rem the header's box is hidden and the same box is in the menu.
+  if (isMobile) await page.locator('.site-header__menu-button').click()
 
   // Deliberately misspelled: search is supposed to be forgiving, and a journey
   // that types the exact title proves nothing about that.
   // `role="combobox"` — it owns a suggestion listbox (#42), so it is not a
   // plain textbox and `getByRole('searchbox')` does not find it.
-  const box = page.getByRole('combobox', { name: 'Search' }).first()
+  const box = page.getByRole('combobox', { name: 'Search' }).filter({ visible: true }).first()
   await box.fill('kathmadu rock')
   await box.press('Enter')
 

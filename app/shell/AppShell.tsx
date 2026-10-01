@@ -51,6 +51,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // The account menu is a disclosure, not a dialog: it closes on Escape, on a
   // click anywhere else, and when the page changes under it.
   useEffect(() => { setAccountOpen(false) }, [path])
+  // So does the phone menu: a search from its box would otherwise land the
+  // results under a modal that still covers them.
+  useEffect(() => { setMenuOpen(false) }, [path])
   useEffect(() => {
     if (!accountOpen) return
     const onKey = (event: KeyboardEvent) => {
