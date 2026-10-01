@@ -223,6 +223,23 @@ describe('promoting automatically after a green staging deploy', () => {
     expect(dispatches).toHaveLength(0)
   })
 
+  it('turns away a body that is not JSON, on the button, the switch and the callback', async () => {
+    const cookie = await signIn('admin@example.np', 'admin')
+    const dispatches = stubGitHub([productionRun(2)])
+    await env.SETTINGS.put('deploy:auto-promote', 'on')
+    const garbled = (url: string, method: string, headers: Record<string, string>) =>
+      SELF.fetch(url, { method, headers: { ...headers, 'content-type': 'application/json' }, body: '{not json' })
+    for (const response of [
+      await garbled('https://nepscene.test/api/admin/system/deploy', 'POST', { cookie }),
+      await garbled('https://nepscene.test/api/admin/system/deploy/auto', 'PUT', { cookie }),
+      await garbled('https://nepscene.test/api/internal/staging-deploys', 'POST', { authorization: 'Bearer deploy-token' }),
+    ]) {
+      expect(response.status).toBe(400)
+      expect(((await response.json()) as any).error.code).toBe('invalid_json')
+    }
+    expect(dispatches).toHaveLength(0)
+  })
+
   it('does nothing while the switch is off', async () => {
     const dispatches = stubGitHub([productionRun(2)])
     const response = await callback({ sha: sha(4), run_id: 4 })
