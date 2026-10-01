@@ -20,9 +20,11 @@
   overflow: hidden;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
-  /* The hero around the homepage map sets light-on-dark text, and without
-     this every card drawn over the map inherited it: a white title on a white
-     card, which read as a popup with its title and values missing. */
+  /* The map's own ink, not whatever it is drawn inside. The homepage used to
+     frame it in a light-on-dark hero, and every card drawn over the map
+     inherited that: a white title on a white card, which read as a popup with
+     its title and values missing. Any dark frame it lands in again would do
+     the same. */
   color: var(--text-primary);
 }
 
@@ -263,7 +265,7 @@
 
 /* Across the top of the map, not anchored to the pin. A card drawn above a pin
  * was clipped by the map's edge whenever the pin sat in the top half — and the
- * hero's map is short enough that that was most of them. The map moves the
+ * homepage's map is short enough that that was most of them. The map moves the
  * pin into the space the card leaves below it (NepalMap's `focusAt`). Bounded
  * by the map, so it can never be cut off; anything taller scrolls inside it. */
 .nepal-map__popup {

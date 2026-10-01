@@ -314,123 +314,53 @@ textarea.field__control { min-height: 6rem; resize: vertical; line-height: var(-
    means "at least as wide as my content" — so a horizontally scrolling rail
    sizes its column to the whole track and pushes the page sideways instead of
    scrolling inside itself. Caught at 320px by tests/e2e/discover.spec.ts. */
-.discover { display: grid; gap: var(--space-9); min-width: 0; }
-.discover__rows { display: grid; gap: var(--space-9); min-width: 0; }
+/* The page is a listings page first, so the gaps between its blocks are tight:
+   every rem spent on air between the map, the chips and the rows is a rem of
+   cards pushed under the fold. */
+.discover { display: grid; gap: var(--space-5); min-width: 0; }
+.discover__rows { display: grid; gap: var(--space-8); min-width: 0; }
 .discover > *, .discover__rows > * { min-width: 0; }
 
-/* ── Hero ──────────────────────────────────────────────────────────────────
+/* ── Cover ─────────────────────────────────────────────────────────────────
  *
- * A night-sky banner rather than a headline on the page ground: violet and
- * cyan bloom over a near-black gradient, veiled left-to-right so type stays
- * readable wherever a photograph is dropped in behind it later.
+ * The map is the homepage's cover: the first thing under the header, edge to
+ * edge, with no headline or search above it (the page's h1 is visually
+ * hidden, and the header already searches).
  *
- * It bleeds past the gutter its parent .layout applies, which is why the
- * negative margin is here and the padding is restated inside.
+ * It bleeds past the gutter its parent .layout applies, and up through the
+ * top padding `.site-main` gives every page, so it meets the header rather
+ * than floating 26px under it.
+ *
+ * No `z-index`, `transform` or `backdrop-filter` on this frame. Any of them
+ * makes it a stacking context or a containing block for `position: fixed`,
+ * and the map's fullscreen is a fixed element that has to escape it: the old
+ * hero's `z-index` capped the "fullscreen" map under the sticky header, and
+ * needed a body class to lift it back out.
  */
-.hero {
-  position: relative;
-  display: grid;
-  align-content: center;
-  gap: var(--space-5);
-  min-height: 33.75rem;                                /* 540px */
+.discover__cover {
   margin-inline: calc(var(--layout-gutter) * -1);
-  padding: var(--space-10) var(--layout-gutter) var(--space-9);
-  overflow: hidden;
-  background: var(--hero-ground);
-  color: var(--on-dark-text);
-}
-
-/* The veil is a separate layer so a hero image can slide underneath it. */
-.hero::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  background: var(--hero-veil);
-  pointer-events: none;
-}
-
-.hero > * { position: relative; z-index: var(--z-raised); }
-
-/*
- * The colour is inherited, not stated. This heading is reused outside .hero —
- * the loading and error states keep it so a screen reader is not left on a
- * page with no identity — and stating the hero's ink here made it white on
- * white the moment the catalogue failed to load.
- */
-.hero__title {
-  max-width: 38rem;
-  font-size: var(--text-4xl);
-  line-height: var(--leading-tight);
-  font-weight: var(--weight-black);
-}
-
-.hero .hero__title { text-shadow: 0 4px 34px var(--scrim); }
-
-/* The reveal (#38). The heading is keyed on the city, so React replaces the
-   node when location resolution renames it and this plays on the new one.
-   Under `prefers-reduced-motion` nothing is declared at all — the criterion is
-   that reduced motion suppresses the intro, and the way to suppress an
-   animation is not to give it one. */
-.hero__title-reveal {
-  display: inline-block;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hero__title-reveal {
-    animation: hero-title-reveal var(--duration-slow) var(--ease-out) both;
-  }
-}
-
-@keyframes hero-title-reveal {
-  from { opacity: 0; transform: translateY(0.35em); }
-  to   { opacity: 1; transform: none; }
-}
-
-.hero__lead {
-  max-width: 32.5rem;
-  color: var(--on-dark-muted);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
+  margin-top: calc(var(--space-9) * -1);
 }
 
 /*
- * The hero's frame around the map core (#36). Everything inside it — canvas,
- * controls, popup — is `.nepal-map` in map.css; what belongs here is the
- * height the hero wants and the two things the hero's own layout would
- * otherwise break.
+ * Tall enough to read as a cover, short enough that the first row of cards
+ * still starts above the fold on a 768px laptop — about half the viewport,
+ * where the /map page's map takes two thirds. The floor keeps a landscape
+ * phone's map usable; the ceiling stops a tall monitor spending a whole
+ * screen on it.
  *
- * No `backdrop-filter`, which is what the placeholder that used to sit here
- * had: it would make this element the containing block for `position: fixed`
- * descendants, and the map's fullscreen is exactly that. The map would have
- * been clipped into this box instead of covering the viewport.
- */
-.hero__map {
-  margin-top: var(--space-5);
-}
-
-/*
- * Shorter than the /map page's map, and only while it is in the hero: the
- * hero is an entry point, and the category rows underneath it have to be
- * reachable without scrolling to look for them.
+ * Square and borderless because it runs edge to edge: rounded corners on a
+ * full-bleed map read as a card that has slipped under the header.
  *
  * The `:not()` matters. Without it this rule is more specific than
- * `.nepal-map--fullscreen`, so going fullscreen from the hero would keep the
- * hero's height and draw a 22rem map pinned to the top of the viewport.
+ * `.nepal-map--fullscreen`, so going fullscreen from the homepage would keep
+ * this height and draw a half-height map pinned to the top of the viewport.
  */
-.hero__map .nepal-map:not(.nepal-map--fullscreen) {
-  height: clamp(15rem, 34vh, 22rem);
-  border-color: var(--on-dark-line);
-}
-
-/*
- * `.hero > *` gives every hero child `z-index: var(--z-raised)`, which makes
- * this frame a stacking context — and a stacking context traps the fullscreen
- * map's `--z-modal` inside it, painting a "fullscreen" map underneath the
- * header. The map already puts this class on the body while it is fullscreen,
- * so the frame is lifted for exactly as long as it needs to be.
- */
-body.map-is-fullscreen .hero__map {
-  z-index: var(--z-modal);
+.discover__cover .nepal-map:not(.nepal-map--fullscreen) {
+  height: clamp(16rem, 42vh, 34rem);
+  border-radius: 0;
+  border-inline: 0;
+  border-top: 0;
 }
 
 /* ── Category entry points ─────────────────────────────────────────────────── */
@@ -492,8 +422,45 @@ body.map-is-fullscreen .hero__map {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Rails ─────────────────────────────────────────────────────────────────── */
-.rail { display: grid; gap: var(--space-8); min-width: 0; }
+/* On the homepage the chips are a row of shortcuts between the map and the
+   listings, not the page's subject, so they step down a size and keep to one
+   line that scrolls sideways. Wrapped, a dozen categories took two lines on a
+   laptop and five on a phone — a screen of shortcuts before the first
+   listing. They bleed to the screen's edges like the map above them, so the
+   chip cut off at the edge reads as "more this way", and the scroll stays
+   inside the nav because `.discover > *` has `min-width: 0`. The padding
+   leaves room for a hovered chip's lift, which the scroller would otherwise
+   clip. The search facets keep the full-size, wrapping chip. */
+.discover .chips {
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* Thin, not hidden: with a mouse and no trackpad the scrollbar is the only
+     sign the row goes on, and the only way along it short of Tab. */
+  scrollbar-width: thin;
+  margin-inline: calc(var(--layout-gutter) * -1);
+  padding: var(--space-1) var(--layout-gutter) var(--space-2);
+}
+/* No shadow here, resting or hovered. A scroller clips whatever paints outside
+   it, and the chips' wide soft shadow was cut into a grey band the width of
+   the screen; the border and the lift still say which chip is under the
+   pointer. */
+.discover .chips__chip,
+.discover .chips__chip:hover {
+  box-shadow: none;
+}
+.discover .chips__chip {
+  min-height: 2.5rem;
+  padding-inline: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* ── Rails ───────────────────────────────────────────────────────────────────
+   Sized so a laptop screen holds more listings than furniture: a heading a
+   step down from h2's default and a short gap to the cards, which are the
+   point of the row. */
+.rail { display: grid; gap: var(--space-5); min-width: 0; }
 
 .rail__head {
   display: flex;
@@ -503,11 +470,21 @@ body.map-is-fullscreen .hero__map {
 }
 
 .rail__title {
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   font-weight: var(--weight-extrabold);
   line-height: 1;
 }
-.rail__rule { color: var(--text-secondary); font-size: var(--text-sm); margin-top: var(--space-2); }
+.rail__rule { color: var(--text-secondary); font-size: var(--text-sm); }
+
+/* The rule sits beside the title while there is room and wraps under it when
+   there is not, so a wide screen spends one line on a row's heading, not two. */
+.rail__head > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-5);
+  row-gap: var(--space-1);
+}
 
 /* "See all" is a word, not a button — accent-coloured and heavy is the whole
    affordance. */
@@ -532,7 +509,7 @@ body.map-is-fullscreen .hero__map {
 .rail__track {
   display: flex;
   min-width: 0;
-  gap: var(--space-8);
+  gap: var(--space-5);
   list-style: none;
   padding: 0 var(--space-1) var(--space-3);
   margin-inline: calc(var(--space-1) * -1);
@@ -602,7 +579,29 @@ body.map-is-fullscreen .hero__map {
   box-shadow: var(--shadow-lg);
 }
 
-.listing-card--row { width: 18.75rem; flex: 0 0 18.75rem; }   /* 300px */
+/*
+ * A rail card is the homepage's unit, so it is the dense one: 224px rather
+ * than the 300px it started at, which puts five and a bit across a 1366px
+ * laptop instead of four — the sliver of the next card is what tells a reader
+ * the row scrolls. It is also short enough that the first row sits whole above
+ * the fold of a 768px laptop, under the map: the poster is 16:9 rather than
+ * 16:10 (the cover is letterboxed over its own blur, so nothing is cropped)
+ * and the time-and-place line keeps to one line, as it already does on a
+ * phone. The grid card on results pages keeps the roomier layout.
+ */
+.listing-card--row { width: 14rem; flex: 0 0 14rem; border-radius: var(--radius-2xl); }
+.listing-card--row .listing-card__poster { aspect-ratio: 16 / 9; }
+.listing-card--row .listing-card__body { gap: var(--space-2); padding: var(--space-4) var(--space-6) var(--space-2); }
+.listing-card--row .listing-card__foot { padding: 0 var(--space-6) var(--space-5); }
+.listing-card--row .listing-card__title { font-size: var(--text-md); }
+.listing-card--row .listing-card__when {
+  font-size: var(--text-xs);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.listing-card--row .listing-card__price { font-size: var(--text-sm); }
 .listing-card--grid { height: 100%; }
 
 .listing-card__link {
@@ -778,8 +777,6 @@ body.map-is-fullscreen .hero__map {
    640px, then one. */
 @media (max-width: 68.75rem) {     /* 1100px */
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero { min-height: 28.75rem; padding-block: var(--space-9); }
-  .hero__title { font-size: clamp(2rem, 5.6vw, 2.8rem); }
 }
 
 @media (max-width: 40rem) {        /* 640px */
@@ -811,20 +808,16 @@ body.map-is-fullscreen .hero__map {
   .listing-card__foot { padding: 0 var(--space-6) var(--space-5); }
 
   /* Half a phone wide, so everything inside the card steps down a size. The
-     poster goes square: at 16:10 a half-width poster is a letterbox slot. */
+     poster goes 4:3: at 16:10 a half-width poster is a letterbox slot, and
+     square made each card so tall that a phone showed one row of them under
+     the map and nothing more. */
   .listing-card--row { width: auto; flex-basis: auto; border-radius: var(--radius-xl); }
-  .listing-card--row .listing-card__poster { aspect-ratio: 1 / 1; }
+  .listing-card--row .listing-card__poster { aspect-ratio: 4 / 3; }
   .listing-card--row .listing-card__body { gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-1); }
   .listing-card--row .listing-card__foot { flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
   .listing-card--row .listing-card__category { font-size: var(--text-3xs); }
   .listing-card--row .listing-card__title { font-size: var(--text-sm); }
-  .listing-card--row .listing-card__when {
-    font-size: var(--text-2xs);
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
+  .listing-card--row .listing-card__when { font-size: var(--text-2xs); }
   .listing-card--row .listing-card__price { font-size: var(--text-xs); }
   .listing-card--row .listing-card__date-day { font-size: var(--text-2xl); }
 

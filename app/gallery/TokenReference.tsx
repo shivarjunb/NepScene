@@ -11,7 +11,7 @@ const COLOUR_GROUPS: { title: string; tokens: string[] }[] = [
   { title: 'Accent', tokens: ['--accent', '--accent-hover', '--accent-surface', '--accent-border', '--accent-wash', '--accent-edge'] },
   { title: 'Status', tokens: ['--success', '--success-surface', '--warning', '--warning-surface', '--danger', '--danger-surface'] },
   { title: 'Lines', tokens: ['--border', '--border-hairline', '--border-strong', '--focus-ring'] },
-  { title: 'Grounds', tokens: ['--chip-ground', '--poster-ground', '--hero-ground'] },
+  { title: 'Grounds', tokens: ['--chip-ground', '--poster-ground'] },
   { title: 'Over a picture', tokens: ['--surface-glass', '--overlay-surface', '--overlay-veil', '--scrim'] },
 ]
 

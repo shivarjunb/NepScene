@@ -10,7 +10,7 @@ import {
  * because they asserted the popup was *there* and never that it could be
  * *read*:
  *
- *  - The card inherited the homepage hero's light-on-dark text, so its title
+ *  - The card inherited the old homepage hero's light-on-dark text, so its title
  *    and values were white on a white card — "WHERE" and "WHEN" with nothing
  *    after them.
  *  - It was anchored above the pin, inside a short `overflow: hidden` map, so
@@ -76,23 +76,23 @@ async function expectAtTopOfMap(page: Page) {
   }
 }
 
-async function openHero(page: Page) {
+async function openHomepageMap(page: Page) {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.setViewportSize(PHONE)
   await stubMapsSdk(page)
   await serveMapCatalog(page)
-  // The homepage renders its hero only once the feed has something in it.
+  // The homepage renders its map only once the feed has something in it.
   await page.route('**/api/catalog/bootstrap', (route) => route.fulfill({
     json: { categories: [], featured: [], upcoming: KATHMANDU_LISTINGS },
   }))
   await page.goto('/')
-  await expect(page.locator('.hero .nepal-map')).toBeVisible()
+  await expect(page.locator('.discover__cover .nepal-map')).toBeVisible()
   await expect(page.getByText(/3 listings in view/)).toBeVisible()
 }
 
-test.describe('the popup in the homepage hero, on a phone', () => {
+test.describe('the popup in the homepage map, on a phone', () => {
   test('opens across the top of the map, not clipped by its edge', async ({ page }) => {
-    await openHero(page)
+    await openHomepageMap(page)
     await gesture(page, "window.google.maps.__clickMarker('Art Week')")
     await expect(page.locator('.nepal-map__popup')).toBeVisible()
 
@@ -101,8 +101,8 @@ test.describe('the popup in the homepage hero, on a phone', () => {
     await expect(page.getByRole('button', { name: /see the listing/i })).toBeInViewport()
   })
 
-  test('has readable text, not the hero’s white on a white card', async ({ page }) => {
-    await openHero(page)
+  test('has readable text, not white on a white card', async ({ page }) => {
+    await openHomepageMap(page)
     await gesture(page, "window.google.maps.__clickMarker('Art Week')")
 
     const popup = page.locator('.nepal-map__popup')
@@ -116,7 +116,7 @@ test.describe('the popup in the homepage hero, on a phone', () => {
   })
 
   test('a venue stack fits too, and its rows are readable', async ({ page }) => {
-    await openHero(page)
+    await openHomepageMap(page)
     await gesture(page, `window.google.maps.__clickMarker(${JSON.stringify(PURPLE_HAZE_PIN)})`)
     await expect(page.locator('.venue-stack')).toBeVisible()
 
@@ -127,7 +127,7 @@ test.describe('the popup in the homepage hero, on a phone', () => {
   })
 
   test('tapping the map around the card closes it', async ({ page }) => {
-    await openHero(page)
+    await openHomepageMap(page)
     await gesture(page, "window.google.maps.__clickMarker('Art Week')")
     await expect(page.locator('.nepal-map__popup')).toBeVisible()
 
@@ -141,7 +141,7 @@ test.describe('the popup in the homepage hero, on a phone', () => {
   })
 
   test('the card still leads to the listing', async ({ page }) => {
-    await openHero(page)
+    await openHomepageMap(page)
     await gesture(page, "window.google.maps.__clickMarker('Art Week')")
     await page.getByRole('button', { name: /see the listing/i }).click()
     await expect(page).toHaveURL(/\/listings\/art-week$/)
