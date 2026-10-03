@@ -58,6 +58,20 @@ const TEARDROP = 'M20 3c-6.1 0-11 4.9-11 11 0 8 11 23 11 23s11-15 11-23c0-6.1-4.
  * venue is.
  */
 export function pinSvg(pin: PinAppearance, count = 1): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 40 40">`
+    + pinShapes(pin, count)
+    + '</svg>'
+}
+
+/**
+ * The pin itself, in the 40×40 box's units: what a resting pin and a selected
+ * one both draw, so picking a pin out can never change which pin it is.
+ *
+ * `ring` goes between a grouped pin's stacked shadow and the pin in front, so
+ * a selected stack's ring runs unbroken round the pin rather than being
+ * crossed by the shadow behind it.
+ */
+function pinShapes(pin: PinAppearance, count: number, ring = ''): string {
   const glyph = GLYPHS[pin.icon] ?? GLYPHS.MapPin
   const grouped = count > 1
 
@@ -71,14 +85,13 @@ export function pinSvg(pin: PinAppearance, count = 1): string {
 
   const bubble = grouped ? countBubble(countLabel(count)) : ''
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 40 40">`
-    + stack
+  return stack
+    + ring
     + `<path d="${TEARDROP}"`
     + ` fill="${pin.color}" stroke="#ffffff" stroke-width="2.5"/>`
     + `<g transform="translate(11 5) scale(0.75)" fill="none" stroke="#ffffff"`
     + ` stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>`
     + bubble
-    + '</svg>'
 }
 
 /**
@@ -117,6 +130,80 @@ function countBubble(label: string): string {
  */
 export const pinDataUri = (pin: PinAppearance, count = 1): string =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(pin, count))}`
+
+/**
+ * The selected pin: the one whose card is open.
+ *
+ * The card opens across the top of the map rather than above its pin, which
+ * is what stopped it being clipped — and what left nothing on a busy map to
+ * say which pin it belonged to. So that pin is picked out, three ways, because
+ * each alone fails somewhere: it is larger, so it is found at a glance; it
+ * wears a ring and a halo in the site's accent, the colour the rest of the
+ * interface already uses for "this one"; and it is drawn above its neighbours,
+ * which is the marker's z-index rather than anything an icon can do
+ * (useSelectedMarker.ts).
+ */
+export type PinTheme = 'light' | 'dark'
+
+/**
+ * The accent, per theme. Literal, like every colour in this file, because a
+ * marker icon is a data URI and cannot read a custom property: these are
+ * `--accent` in app/styles/tokens.css — violet-600 in the light theme,
+ * violet-400 in the dark — and a unit test reads that file to hold them to it.
+ */
+export const SELECTED_RING: Record<PinTheme, string> = {
+  light: '#7c3aed',
+  dark: '#a78bfa',
+}
+
+/** How much larger a selected marker is drawn than a resting one. */
+const SELECTED_SCALE = 1.25
+
+/**
+ * The selected pin's box, in the resting pin's units: the 40×40 box with room
+ * around it for the halo, and below it for the ring around the point.
+ */
+const SELECTED_BOX = { x: -6, y: -8, side: 52 }
+
+export const SELECTED_PIN_SIZE = SELECTED_BOX.side * SELECTED_SCALE
+
+/**
+ * Where the selected pin is anchored, in pixels: the resting pin's anchor,
+ * (20, 40) in its own units, found again in the larger box. The ring reaches
+ * below the point, so this is not the box's bottom edge as a resting pin's is
+ * — but it is the same spot on the ground, and a pin that slid when it was
+ * picked out would be pointing somewhere else.
+ */
+export const SELECTED_PIN_ANCHOR = {
+  x: (PIN_SIZE / 2 - SELECTED_BOX.x) * SELECTED_SCALE,
+  y: (PIN_SIZE - SELECTED_BOX.y) * SELECTED_SCALE,
+}
+
+/**
+ * A ring drawn along `shape`'s edge: the accent, with white outside it.
+ *
+ * The white is the pin outline's reason again — the tiles underneath are not
+ * ours. And the shape's own white outline, drawn over the inner edge, keeps
+ * the accent off the fill: two category colours are violets, and an accent
+ * ring touching a violet pin would vanish into it.
+ */
+const selectionRing = (shape: string, accent: string): string =>
+  `${shape} fill="none" stroke="#ffffff" stroke-width="12" stroke-linejoin="round"/>`
+  + `${shape} fill="none" stroke="${accent}" stroke-width="8" stroke-linejoin="round"/>`
+
+export function selectedPinSvg(pin: PinAppearance, count = 1, theme: PinTheme = 'light'): string {
+  const accent = SELECTED_RING[theme]
+  const { x, y, side } = SELECTED_BOX
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${SELECTED_PIN_SIZE}" height="${SELECTED_PIN_SIZE}" viewBox="${x} ${y} ${side} ${side}">`
+    // The halo, round the head where the eye goes, so the pin reads as lit
+    // from across the screen and not only once it has been found.
+    + `<circle cx="20" cy="14" r="20" fill="${accent}" opacity="0.3"/>`
+    + pinShapes(pin, count, selectionRing(`<path d="${TEARDROP}"`, accent))
+    + '</svg>'
+}
+
+export const selectedPinDataUri = (pin: PinAppearance, count = 1, theme: PinTheme = 'light'): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(selectedPinSvg(pin, count, theme))}`
 
 /**
  * The viewer's own position (#38).
@@ -158,20 +245,55 @@ export function clusterSize(count: number): number {
 
 export function clusterSvg(count: number): string {
   const size = clusterSize(count)
-  const label = count > 9999 ? '9999+' : String(count)
-  // Shrinks as the label lengthens, so "1234" fits the same circle "12" does.
-  const fontSize = size / (2.2 + label.length * 0.42)
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`
     // The soft outer ring is what makes a bubble readable over map tiles whose
     // colour nobody controls — the same reason the pin has a white outline.
     + `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 1}" fill="#1d4ed8" opacity="0.25"/>`
-    + `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 7}" fill="#1d4ed8" stroke="#ffffff" stroke-width="2.5"/>`
+    + clusterCore(count, size)
+    + '</svg>'
+}
+
+/** The bubble and its number, in a `size` box: shared by resting and selected. */
+function clusterCore(count: number, size: number): string {
+  const label = count > 9999 ? '9999+' : String(count)
+  // Shrinks as the label lengthens, so "1234" fits the same circle "12" does.
+  const fontSize = size / (2.2 + label.length * 0.42)
+
+  return `<circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 7}" fill="#1d4ed8" stroke="#ffffff" stroke-width="2.5"/>`
     + `<text x="${size / 2}" y="${size / 2}" text-anchor="middle" dominant-baseline="central"`
     + ` font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"`
     + ` font-size="${fontSize.toFixed(1)}" font-weight="700" fill="#ffffff">${label}</text>`
-    + '</svg>'
 }
 
 export const clusterDataUri = (count: number): string =>
   `data:image/svg+xml;charset=utf-8,${encodeURIComponent(clusterSvg(count))}`
+
+/**
+ * A selected bubble: one that opened a stack, because no zoom could pull its
+ * places apart. Picked out the way a selected pin is, with the accent ring
+ * and halo standing in for the soft ring. A bubble that zooms instead never
+ * opens a card and is never drawn this way.
+ */
+const CLUSTER_MARGIN = 6
+
+export function selectedClusterSize(count: number): number {
+  return (clusterSize(count) + 2 * CLUSTER_MARGIN) * SELECTED_SCALE
+}
+
+export function selectedClusterSvg(count: number, theme: PinTheme = 'light'): string {
+  const accent = SELECTED_RING[theme]
+  const size = clusterSize(count)
+  const side = size + 2 * CLUSTER_MARGIN
+  const centre = size / 2
+  const drawn = selectedClusterSize(count)
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${drawn}" height="${drawn}" viewBox="${-CLUSTER_MARGIN} ${-CLUSTER_MARGIN} ${side} ${side}">`
+    + `<circle cx="${centre}" cy="${centre}" r="${side / 2 - 1}" fill="${accent}" opacity="0.3"/>`
+    + selectionRing(`<circle cx="${centre}" cy="${centre}" r="${centre - 7}"`, accent)
+    + clusterCore(count, size)
+    + '</svg>'
+}
+
+export const selectedClusterDataUri = (count: number, theme: PinTheme = 'light'): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(selectedClusterSvg(count, theme))}`

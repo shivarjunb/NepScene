@@ -30,6 +30,13 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     down its right-hand side on a wider screen, and the map moves the place
     into the space the card leaves open. Only one of the card and the fan is
     open at a time.
+- **The pin you tapped stands out while its card is open.** The card opens
+  across the top of the map, not above its pin, so on a busy map nothing said
+  which pin it belonged to. Now that pin is drawn larger, with a ring and a
+  halo in the accent colour (violet, and a lighter violet in the dark theme),
+  on top of the pins around it. It goes back to normal when the card closes
+  or another pin is tapped. A venue's stack is picked out the same way, and
+  stays picked out while you read one of its listings.
 - **One admin console, reached from the header.** The console, the
   moderation queue and "Your listings" used to link to each other from
   buttons in each page's header, so the only way into admin was through your

@@ -59,8 +59,16 @@ const SHELL = join(CLIENT, 'index.html')
  * The bump alone adds 8.4 KB to the first paint (JS 91.9 → 100.3, first paint
  * 104.8 → 113.2), all of it React DOM; no app code moved. Holding React on
  * 19.2 would only defer it. Closing the gap is #51's work, not this bump's.
+ *
+ * Deferred raised 47 → 48 on 2026-10-03 for picking out the tapped pin while
+ * its card is open. The map's chunk gains the hook that redraws the marker and
+ * the lookup that finds it again after a redraw: 0.4 KB (deferred 46.7 →
+ * 47.1). The drawing itself is in pinMarker.ts, which the listing page's
+ * static map shares, so it is first paint — JS 100.3 → 100.7, first paint
+ * 113.2 → 113.6 — and fits under both ceilings as they were. 48 is the
+ * measurement and no more, so the next addition still has to argue for itself.
  */
-const BUDGETS_KB = { js: 102, css: 12, total: 115, deferred: 47 }
+const BUDGETS_KB = { js: 102, css: 12, total: 115, deferred: 48 }
 
 /**
  * What #39's "initial interactive paint under 1.5 seconds on 3G" would

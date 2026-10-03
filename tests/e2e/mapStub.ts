@@ -182,12 +182,29 @@ export async function stubMapsSdk(page: Page) {
       }
     }
 
+    type FakeIcon = { url: string; scaledSize?: { width: number } } | null | undefined
+
     class FakeMarker {
+      /** Stands in for the SDK's; the selected marker is set above it. */
+      static readonly MAX_ZINDEX = 1_000_000
+
       constructor(
-        readonly options: { position: { lat: number; lng: number }; title?: string },
+        readonly options: {
+          position: { lat: number; lng: number }
+          title?: string
+          icon?: FakeIcon
+          zIndex?: number | null
+        },
       ) {
         markers.push(this)
       }
+      // Kept on `options`, where the constructor put the first ones, so a spec
+      // reads what the marker looks like now (`__markerLook`) — which is how
+      // the selected pin is asserted without anything being drawn.
+      getIcon() { return this.options.icon }
+      setIcon(icon: FakeIcon) { this.options.icon = icon }
+      getZIndex() { return this.options.zIndex }
+      setZIndex(zIndex: number | null | undefined) { this.options.zIndex = zIndex }
       addListener(_event: string, handler: Listener) {
         markerListeners.set(this, [...(markerListeners.get(this) ?? []), handler])
         return { remove: () => {} }
@@ -267,6 +284,26 @@ export async function stubMapsSdk(page: Page) {
           for (const handler of markerListeners.get(marker) ?? []) handler(undefined)
         },
         __markerTitles: () => markers.map((m) => m.options.title),
+        /**
+         * What the marker titled `title` looks like now: its icon's SVG, the
+         * size it is drawn at and its z-index. Null when there is no such
+         * marker on the map.
+         */
+        __markerLook: (title: string) => {
+          const marker = markers.find((m) => m.options.title === title)
+          if (!marker) return null
+          const { icon, zIndex } = marker.options
+          return {
+            svg: icon ? decodeURIComponent(icon.url.slice(icon.url.indexOf(',') + 1)) : '',
+            size: icon?.scaledSize?.width ?? null,
+            zIndex: zIndex ?? null,
+          }
+        },
+        /** The titles of the markers drawn on top of all the others. */
+        __topMarkers: () => {
+          const top = Math.max(...markers.map((m) => m.options.zIndex ?? 0))
+          return markers.filter((m) => (m.options.zIndex ?? 0) === top).map((m) => m.options.title)
+        },
         /** Zoom to a half-span of `span` degrees around the current centre. */
         __setSpan: (span: number) => {
           SPAN = span
