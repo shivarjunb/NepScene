@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Spinner } from '../components/primitives'
 import { useAccount } from '../hooks/useAccount'
-import { fetchAccount } from '../lib/author'
+import { fetchAccount, googleErrorMessage } from '../lib/author'
 import { safeNext } from '../lib/safeNext'
 import { navigate, useSearch } from '../router'
 import { SignInForm } from './SignInForm'
@@ -14,7 +14,10 @@ import { SignInForm } from './SignInForm'
  */
 export function LoginPage() {
   const account = useAccount()
-  const next = safeNext(useSearch().get('next'))
+  const search = useSearch()
+  const next = safeNext(search.get('next'))
+  // Set by the Google callback when it sends someone back here instead of in.
+  const googleError = search.get('google_error')
 
   // Already signed in: there is nothing to do here, so go where "next" says.
   useEffect(() => {
@@ -29,6 +32,8 @@ export function LoginPage() {
     <div className="layout">
       <SignInForm
         intro="Sign in to add listings and see how yours are doing."
+        returnTo={next}
+        initialError={googleError ? googleErrorMessage(googleError) : null}
         onSignedIn={async () => {
           await fetchAccount()
           navigate(next, { replace: true })

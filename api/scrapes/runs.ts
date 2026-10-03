@@ -84,7 +84,7 @@ export const outputKey = (runId: string) => `scrapes/${runId}.tar.gz`
 export const MAX_OUTPUT_BYTES = 50 * 1024 * 1024
 
 /**
- * A run the runner never reported on. The workflow's own timeout is 75
+ * A run the runner never reported on. The workflow's own timeout is 135
  * minutes and a run can queue behind CI on the one runner; three hours
  * without a word means the job never started or died before `finish`.
  */

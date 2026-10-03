@@ -5,7 +5,6 @@ import { useResource } from '../lib/useResource'
 import { buildRows, entryCategories } from '../lib/rows'
 import { ListingCard, ListingCardSkeleton } from '../components/ListingCard'
 import { ListingRail, ListingRailSkeleton } from '../components/ListingRail'
-import { SearchBox } from '../components/SearchBox'
 import { Alert } from '../components/primitives'
 import { DeferredNepalMap } from '../map/DeferredNepalMap'
 import { useLocation } from '../map/useLocation'
@@ -69,8 +68,10 @@ export function Discover() {
     return (
       <div className="layout stack">
         {/* The heading stays. Losing it because a fetch failed leaves a screen
-            reader on a page with no identity at all. */}
-        <h1 className="hero__title">{t('discover.title')}</h1>
+            reader on a page with no identity at all. It is hidden for the
+            same reason the feed's is: the alert says what happened, and a
+            headline above it would only push it down. */}
+        <h1 className="visually-hidden">{t('discover.title')}</h1>
         <Alert tone="danger" title={t('discover.loadFailed')}>
           {error} — <Link href="/">{t('discover.tryAgain')}</Link>.
         </Alert>
@@ -80,7 +81,7 @@ export function Discover() {
 
   return (
     <div className="layout discover">
-      <Hero />
+      <Cover />
 
       <nav className="chips" aria-label={t('discover.browseByCategory')}>
         <Chip href="/" active={!filtered}>{t('discover.everything')}</Chip>
@@ -109,44 +110,40 @@ export function Discover() {
 }
 
 /**
- * The hero map — #41's first scope item, unblocked now the map core (#36) is
- * in. The slot held a labelled placeholder while that was outstanding.
+ * The map as the page's cover — #41's first scope item, and now the first
+ * thing under the header.
+ *
+ * It used to sit in a hero under a "What's happening around {city}" headline,
+ * a lead paragraph and a second search box. All three went: the header
+ * already searches (and the phone menu carries the same box), and every line
+ * of headline was a line of listings pushed below the fold. A map centred on
+ * the reader's city says "around here" without the sentence.
  *
  * It mounts the same `NepalMap` the /map page does rather than a cut-down
- * copy for the hero. The map owns its viewport fetching, its empty states and
- * its own failure, so what is left for the hero is the frame around it and
- * where a popup sends the reader — which is the whole reason that component
- * takes `onOpen` instead of routing itself.
+ * copy. The map owns its viewport fetching, its empty states and its own
+ * failure, so what is left for the cover is the frame around it and where a
+ * popup sends the reader — which is the whole reason that component takes
+ * `onOpen` instead of routing itself.
  */
-function Hero() {
+function Cover() {
   const t = useT()
   /**
-   * Resolved here rather than inside the map (#38), so the headline and the
+   * Resolved here rather than inside the map (#38), so the heading and the
    * map are two views of one answer. Two `useLocation()` calls would be two
-   * `/here` requests that could disagree, and a headline naming a city the
-   * map is not centred on is worse than a headline naming no city at all.
+   * `/here` requests that could disagree, and a heading naming a city the
+   * map is not centred on is worse than a heading naming no city at all.
    */
   const location = useLocation()
 
   return (
-    <section className="hero">
-      {/* Keyed on the city so React replaces the node rather than patching
-          its text — which is what gives the reveal something to animate. The
-          animation itself is CSS and is suppressed under reduced motion. */}
-      <h1 className="hero__title" key={location.city}>
-        <span className="hero__title-reveal">
-          {t('discover.titleIn', { city: location.city })}
-        </span>
+    <section className="discover__cover" aria-labelledby="discover-heading">
+      {/* The page still needs an h1 — for the outline, and for anyone moving
+          by heading — but it no longer needs to be seen: the cover is the
+          map and the page is the listings under it. */}
+      <h1 className="visually-hidden" id="discover-heading">
+        {t('discover.titleIn', { city: location.city })}
       </h1>
-      <p className="hero__lead">{t('discover.lead')}</p>
-      {/* Search sits under the hero on every screen, not only in the header
-          where the phone layout hides it (#42). */}
-      <div className="hero__search">
-        <SearchBox />
-      </div>
-      <div className="hero__map">
-        <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`, { overlay: true })} />
-      </div>
+      <DeferredNepalMap location={location} onOpen={(slug) => navigate(`/listings/${slug}`, { overlay: true })} />
     </section>
   )
 }

@@ -175,12 +175,22 @@ are made with the script by hand, with a generated password.
 Applies migrations to staging, deploys, then runs `scripts/smoke.mjs`. A failed smoke
 test fails the run; rollback is the one command below, not automatic.
 
+Its last step, on `main` only, offers the commit for production: it posts the SHA and
+its own run id to the staging Worker's `/api/internal/staging-deploys` with
+`DEPLOY_CALLBACK_TOKEN`. The Worker promotes it only when the console's "promote
+automatically" switch is on (below). The step is `continue-on-error` and skips itself
+with a notice when the secret is unset, so a callback that fails never fails a
+staging deploy that worked.
+
 ### `deploy-production.yml` — manual dispatch
 Two jobs, in this order and for a reason:
 
 1. **`gate`** — no `environment:`, so it runs immediately. It reads
    `deploy-staging.yml`'s run history for the dispatched SHA and fails unless one
-   of those runs concluded `success`.
+   of those runs concluded `success`. While a staging run of that SHA is still
+   running it waits (every 15 s, up to ten minutes) rather than refuse: an
+   automatic promotion is dispatched by that run's own last step, before GitHub
+   has marked it finished.
 2. **`promote`** — `needs: gate`, declares `environment: production`. Applies
    migrations, deploys, smoke tests.
 
@@ -202,6 +212,58 @@ The `gate` job logs which staging runs it found for that SHA whether it passes o
 fails — a gate you can only observe when it refuses is indistinguishable from one
 that is broken open.
 
+**From the staging console.** System → Housekeeping on *staging* has a "Deploy to
+production" card (`api/admin/deploys.ts`; every other environment answers 404). It
+pre-fills the newest commit that went green on staging, names the deploy after the
+commits production lacks, and dispatches this workflow — the same thing as the
+command above, audited as `production_deploy_requested`. It refuses a commit the
+gate would refuse, and a second deploy while one is queued, running or waiting.
+It reads what production runs from each run's title (`run-name`, which carries the
+SHA), so runs from before that existed count as "unknown" and only the newest
+staging commit is offered. It needs `GITHUB_DISPATCH_TOKEN` on the **staging**
+Worker; the token can start a deploy but not approve one.
+
+**Being told it is waiting.** When `gate` passes, it @mentions the reviewers on
+the commit's PR (or a new issue, for a commit with no PR) with a link to the run.
+A mention from the Actions bot reaches you by email and GitHub-app push even when
+you started the deploy yourself, and the GitHub mobile app can approve from there.
+Reviewers are the `PRODUCTION_REVIEWERS` repository variable (logins, space- or
+comma-separated), or the repository owner when it is unset.
+
+**Promoting automatically.** The same card has a switch, *Promote to production
+automatically after a green staging deploy* — off by default, stored in the staging
+`SETTINGS` KV (`deploy:auto-promote`), changed only by someone with `user:manage`
+(the button's permission) and audited as `production_autodeploy_enabled` /
+`_disabled`. With it on, every green staging deploy of `main` starts this workflow
+by itself. **It never approves anything**: the deploy waits at the `production`
+environment's approval gate, and the reviewers are @mentioned, exactly as for one
+started by hand. The dispatch token can start a deploy; only a reviewer can let it
+through.
+
+How the Worker decides (`api/internal/deploys.ts`, sharing
+`requestProductionDeploy` with the button):
+
+1. Switch off → `200 {promoted: false, reason: "disabled"}`, nothing else.
+2. It asks GitHub for the calling run by id and counts it as green only if it is a
+   `deploy-staging.yml` run of that exact SHA, on `main`, not concluded any other
+   way (`not_this_run` otherwise). This is the race: the run is still in progress
+   when it calls, so GitHub's list of successful staging runs does not contain it
+   yet. Trusting the body's SHA outright would let a leaked token nominate any
+   commit; checking the run makes it nominate only the one staging is deploying.
+   The gate then re-verifies once that run has actually concluded.
+3. The button's checks: nothing already queued, running or waiting
+   (`already_deploying`), and the SHA is one production lacks (`not_on_staging`).
+   Either refusal answers `200 {promoted: false, reason}`; the next green staging
+   deploy tries again.
+4. Dispatch, named `Auto: ` + the titles of the commits it brings in, audited as
+   `production_deploy_requested` with no actor (nobody chose this commit) and
+   `{automatic: true, staging_run}` in the details. The card's recent-deploys list
+   badges these "Automatic".
+
+A KV change can take up to a minute to be seen everywhere. The worst that lag does
+is start one deploy just after the switch went off, and that deploy still waits for
+a reviewer — reject it in GitHub.
+
 ### Rollback
 
 One command, from a clean checkout:
@@ -218,13 +280,18 @@ to keep working against the new schema.
 ### `daily-scrape.yml` — every morning, and from the admin console
 
 Runs the public scrapers at 06:00 Kathmandu on the self-hosted Linux runner
-(`runs-on: [self-hosted, Linux]` — never the laptop), imports what Kata Jaam and
-Taragaon found into D1 **as drafts**, and reports to the site rather than to a GitHub
+(`runs-on: [self-hosted, Linux]` — never the laptop), imports what Kata Jaam, Taragaon and the enabled venues found into D1 **as drafts**, and reports to the site rather than to a GitHub
 artifact: a row in `scrape_runs` (migration 0015) and the output tarball in R2 under
 `scrapes/`. The admin console's Housekeeping screen shows the runs and starts one on
 demand, and the moderation queue's "only what the scrapers imported" filter — with
 "Publish all imported drafts" — is where the drafts go public. Nothing is published
 by a run.
+
+Admin scraper source switches are stored per environment in `scrape_source_settings`
+(migration 0016). Apply that migration before deploying these controls. Manual runs
+capture enabled source IDs in the workflow dispatch; scheduled and ad-hoc runs read
+`GET /api/internal/scrape-sources` with the reporting token. Failure to read settings
+stops the run, and an empty selection performs no scrapes or imports.
 
 How a run moves:
 
@@ -256,13 +323,18 @@ And on the Worker, per environment:
 | Secret | What it is |
 |---|---|
 | `GITHUB_DISPATCH_TOKEN` | A fine-grained PAT on this repository only, permission **Actions: read and write**, nothing else. Missing → the console's button says so (503) and the schedule still runs. |
-| `SCRAPE_REPORT_TOKEN` | The runner's token, above. Missing → `/api/internal/*` answers 503. |
+| `SCRAPE_REPORT_TOKEN` | The runner's token, above. Missing → the scrape routes under `/api/internal/*` answer 503. |
 
 ```bash
 openssl rand -hex 32                                        # one value, used twice:
 gh secret set SCRAPE_REPORT_TOKEN --env scrape
 npx wrangler secret put SCRAPE_REPORT_TOKEN --env production
 npx wrangler secret put GITHUB_DISPATCH_TOKEN --env production
+npx wrangler secret put GITHUB_DISPATCH_TOKEN --env staging    # the deploy button lives here
+
+openssl rand -hex 32                                        # another value, also used twice:
+gh secret set DEPLOY_CALLBACK_TOKEN --env staging           # deploy-staging.yml's last step
+npx wrangler secret put DEPLOY_CALLBACK_TOKEN --env staging # /api/internal/staging-deploys
 gh secret set CLOUDFLARE_API_TOKEN --env scrape             # the D1-only token
 gh secret set CLOUDFLARE_ACCOUNT_ID --env scrape
 ```
@@ -276,6 +348,20 @@ thing that is down.
 Static analysis weekly and on PR; dependency review blocks known-vulnerable
 additions.
 
+### `dependabot-automerge.yml` — Dependabot PRs
+
+Patch and minor bumps turn on auto-merge (squash) as soon as Dependabot opens
+them, and merge when `verify` passes. Nobody clicks anything; a red `verify`
+just leaves the PR open. Major bumps get a comment and wait for a review.
+`dependabot.yml` already holds back the majors that are known to break
+(vitest, TypeScript).
+
+A merge made with `GITHUB_TOKEN` starts no workflows, so on its own it would
+not run `deploy-staging.yml`. Add a fine-grained token (this repo; Contents and
+Pull requests read/write) as the **Dependabot** secret `AUTOMERGE_TOKEN` and the
+merge triggers staging like any other. Without it, a bump reaches staging with
+the next merge.
+
 ## Secrets
 
 Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are set with
@@ -287,13 +373,25 @@ Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are se
 | `CLOUDFLARE_ACCOUNT_ID` | GitHub Environment secret | Deploy workflows |
 | `VITE_GOOGLE_MAPS_API_KEY` | GitHub Environment secret | Build — referrer-restricted per environment |
 | `GOOGLE_CLIENT_SECRET` | Cloudflare secret binding | Worker, per environment |
-| `GITHUB_DISPATCH_TOKEN` | Cloudflare secret binding | Worker — the admin console's "run the scrapers" |
+| `GITHUB_DISPATCH_TOKEN` | Cloudflare secret binding | Worker — the admin console's "run the scrapers", and staging's "Deploy to production" |
 | `SCRAPE_REPORT_TOKEN` | Cloudflare secret binding **and** `scrape` Environment secret | Worker and the daily scrape, one shared value |
+| `DEPLOY_CALLBACK_TOKEN` | Staging Cloudflare secret binding **and** `staging` Environment secret | Staging deploy's "offer this commit for production" callback, one shared value. Not the scrape token: that one sits on a job that parses other people's websites, and should not also be able to start a production deploy. Missing → the step skips itself and the route answers 503. |
 | `CLOUDFLARE_API_TOKEN` (D1-only) | `scrape` Environment secret | Daily scrape's importers — a different token from the deploy one |
 
 `GOOGLE_CLIENT_ID` is a plain var in `wrangler.jsonc` (it is public by design).
 Leaving both empty disables Google sign-in rather than breaking it, so a preview
-environment without credentials still runs. `.dev.vars.example` documents everything a
+environment without credentials still runs — `/login` asks `/api/auth/google/status`
+and simply shows no Google button.
+
+To turn it on for an environment: in Google Cloud Console create an OAuth client of
+type *Web application*, add `https://<that environment's host>/api/auth/google/callback`
+as an authorised redirect URI, put the client ID in that environment's `vars` in
+`wrangler.jsonc`, and `wrangler secret put GOOGLE_CLIENT_SECRET --env <environment>`.
+Previews get no redirect URI (their hosts change per PR), so they stay password-only.
+
+A Google sign-in links to an existing account with the same email only when Google
+says the address is verified; otherwise the person is sent back to `/login` with
+`?google_error=google_email_unverified`. `.dev.vars.example` documents everything a
 developer needs locally; nothing in it is a shared credential.
 
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are set as **Environment** secrets

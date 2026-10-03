@@ -291,6 +291,22 @@
 .wizard__save--error { color: var(--danger); }
 
 /* The sign-in gate is a panel, because it is the only thing on the page. */
+.wizard__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.wizard__divider::before,
+.wizard__divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
 .wizard__signin {
   gap: var(--space-7);
   max-width: 26rem;
@@ -896,9 +912,9 @@
   border-radius: var(--radius-xl);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-overlay);
-  /* Its own text colour, not whatever it is drawn inside: the homepage hero
-     is light-on-dark, and an inherited white title on this white card was
-     invisible. */
+  /* Its own text colour, not whatever it is drawn inside: the homepage map
+     once sat in a light-on-dark hero, and an inherited white title on this
+     white card was invisible. */
   color: var(--text-primary);
 }
 

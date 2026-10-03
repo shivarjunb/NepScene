@@ -135,8 +135,8 @@ export function NepalMap({ onOpen, location }: Props) {
    * the viewer cannot reach.
    *
    * Not anchored to the pin. A card drawn above a pin was clipped by the map's
-   * edge whenever the pin sat in its top half — and in the hero, which is
-   * short, that was most pins. The card opens across the top of the map
+   * edge whenever the pin sat in its top half — and on the homepage, where
+   * the map is short, that was most pins. The card opens across the top of the map
    * instead, where it always fits, and the map moves the pin into the space
    * below it (`focusAt`).
    */

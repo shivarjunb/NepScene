@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Card } from '../components/primitives'
 import { AuthorError } from '../lib/author'
 import { runArchive, sweepMedia, type Sweep } from '../lib/admin'
+import { DeployCard } from './DeployCard'
 
 /**
  * Housekeeping (#25, #33): the two jobs that run without anyone watching,
@@ -34,6 +35,8 @@ export function SystemPanel() {
     <section className="admin__section" aria-labelledby="admin-heading">
 
       {error && <Alert tone="danger" title="Something went wrong">{error}</Alert>}
+
+      <DeployCard />
 
       <Card raised className="admin__job">
         <div className="admin__row-body">

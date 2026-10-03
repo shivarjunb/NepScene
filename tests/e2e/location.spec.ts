@@ -34,7 +34,7 @@ async function open(page: Page, options: {
 test('the IP stage names the city and moves the map, with no location permission asked for', async ({ page }) => {
   await open(page, { geolocation: 'denied' })
 
-  // Nothing was asked of the browser: the headline is the IP's answer.
+  // Nothing was asked of the browser: the heading is the IP's answer.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Pokhara/)
 
   const centre = await page.evaluate('window.google.maps.__centre()') as { lat: number }
@@ -80,7 +80,7 @@ test('an unanswered permission prompt does not hang the map', async ({ page }) =
   await open(page, { geolocation: 'timeout' });
 
   // The IP stage runs alongside the browser stage rather than behind it, so
-  // the headline is right immediately — no six-second wait for a prompt
+  // the heading is right immediately — no six-second wait for a prompt
   // nobody is going to answer.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Pokhara/)
   await expect(page.getByText(/listings? in view/)).toBeVisible()
@@ -158,14 +158,4 @@ test('the map draws before location resolution has finished', async ({ page }) =
   await expect(page.locator('.nepal-map__canvas')).toBeVisible()
   await expect(page.getByText(/listings? in view/)).toBeVisible()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Kathmandu/)
-})
-
-test('reduced motion suppresses the headline reveal', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await open(page, { geolocation: 'denied' })
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Pokhara/)
-
-  const animation = await page.locator('.hero__title-reveal').evaluate(
-    (el) => getComputedStyle(el).animationName)
-  expect(animation).toBe('none')
 })

@@ -70,7 +70,7 @@ async function signIn(page: Page, email: string) {
 test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await page.goto(at('/'))
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/What.s happening around/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Events around/)
   // Real rows from the real catalogue, not an empty shell.
   await expect(page.locator('.listing-card').first()).toBeVisible()
   await assertAccessible(page, 'homepage')
@@ -89,7 +89,7 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await expect(page).toHaveURL(/\/listings\//)
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { level: 2 }).first()).toHaveText(title.trim())
-  await expect(dialog.getByRole('heading', { name: 'When' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Add to calendar' })).toBeVisible()
   await assertAccessible(page, 'listing dialog')
 
   // Escape is Back: the dialog goes, the filtered row is still there, and
@@ -109,14 +109,16 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
 
 // ── 2. Search ────────────────────────────────────────────────────────────────
 
-test('search: query with a typo, refine by facet, open a result', async ({ page }) => {
+test('search: query with a typo, refine by facet, open a result', async ({ page, isMobile }) => {
   await page.goto(at('/'))
+  // Below 62rem the header's box is hidden and the same box is in the menu.
+  if (isMobile) await page.locator('.site-header__menu-button').click()
 
   // Deliberately misspelled: search is supposed to be forgiving, and a journey
   // that types the exact title proves nothing about that.
   // `role="combobox"` — it owns a suggestion listbox (#42), so it is not a
   // plain textbox and `getByRole('searchbox')` does not find it.
-  const box = page.getByRole('combobox', { name: 'Search' }).first()
+  const box = page.getByRole('combobox', { name: 'Search' }).filter({ visible: true }).first()
   await box.fill('kathmadu rock')
   await box.press('Enter')
 

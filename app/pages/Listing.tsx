@@ -4,7 +4,7 @@ import { fetchListing } from '../lib/client'
 import { useResource } from '../lib/useResource'
 import { recordListingEvent } from '../lib/analytics'
 import {
-  categoryName, descriptionOf, langOf, money, relativeDay, startBikram, startLine,
+  categoryName, descriptionOf, langOf, money, offerLine, relativeDay, startBikram, startLine,
   startTime, summaryOf, titleOf, venueLine,
 } from '../lib/format'
 import { calendarEventFor, googleCalendarUrl, toICal } from '../lib/calendar'
@@ -33,11 +33,10 @@ import { Link } from '../router'
  * fails because a price could not be resolved is a discovery product held
  * hostage by a commerce one.
  *
- * **The same content opens in a dialog** (`ListingDialog`) when a card is
- * clicked, so a reader browsing a row does not lose their place. The page and
- * the dialog render one `ListingContent`; what differs is the heading level —
- * the page's title is the `h1`, the dialog's sits under the page's — so the
- * outline stays honest in both.
+ * **A card opens the listing in a dialog** (`ListingDialog`), so a reader
+ * browsing a row does not lose their place. The dialog shows `ListingGlance`,
+ * everything needed to decide and act without scrolling, and links here for
+ * the rest.
  */
 const HERO_SIZES = '(max-width: 60rem) 100vw, 60rem'
 
@@ -96,6 +95,164 @@ export function ListingContent({ listing, level = 1, titleId }: {
     <LevelContext.Provider value={level}>
       <Loaded listing={listing} titleId={titleId} />
     </LevelContext.Provider>
+  )
+}
+
+/**
+ * A listing at a glance, for the dialog: the poster beside what, when, where
+ * and what it costs, with every action one click away. The page keeps the
+ * rest (line-up, gallery, map, related), one link from here.
+ *
+ * Returns the poster and the details as siblings, so the dialog can place
+ * them in its own grid next to its bar.
+ */
+export function ListingGlance({ listing, titleId }: { listing: ListingDetail; titleId?: string }) {
+  const t = useT()
+  const { language } = useLanguage()
+  const [added, setAdded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => { recordListingEvent(listing.slug, 'view') }, [listing.slug])
+
+  // Opening a related listing reuses this component; its buttons start fresh.
+  useEffect(() => { setAdded(false); setCopied(false) }, [listing.slug])
+
+  // "Link copied" is a moment, not a state: it goes back so a second copy reads
+  // as one.
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(timer)
+  }, [copied])
+
+  const title = titleOf(listing, language)
+  // The summary where the author wrote one; otherwise the description's first
+  // paragraph, which CSS cuts to a few lines. The rest is on the page.
+  const blurb = summaryOf(listing, language) ?? descriptionOf(listing, language)
+    ?.split(/\r?\n\s*\r?\n/)
+    .map((paragraph) => paragraph.replace(/^\s*Source\s*:.*$/gim, '').trim())
+    .find(Boolean)
+  const blurbLang = listing.summary ? langOf(listing.summary_ne, language) : langOf(listing.description_ne, language)
+  const [hero] = listingImages(listing)
+  const category = listing.categories.find((entry) => entry.is_primary) ?? listing.categories[0]
+  const bikram = startBikram(listing, language)
+  const venue = listing.venue
+  // The area under the venue's name, unless the name already says it
+  // ("CCT, Bharatpur, Chitwan" does not need "Chitwan" again).
+  const place = venue ? [venue.area ?? venue.city, venue.address].find((part) => part && !venue.name.includes(part)) : null
+  const price = listing.listing_type === 'free' ? t('listing.free')
+    : listing.listing_type === 'announcement' ? t('listing.announcement')
+    : offerLine(listing, language)
+
+  const offer = listing.offer
+  const cta = offer?.url && !offer.sold_out && listing.listing_type !== 'free' && listing.listing_type !== 'announcement'
+    ? { href: offer.url, label: t('listing.getTickets') }
+    : listing.external_url ? { href: listing.external_url, label: t('listing.visitSite') } : null
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${siteOrigin()}/listings/${listing.slug}`)
+      setCopied(true)
+    } catch {
+      // Refused clipboard: the link is in the address bar either way.
+    }
+  }
+
+  return (
+    <>
+      {hero && (
+        <div className="glance__poster">
+          <a href={hero.url} target="_blank" rel="noopener noreferrer">
+            <ResponsiveImage media={hero} sizes="(max-width: 40rem) 100vw, 32rem" alt={hero.alt_text || title} priority />
+          </a>
+        </div>
+      )}
+
+      <div className="glance__details">
+        {category && (
+          <span className="listing-page__category" style={{ ['--card-accent' as string]: category.color ?? undefined }}>
+            {categoryName(category, language)}
+          </span>
+        )}
+        <h2 id={titleId} className="glance__title" lang={langOf(listing.title_ne, language)}>{title}</h2>
+
+        <ul className="glance__facts" role="list">
+          <li className="glance__fact">
+            <FactIcon d="M4 5h16v15H4zM16 3v4M8 3v4M4 10h16" />
+            <div>
+              <p className="glance__fact-main">
+                <time dateTime={listing.starts_at}>{startLine(listing, language)}</time>
+                {listing.ends_at && !listing.is_all_day && (
+                  <> {t('listing.until', { end: startTime({ ...listing, starts_at: listing.ends_at }, language) })}</>
+                )}
+              </p>
+              {bikram && <p className="glance__fact-sub" lang="ne">{bikram}</p>}
+            </div>
+          </li>
+          {venue && (
+            <li className="glance__fact">
+              <FactIcon d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+              <div>
+                <p className="glance__fact-main">
+                  <Link href={`/venues/${venue.slug}`}>{venue.name}</Link>
+                  {listing.venue_room && <> — {listing.venue_room}</>}
+                </p>
+                <p className="glance__fact-sub">
+                  {place && <>{place} · </>}
+                  <a href={directionsUrl(venue)} target="_blank" rel="noopener noreferrer">{t('listing.directions')}</a>
+                </p>
+              </div>
+            </li>
+          )}
+          {price && (
+            <li className="glance__fact">
+              <FactIcon d="M3 9a3 3 0 0 0 0 6v4h18v-4a3 3 0 0 0 0-6V5H3zM13 5v2M13 11v2M13 17v2" />
+              <p className="glance__fact-main">{price}</p>
+            </li>
+          )}
+        </ul>
+
+        {blurb && <p className="glance__blurb" lang={blurbLang}>{blurb}</p>}
+        <Link className="glance__more" href={`/listings/${listing.slug}`}>{t('listing.fullDetails')} →</Link>
+
+        <div className="glance__actions">
+          {cta && (
+            <a
+              className="btn btn--primary btn--lg btn--block"
+              href={cta.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              // The click is the attribution (#34, #43), as on the page.
+              onClick={() => recordListingEvent(listing.slug, 'click')}
+            >
+              {cta.label} <span aria-hidden="true">↗</span>
+            </a>
+          )}
+          <div className="glance__secondary">
+            <Button variant="secondary" onClick={() => { downloadICal(listing); setAdded(true) }}>
+              {added ? <>✓ {t('listing.addedToCalendar')}</> : t('listing.addToCalendar')}
+            </Button>
+            <Button variant="secondary" onClick={copyLink}>
+              {copied ? <>✓ {t('listing.linkCopied')}</> : t('listing.copyLink')}
+            </Button>
+          </div>
+          <span role="status" className="visually-hidden">
+            {copied ? t('listing.linkCopied') : added ? t('listing.addedToCalendar') : ''}
+          </span>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function FactIcon({ d }: { d: string }) {
+  return (
+    <span className="glance__icon" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    </span>
   )
 }
 
@@ -476,11 +633,10 @@ function Related({ listings }: { listings: Listing[] }) {
   )
 }
 
-/** `bare` leaves out the page gutter, for the dialog, which has its own. */
-export function ListingSkeleton({ bare = false }: { bare?: boolean }) {
+export function ListingSkeleton() {
   const t = useT()
   return (
-    <div className={bare ? 'listing-page' : 'layout listing-page'} aria-busy="true">
+    <div className="layout listing-page" aria-busy="true">
       <span className="visually-hidden" role="status">{t('common.loading')}</span>
       <div className="stack">
         <Skeleton width="30%" height="1rem" />

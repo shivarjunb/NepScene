@@ -3,7 +3,7 @@ import { Link } from '../router'
 import { Alert, Badge, Button, Card } from '../components/primitives'
 import { AuthorError } from '../lib/author'
 import {
-  fetchScrapeRuns, scrapeOutputUrl, startScrapeRun, type ScrapeRun, type ScrapeRuns,
+  fetchScrapeSources, setScrapeSource, type ScrapeSource, fetchScrapeRuns, scrapeOutputUrl, startScrapeRun, type ScrapeRun, type ScrapeRuns,
 } from '../lib/admin'
 import { when } from './shared'
 
@@ -23,6 +23,9 @@ const STATUS_TONE: Record<ScrapeRun['status'], 'neutral' | 'accent' | 'success' 
  * and the link goes straight to them.
  */
 export function ScrapersPanel() {
+  const [sources, setSources] = useState<ScrapeSource[] | null>(null)
+  const [savingSource, setSavingSource] = useState<string | null>(null)
+  const [sourceError, setSourceError] = useState<string | null>(null)
   const [runs, setRuns] = useState<ScrapeRuns | null>(null)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,6 +41,21 @@ export function ScrapersPanel() {
   }, [])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    void fetchScrapeSources().then(result => setSources(result.sources)).catch(() => setSourceError('Could not load source settings. Reload the page to try again.'))
+  }, [])
+
+  const toggleSource = async (source: ScrapeSource) => {
+    setSavingSource(source.id)
+    setSourceError(null)
+    try {
+      const saved = await setScrapeSource(source.id, !source.enabled)
+      setSources(current => current?.map(item => item.id === saved.id ? { ...item, enabled: saved.enabled } : item) ?? null)
+    } catch (caught) {
+      setSourceError(caught instanceof AuthorError ? caught.message : 'Could not save this source. Try again.')
+    } finally { setSavingSource(null) }
+  }
 
   const active = runs?.data.some((run) => run.status === 'queued' || run.status === 'running') ?? false
   useEffect(() => {
@@ -69,8 +87,8 @@ export function ScrapersPanel() {
         <div className="admin__row-body">
           <h2 className="admin__row-title">Scrape the sources</h2>
           <p className="board__meta">
-            Runs every morning at six, Kathmandu time, on the runner. Every source
-            is read and what is new goes into the queue as drafts; nothing is
+            Runs every morning at six, Kathmandu time, on the runner. Enabled sources
+            are read and supported imports goes into the queue as drafts; nothing is
             published by a run.
           </p>
 
@@ -80,6 +98,26 @@ export function ScrapersPanel() {
               This environment has no token for starting a run. The nightly schedule still runs.
             </Alert>
           )}
+
+        <fieldset className="admin__scrape-sources" disabled={savingSource !== null}>
+          <legend>Sources</legend>
+          <p className="board__meta">Changes save automatically for future manual and scheduled runs. Queued and running jobs keep their selection.</p>
+          {sourceError && <Alert tone="danger" title="Source settings">{sourceError}</Alert>}
+          {!sources && !sourceError && <p role="status">Loading sources…</p>}
+          <div className="admin__source-grid">
+            {sources?.map(source => (
+              <button key={source.id} type="button" className="admin__source-toggle"
+                      role="switch" aria-checked={source.enabled} aria-label={source.name}
+                      onClick={() => void toggleSource(source)}>
+                <span>{source.name}</span>
+                <span className="admin__source-state" aria-hidden="true">
+                  {savingSource === source.id ? 'Saving…' : source.enabled ? 'On' : 'Off'}
+                </span>
+              </button>
+            ))}
+          </div>
+          {sources && !sources.some(source => source.enabled) && <p role="status">All sources are off. Turn one on to start a run.</p>}
+        </fieldset>
 
           {pending > 0 && (
             <Alert tone="info" title={`${pending} imported ${pending === 1 ? 'draft is' : 'drafts are'} waiting`}>
@@ -97,7 +135,7 @@ export function ScrapersPanel() {
           )}
         </div>
         <div className="admin__row-actions">
-          <Button type="button" loading={starting} disabled={starting || active || runs?.configured === false}
+          <Button type="button" loading={starting} disabled={starting || active || savingSource !== null || !sources?.some(source => source.enabled) || runs?.configured === false}
                   onClick={() => void start()}>
             {active ? (latest?.status === 'queued' ? 'Queued…' : 'Running…') : 'Run now'}
           </Button>
@@ -124,9 +162,10 @@ function RunRow({ run }: { run: ScrapeRun }) {
         <ul className="admin__run-jobs" aria-label="Scrapers">
           {jobs.map((job) => (
             <li key={job.name} className={`admin__run-job${job.success ? '' : job.skipped ? ' is-skipped' : ' is-failed'}`}
-                title={job.error ?? undefined}>
+                title={job.error ?? job.failed_sources?.map((f) => `${f.name}: ${f.error ?? f.status}`).join('\n') ?? undefined}>
               {job.success ? '✓' : job.skipped ? '–' : '✕'} {job.name}
               {job.import?.new_drafts ? ` (${job.import.new_drafts} new)` : ''}
+              {job.failed_sources?.length ? ` (${job.failed_sources.length} ${job.failed_sources.length === 1 ? 'source' : 'sources'} short)` : ''}
             </li>
           ))}
         </ul>
@@ -138,7 +177,7 @@ function RunRow({ run }: { run: ScrapeRun }) {
             {failed.length > 0 && ` · ${failed.map((job) => job.name).join(', ')} failed`}
           </span>
         ) : null}
-        {run.error && run.status === 'failed' && failed.length === 0 && (
+        {run.error && failed.length === 0 && (
           <span className="board__meta">{run.error}</span>
         )}
         {run.output_key && <a href={scrapeOutputUrl(run.id)}>Download output</a>}

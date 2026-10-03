@@ -46,7 +46,7 @@ async function readPublic(url) {
   throw Error(`Could not read ${url}`)
 }
 
-function database(o) {
+export function database(o) {
   const require = createRequire(join(resolve(o.repo), 'package.json'))
   let wrangler
   try { wrangler = require.resolve('wrangler') } catch {

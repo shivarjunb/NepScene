@@ -4,11 +4,33 @@ import type {
 } from './types'
 import { resolvePin } from './pin'
 import { FORMAT_ORDER, MIME_BY_FORMAT, type Format } from '../media/pipeline'
+import { importedCoverPath, isRemoteImportedCover } from '../media/imported'
 import { swallowed } from '../lib/observability'
 
 /** Public URL for an R2 object. Derived, never stored (see migration 0001). */
 export function mediaUrl(r2Key: string): string {
   return `/api/media/${r2Key.split('/').map(encodeURIComponent).join('/')}`
+}
+
+/**
+ * The cover URL the public sees. An import's is replaced with a path on our own
+ * origin (api/media/imported.ts), so opening the image never shows where it was
+ * scraped from; one already in R2 is left alone, and one whose stored value is
+ * neither gets none.
+ * Everyone else's is theirs to publish and passes through. This is the only
+ * place the rewrite happens, and every public surface — feed, detail, SSR,
+ * og:image, JSON-LD — reads the summary this builds, so none of them can
+ * disagree. Author and admin responses read the row, not this, and keep the
+ * stored URL editors need.
+ */
+function publicCoverUrl(row: Record<string, unknown>): string | null {
+  const stored = (row.cover_image_url as string | null) ?? null
+  if (stored === null || row.source !== 'import') return stored
+  // Already ours: an import whose poster has been through the pipeline.
+  if (stored.startsWith('/api/media/')) return stored
+  return isRemoteImportedCover(row.source, stored)
+    ? importedCoverPath(row.id as string, stored)
+    : null
 }
 
 const bool = (value: unknown): boolean => value === 1 || value === true
@@ -137,7 +159,7 @@ export function toListingSummary(row: Record<string, unknown>): ListingSummary {
     ends_at: (row.ends_at as string | null) ?? null,
     is_all_day: bool(row.is_all_day),
     timezone: (row.timezone as string) ?? 'Asia/Kathmandu',
-    cover_image_url: (row.cover_image_url as string | null) ?? null,
+    cover_image_url: publicCoverUrl(row),
     external_url: (row.external_url as string | null) ?? null,
     is_featured: bool(row.is_featured),
     map_popup_config: parseJsonObject(row.map_popup_config),

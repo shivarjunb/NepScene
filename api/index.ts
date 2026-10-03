@@ -7,6 +7,7 @@ import { authorVenueRoutes } from './author/venues'
 import { authorWriteRoutes } from './author/write'
 import { dashboardRoutes } from './author/dashboard'
 import { adminRoutes } from './admin/routes'
+import { internalDeployRoutes } from './internal/deploys'
 import { internalScrapeRoutes } from './internal/scrapes'
 import { moderationRoutes } from './author/moderation'
 import { catalogRoutes } from './catalog/routes'
@@ -75,7 +76,11 @@ app.route('/api/author', authorMediaRoutes)
 app.route('/api/author', moderationRoutes)
 app.route('/api/author', dashboardRoutes)
 app.route('/api/admin', adminRoutes)
-// Not a person: the scrape runner, with a shared token. No session lookup.
+// Not a person: GitHub Actions jobs, each with its own shared token. No
+// session lookup. The deploy callback comes first: the scrape router guards
+// every /api/internal path with its token, and would otherwise answer 401 to
+// the staging deploy before its own route was reached.
+app.route('/api/internal', internalDeployRoutes)
 app.route('/api/internal', internalScrapeRoutes)
 
 /**

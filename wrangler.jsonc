@@ -66,7 +66,8 @@
     "GOOGLE_CLIENT_ID": "",
     // Where the admin console's "run the scrapers" dispatches to. The token
     // for it is a secret: `wrangler secret put GITHUB_DISPATCH_TOKEN`; so is
-    // the runner's SCRAPE_REPORT_TOKEN. See docs/DEVOPS.md, "Scrape runs".
+    // the runner's SCRAPE_REPORT_TOKEN, and staging's DEPLOY_CALLBACK_TOKEN.
+    // See docs/DEVOPS.md, "Scrape runs" and "deploy-production.yml".
     "GITHUB_REPOSITORY": "shivarjunb/NepScene"
   },
 
@@ -94,7 +95,7 @@
     "production": {
       "name": "nepscene",
       "triggers": { "crons": ["15 18 * * *"] },
-      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "", "GITHUB_REPOSITORY": "shivarjunb/NepScene" },
+      "vars": { "ENVIRONMENT": "production", "OFFER_API_URL": "", "GOOGLE_CLIENT_ID": "78687781796-irdmic2bqg768713v8h38iai23jroite.apps.googleusercontent.com", "GITHUB_REPOSITORY": "shivarjunb/NepScene" },
       "d1_databases": [
         { "binding": "DB", "database_name": "nepscene-production", "database_id": "63c61f55-3138-44d8-8226-05330926231e" }
       ],

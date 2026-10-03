@@ -122,11 +122,19 @@ export async function main(args=process.argv.slice(2)) {
  reports.sort((a,b)=>a.id.localeCompare(b.id))
  const events=reports.flatMap(r=>r.events),review=reports.flatMap(r=>r.review)
  const candidates=events.map(e=>transform(e,sources.find(s=>s.id===e.source_id),checked_at))
- writeFileSync(join(out,'inventory.json'),JSON.stringify({checked_at,events},null,2))
+ // One broken site must not hold back every other venue's events. The
+ // inventory says which sources fell short, so the importer can log them; it
+ // only ever adds or matches listings, never removes one a source stopped
+ // listing, so the events a short crawl did find are still safe to import.
+ const failed_sources=reports.filter(r=>['partial','failed'].includes(r.status)).map(r=>({id:r.id,name:r.name,status:r.status,errors:r.errors}))
+ writeFileSync(join(out,'inventory.json'),JSON.stringify({checked_at,complete:failed_sources.length===0,failed_sources,events},null,2))
  writeFileSync(join(out,'review.json'),JSON.stringify(review,null,2))
  writeFileSync(join(out,'report.json'),JSON.stringify({mode:'scrape-only',checked_against_database:false,checked_at,events:plan(candidates)},null,2))
  writeFileSync(join(out,'coverage.json'),JSON.stringify({checked_at,sources:reports.map(({events,review,...r})=>({...r,event_count:events.length,review_count:review.length}))},null,2))
- if(reports.some(r=>['partial','failed'].includes(r.status)))process.exitCode=1
+ for(const f of failed_sources)console.warn(`WARNING ${f.id} ${f.name}: ${f.status}; its events, if any, are imported and the rest of the run continues`)
+ // Only a run in which every source fell short fails: that is the network or
+ // the scraper, not one site's layout.
+ if(reports.length&&failed_sources.length===reports.length)process.exitCode=1
  console.log('Results: '+out)
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)main().catch(e=>{console.error(e);process.exitCode=1})

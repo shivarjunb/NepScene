@@ -76,3 +76,28 @@ jobs:
       - name: Smoke test
         if: steps.guard.outputs.ready == 'true'
         run: node scripts/smoke.mjs https://nepscene-staging.bhattarai-shiva.workers.dev staging
+
+      # Offers this commit for production. The staging Worker decides: with the
+      # console's "promote automatically" off it does nothing; on, it starts
+      # deploy-production.yml, which still waits for a reviewer's approval
+      # (api/internal/deploys.ts). The run id lets the Worker confirm with
+      # GitHub that this is the run it claims to be, since GitHub will not list
+      # it as a success until after this step. Best effort: a callback that
+      # fails must never fail a staging deploy that worked. main only — a
+      # dispatch from another branch has nothing to promote.
+      - name: Offer this commit for production
+        if: steps.guard.outputs.ready == 'true' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          DEPLOY_CALLBACK_TOKEN: ${{ secrets.DEPLOY_CALLBACK_TOKEN }}
+        run: |
+          if [ -z "$DEPLOY_CALLBACK_TOKEN" ]; then
+            echo "::notice::DEPLOY_CALLBACK_TOKEN is not set on the staging environment — not offering this commit for production."
+            exit 0
+          fi
+          curl --silent --show-error --fail-with-body --max-time 60 \
+            -X POST https://nepscene-staging.bhattarai-shiva.workers.dev/api/internal/staging-deploys \
+            -H "authorization: Bearer $DEPLOY_CALLBACK_TOKEN" \
+            -H 'content-type: application/json' \
+            -d "{\"sha\":\"$GITHUB_SHA\",\"run_id\":$GITHUB_RUN_ID}"
+          echo

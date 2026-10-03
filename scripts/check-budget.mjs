@@ -48,8 +48,19 @@ const SHELL = join(CLIENT, 'index.html')
  * which took 1.7 KB *off* every first paint (CSS 12.2 → 10.5 KB, first paint
  * 103.8 → 102.1 KB) and put it where only an editor or admin fetches it. The
  * deferred total is 43.8 KB; 47 is the usual headroom on top.
+ *
+ * First paint raised 104 → 106 on 2026-10-01 for the listing popup at a
+ * glance and the map as the homepage cover (#140): both are the public first
+ * paint, server rendered and hydrated, so they cannot move into a deferred
+ * chunk. Measured 104.8 KB (JS 91.9, CSS 11.7); 106 leaves the JS and CSS
+ * ceilings where they were, so the next addition still has to argue for itself.
+ *
+ * JS 92 → 102 and first paint 106 → 115 on 2026-10-03 for React 19.3 (#103).
+ * The bump alone adds 8.4 KB to the first paint (JS 91.9 → 100.3, first paint
+ * 104.8 → 113.2), all of it React DOM; no app code moved. Holding React on
+ * 19.2 would only defer it. Closing the gap is #51's work, not this bump's.
  */
-const BUDGETS_KB = { js: 92, css: 12, total: 104, deferred: 47 }
+const BUDGETS_KB = { js: 102, css: 12, total: 115, deferred: 47 }
 
 /**
  * What #39's "initial interactive paint under 1.5 seconds on 3G" would

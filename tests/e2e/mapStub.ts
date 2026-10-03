@@ -343,7 +343,7 @@ export async function serveHere(
 
 /**
  * A minimal `/bootstrap`, so a spec whose subject is the map can open `/` —
- * where the hero lives — without also standing up a feed fixture. The rows
+ * where the map is the cover — without also standing up a feed fixture. The rows
  * the feed builds from it are somebody else's spec (`discover.spec.ts`).
  */
 export async function serveBootstrap(page: Page) {

@@ -391,3 +391,53 @@ test('venues pass axe, dialogs included', async ({ page }) => {
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
   expect(results.violations).toEqual([])
 })
+
+async function serveSourceSettings(page: Page) {
+  await serveAdmin(page)
+  const sources = [
+    { id: 'katajaam', name: 'Kata Jaam', enabled: true },
+    { id: 'ktm-026', name: 'Martin Chautari', enabled: true },
+    { id: 'ktm-003', name: 'International Ethnic Folklore Festival Nepal', enabled: true },
+  ]
+  await page.route('**/api/admin/system/scrape-runs', route => route.fulfill({ json: { data: [], configured: true, pending_imports: 0 } }))
+  await page.route('**/api/admin/system/scrape-sources', route => route.fulfill({ json: { sources } }))
+  await page.route('**/api/admin/system/scrape-sources/*', route => {
+    const source = sources.find(s => route.request().url().endsWith(s.id))!
+    source.enabled = route.request().postDataJSON().enabled
+    return route.fulfill({ json: source })
+  })
+}
+
+test('housekeeping source switches save, survive reload, and support keyboard and narrow screens', async ({ page }) => {
+  await serveSourceSettings(page)
+  await page.setViewportSize({ width: 320, height: 800 })
+  await page.goto('/admin/scrapers')
+  const martin = page.getByRole('switch', { name: 'Martin Chautari' })
+  await expect(martin).toBeChecked()
+  await martin.focus()
+  await page.keyboard.press('Space')
+  await expect(martin).not.toBeChecked()
+  await page.reload()
+  await expect(martin).not.toBeChecked()
+  await page.getByRole('switch', { name: 'Kata Jaam', exact: true }).click()
+  await page.getByRole('switch', { name: 'International Ethnic Folklore Festival Nepal' }).click()
+  await expect(page.getByText('All sources are off. Turn one on to start a run.')).toBeVisible()
+  const card = page.locator('.admin__job', { has: page.getByRole('heading', { name: 'Scrape the sources' }) })
+  await expect(card.getByRole('button', { name: 'Run now', exact: true })).toBeDisabled()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+  expect(results.violations).toEqual([])
+  await martin.click()
+  await expect(card.getByRole('button', { name: 'Run now', exact: true })).toBeEnabled()
+})
+
+test('a failed source save keeps its previous setting and offers a retry', async ({ page }) => {
+  await serveSourceSettings(page)
+  await page.route('**/api/admin/system/scrape-sources/ktm-026', route => route.fulfill({ status: 500, json: { error: { message: 'Save failed' } } }))
+  await page.goto('/admin/scrapers')
+  const martin = page.getByRole('switch', { name: 'Martin Chautari' })
+  await martin.click()
+  await expect(martin).toBeChecked()
+  await expect(page.getByRole('alert').filter({ hasText: 'Source settings' })).toBeVisible()
+  await expect(martin).toBeEnabled()
+})
