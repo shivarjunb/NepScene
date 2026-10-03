@@ -7,6 +7,15 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
+- **The map goes dark with the rest of the site.** In the dark theme the page
+  turned midnight and the map stayed Google's daytime white, the brightest
+  thing on a phone at night. Now its land, roads, water, parks and labels are
+  drawn in the dark theme's own midnight, slate and violet, and it loads on a
+  dark ground, so there is no white flash while the tiles arrive. It follows
+  the theme you chose in the header, or your device's when you have not
+  chosen, and switches while the page is open. The map on listing and venue
+  pages and the maps in "Add a listing" follow it too. The light map is
+  unchanged, and nothing needs setting up in Google Cloud.
 - **Scraper sources can be switched on or off** in Admin → Scrapers. Choices persist for manual and scheduled runs, and enabled venue results are imported as drafts with duplicate checks.
 - **Phones show more events at a glance.** A listing card took up a whole
   phone screen, so you saw one event at a time. On screens narrower than

@@ -249,6 +249,8 @@ export async function stubGoogleMaps(page: Page) {
       setZoom() {}
       panTo() {}
       getBounds() { return null }
+      // A theme switch restyles the map in place (useMapTheme).
+      setOptions() {}
     }
 
     // The marker icon in `pinMarker.ts` is sized and anchored with these, so a

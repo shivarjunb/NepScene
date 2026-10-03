@@ -59,8 +59,16 @@ const SHELL = join(CLIENT, 'index.html')
  * The bump alone adds 8.4 KB to the first paint (JS 91.9 → 100.3, first paint
  * 104.8 → 113.2), all of it React DOM; no app code moved. Holding React on
  * 19.2 would only defer it. Closing the gap is #51's work, not this bump's.
+ *
+ * Deferred raised 47 → 51 on 2026-10-03 for the dark map: the style the maps
+ * are drawn with in the dark theme (map/mapStyles.ts), and the hook that keeps
+ * them in step with the theme. The style is a 0.8 KB chunk of its own, fetched
+ * alongside the Maps SDK, by whichever map needs it first. That includes the
+ * listing page's locator, which imports it rather than carrying it, so the
+ * first paint pays only for the import (JS 100.3 → 100.5 KB, first paint
+ * 113.2 → 113.4). Deferred 46.7 → 47.7 KB; 51 is the usual headroom on top.
  */
-const BUDGETS_KB = { js: 102, css: 12, total: 115, deferred: 47 }
+const BUDGETS_KB = { js: 102, css: 12, total: 115, deferred: 51 }
 
 /**
  * What #39's "initial interactive paint under 1.5 seconds on 3G" would

@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Input } from '../components/primitives'
 import { loadGoogleMaps } from '../lib/googleMaps'
 import { ListingPopup, type PopupListing } from '../map/ListingPopup'
 import { PIN_SIZE, pinDataUri, pinSvg } from '../map/pinMarker'
+import { useMapTheme } from '../map/useMapTheme'
 import {
   defaultPopupConfig, isDefaultPopupConfig, parsePopupConfig, serialisePopupConfig,
   type PopupField,
@@ -177,6 +178,8 @@ function PinPreview({ pin, lat, lng }: {
   const markerRef = useRef<google.maps.Marker | null>(null)
   const [ready, setReady] = useState(false)
   const [unavailable, setUnavailable] = useState(false)
+  // In the theme the public map will draw it in, or it is not a preview.
+  const mapTheme = useMapTheme(mapRef, ready)
 
   const centre = { lat: lat ?? 27.7172, lng: lng ?? 85.324 }
 
@@ -191,6 +194,7 @@ function PinPreview({ pin, lat, lng }: {
         // try to move the pin, which is the previous step's job.
         gestureHandling: 'none',
         keyboardShortcuts: false,
+        ...mapTheme(),
       })
       setReady(true)
     }).catch(() => { if (!cancelled) setUnavailable(true) })

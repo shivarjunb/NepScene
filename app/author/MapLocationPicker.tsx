@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Button, Field, Input, Spinner } from '../components/primitives'
 import { loadGoogleMaps, MapsUnavailableError } from '../lib/googleMaps'
+import { useMapTheme } from '../map/useMapTheme'
 import {
   applyPlaceToVenue, coordinateWarning, formatCoordinates, roundCoordinate,
   type PlaceLike,
@@ -63,6 +64,8 @@ export function MapLocationPicker({ lat, lng, onMove, onGeocoded, venue, label =
   const [searching, setSearching] = useState(false)
   const [geocoding, setGeocoding] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  /** The same night as the public map, following the site's theme. */
+  const mapTheme = useMapTheme(mapRef, ready)
 
   /**
    * The move handler, held in a ref rather than closed over.
@@ -103,6 +106,7 @@ export function MapLocationPicker({ lat, lng, onMove, onGeocoded, venue, label =
         // Google's own POI pins swallow the click that was meant for the map,
         // which reads as the map ignoring you.
         clickableIcons: false,
+        ...mapTheme(),
       })
       map.addListener('click', (event: google.maps.MapMouseEvent) => {
         if (event.latLng) onMoveRef.current(
