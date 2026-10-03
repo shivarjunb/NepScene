@@ -333,6 +333,20 @@ thing that is down.
 Static analysis weekly and on PR; dependency review blocks known-vulnerable
 additions.
 
+### `dependabot-automerge.yml` — Dependabot PRs
+
+Patch and minor bumps turn on auto-merge (squash) as soon as Dependabot opens
+them, and merge when `verify` passes. Nobody clicks anything; a red `verify`
+just leaves the PR open. Major bumps get a comment and wait for a review.
+`dependabot.yml` already holds back the majors that are known to break
+(vitest, TypeScript).
+
+A merge made with `GITHUB_TOKEN` starts no workflows, so on its own it would
+not run `deploy-staging.yml`. Add a fine-grained token (this repo; Contents and
+Pull requests read/write) as the **Dependabot** secret `AUTOMERGE_TOKEN` and the
+merge triggers staging like any other. Without it, a bump reaches staging with
+the next merge.
+
 ## Secrets
 
 Held as GitHub Environment secrets, never in the repo. Cloudflare secrets are set with
