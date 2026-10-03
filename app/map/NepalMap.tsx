@@ -16,6 +16,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
 import { PAD_RATIO, padBounds, sameBounds, within, type Bounds } from './viewport'
 import { useViewportListings } from './useViewportListings'
 import type { ResolvedLocation } from './useLocation'
+import { useMapTheme } from './useMapTheme'
 import { haversineKm, boundingBox } from '../../api/lib/geo'
 
 /**
@@ -243,6 +244,9 @@ export function NepalMap({ onOpen, location }: Props) {
     [pins, effectiveViewport],
   )
 
+  /** Dark tiles in the dark theme, following the site's theme while open. */
+  const mapTheme = useMapTheme(mapRef, ready)
+
   // ── Build the map, once ────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
@@ -275,6 +279,9 @@ export function NepalMap({ onOpen, location }: Props) {
          * and then set `gestureHandling: 'auto'`, disabling it.
          */
         gestureHandling: 'cooperative',
+        // `styles` and `backgroundColor` for the theme as it is now; the
+        // ground is only read here, which is what keeps a dark load dark.
+        ...mapTheme(),
       })
       mapRef.current = map
 

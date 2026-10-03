@@ -148,12 +148,23 @@ export async function stubMapsSdk(page: Page) {
       getSouthWest() { return new FakeLatLng(centre.lat - SPAN, centre.lng - SPAN) }
     }
 
+    /**
+     * What the map was built with, then every `setOptions` after, in order —
+     * which is how a spec reads the theme the map was given (useMapTheme).
+     */
+    let built: Record<string, unknown> | null = null
+    const updates: Record<string, unknown>[] = []
+
     class FakeMap {
-      constructor(container: HTMLElement) {
+      constructor(container: HTMLElement, options: Record<string, unknown> = {}) {
+        built = options
         container.dataset.fakeMap = 'ready'
         // The SDK settles asynchronously and then fires `idle`; the app's first
         // fetch hangs off that, so the stub has to do the same.
         setTimeout(() => fire('idle', undefined), 0)
+      }
+      setOptions(options: Record<string, unknown>) {
+        updates.push(options)
       }
       addListener(event: string, handler: Listener) {
         (mapListeners[event] ??= []).push(handler)
@@ -273,6 +284,7 @@ export async function stubMapsSdk(page: Page) {
           fire('idle', undefined)
         },
         __centre: () => ({ ...centre }),
+        __options: () => ({ built, updates }),
       },
     }
   })

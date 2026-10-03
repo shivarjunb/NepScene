@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { PinAppearance } from '../lib/catalog'
 import { loadGoogleMaps, mapsApiKey } from '../lib/googleMaps'
 import { pinDataUri, PIN_SIZE } from '../map/pinMarker'
+import { useTheme, type ResolvedTheme } from '../theme'
+import type { MapThemeOptions } from '../map/mapStyles'
 
 /**
  * One place, on one small map (#43, #44).
@@ -18,6 +20,12 @@ import { pinDataUri, PIN_SIZE } from '../map/pinMarker'
  * the map itself). So the map is `aria-hidden`, and on a build with no Maps
  * key — every preview deployment, and the Playwright server — nothing is drawn
  * at all rather than an error being reported for a picture.
+ *
+ * **It is dark in the dark theme**, like every map here (map/mapStyles.ts),
+ * and follows a theme change in place. The style arrives by `import()`
+ * alongside the SDK, which this map waits for anyway: this component is in the
+ * first paint of every listing page, and the style is not. That is why it does
+ * not share `useMapTheme`, which would bring the style with it.
  */
 export function StaticMap({ latitude, longitude, label, pin }: {
   latitude: number | null
@@ -27,13 +35,20 @@ export function StaticMap({ latitude, longitude, label, pin }: {
 }) {
   const container = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
+  const { resolved: theme } = useTheme()
+  /** The map, the theme it is showing, and the style that arrived with it. */
+  const drawn = useRef<{
+    map: google.maps.Map
+    theme: ResolvedTheme
+    options: (theme: ResolvedTheme) => MapThemeOptions
+  } | null>(null)
 
   useEffect(() => {
     if (latitude === null || longitude === null || !mapsApiKey()) return
     let cancelled = false
 
-    loadGoogleMaps()
-      .then((maps) => {
+    Promise.all([loadGoogleMaps(), import('../map/mapStyles')])
+      .then(([maps, { mapThemeOptions }]) => {
         if (cancelled || !container.current) return
         const position = { lat: latitude, lng: longitude }
         const map = new maps.Map(container.current, {
@@ -44,7 +59,9 @@ export function StaticMap({ latitude, longitude, label, pin }: {
           // is around the pin, and pinch-zoom is the one gesture people try.
           zoomControl: true,
           gestureHandling: 'cooperative',
+          ...mapThemeOptions(theme),
         })
+        drawn.current = { map, theme, options: mapThemeOptions }
         // The same pin the discovery map draws (#32), from the same SVG, so a
         // listing looks like itself wherever it appears.
         new maps.Marker({
@@ -64,6 +81,15 @@ export function StaticMap({ latitude, longitude, label, pin }: {
 
     return () => { cancelled = true }
   }, [latitude, longitude, label, pin])
+
+  // Restyled rather than rebuilt: Google counts every map it constructs as a
+  // billed load. Also catches a theme that changed while the SDK was loading.
+  useEffect(() => {
+    const current = drawn.current
+    if (!ready || !current || current.theme === theme) return
+    current.theme = theme
+    current.map.setOptions(current.options(theme))
+  }, [ready, theme])
 
   if (latitude === null || longitude === null || !mapsApiKey()) return null
 
