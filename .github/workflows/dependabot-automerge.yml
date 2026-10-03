@@ -15,7 +15,7 @@ jobs:
   automerge:
     name: Auto-merge
     if: ${{ github.actor == 'dependabot[bot]' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     steps:
       - id: meta
         uses: dependabot/fetch-metadata@v3

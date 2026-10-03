@@ -92,7 +92,8 @@ recurring:
   the source, which a bump does not change
 
 Dependabot PRs still run `verify` and dependency review, which is the point of
-testing a bump. Two jobs instead of sixteen.
+testing a bump, plus the short `dependabot-automerge.yml` job. Three jobs instead
+of sixteen.
 
 ## Environments
 
