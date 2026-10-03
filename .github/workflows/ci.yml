@@ -21,7 +21,7 @@ jobs:
   # install come in around three.
   verify:
     name: verify
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     steps:
       - uses: actions/checkout@v7
 
