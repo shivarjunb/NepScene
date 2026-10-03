@@ -19,6 +19,13 @@ import { POKHARA, PURPLE_HAZE_PIN, serveMapCatalog, stubMapsSdk } from './mapStu
  */
 const gesture = (page: Page, expression: string) => page.evaluate(expression)
 
+/**
+ * The titles of the markers on the map. Polled, never read once: markers are
+ * drawn by an effect that runs after the render the status line is in, so
+ * "3 listings in view" is always on screen before its pins are on the map.
+ */
+const markerTitles = (page: Page) => gesture(page, 'window.google.maps.__markerTitles()') as Promise<string[]>
+
 async function openMap(page: Page) {
   await stubMapsSdk(page)
   const catalog = await serveMapCatalog(page)
@@ -38,10 +45,12 @@ test('the map loads the listings for the viewport it opens on', async ({ page })
   expect(catalog.requested()).toHaveLength(1)
   expect(catalog.requested()[0]).toMatch(/^[\d.-]+,[\d.-]+,[\d.-]+,[\d.-]+$/)
 
-  // Two markers for three listings: the shared venue is one pin (#37).
-  const titles = await gesture(page, 'window.google.maps.__markerTitles()')
-  expect(titles).toEqual(expect.arrayContaining([PURPLE_HAZE_PIN, 'Art Week']))
-  expect(titles).toHaveLength(2)
+  // Two markers for three listings: the shared venue is one pin (#37). The
+  // markers for a view are drawn in one pass, so once both are there the
+  // count is final.
+  await expect.poll(() => markerTitles(page))
+    .toEqual(expect.arrayContaining([PURPLE_HAZE_PIN, 'Art Week']))
+  expect(await markerTitles(page)).toHaveLength(2)
 })
 
 test('a small pan inside the loaded area costs no request', async ({ page }) => {
@@ -67,8 +76,7 @@ test('panning somewhere else fetches that viewport, and only that one', async ({
 
   // The Kathmandu pins are still held: a pan adds to the map rather than
   // rebuilding it, which is what stops the flicker on every drag.
-  const titles = await gesture(page, 'window.google.maps.__markerTitles()')
-  expect(titles).toContain('Lakeside Live')
+  await expect.poll(() => markerTitles(page)).toContain('Lakeside Live')
 })
 
 test('a lone pin opens a popup, and the popup leads to the listing', async ({ page }) => {

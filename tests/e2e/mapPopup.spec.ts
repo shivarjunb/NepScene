@@ -205,9 +205,12 @@ test('pins that would overlap on screen are drawn as one bubble', async ({ page 
   // 40m apart, on a city-wide view: the same pixel, give or take.
   await openCrowded(page, 0.0004)
 
-  const titles = await gesture(page, 'window.google.maps.__markerTitles()')
-  expect(titles).toEqual(expect.arrayContaining(['2 listings in this area', 'Far Fair']))
-  expect(titles).toHaveLength(2)
+  // Polled: the markers are drawn by an effect after the render the status
+  // line is in, so they can still be on their way. They are drawn in one
+  // pass, so once both are there the count is final.
+  await expect.poll(() => gesture(page, 'window.google.maps.__markerTitles()'))
+    .toEqual(expect.arrayContaining(['2 listings in this area', 'Far Fair']))
+  expect(await gesture(page, 'window.google.maps.__markerTitles()')).toHaveLength(2)
   // Merging overlaps is not the density fallback, and must not tell the
   // viewer to zoom in to see places they can already see.
   await expect(page.getByText(/zoom in to see places/)).toHaveCount(0)
@@ -247,6 +250,6 @@ test('pins far enough apart stay pins', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 })
   await openCrowded(page, 0.04)
 
-  const titles = await gesture(page, 'window.google.maps.__markerTitles()')
-  expect(titles).toEqual(expect.arrayContaining(['Cafe Gig', 'Hall Talk', 'Far Fair']))
+  await expect.poll(() => gesture(page, 'window.google.maps.__markerTitles()'))
+    .toEqual(expect.arrayContaining(['Cafe Gig', 'Hall Talk', 'Far Fair']))
 })

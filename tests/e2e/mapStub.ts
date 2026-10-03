@@ -261,8 +261,19 @@ export async function stubMapsSdk(page: Page) {
           centre = { lat: centre.lat + SPAN / 20, lng: centre.lng }
           fire('idle', undefined)
         },
-        __clickMarker: (title: string) => {
-          const marker = markers.find((m) => m.options.title === title)
+        /**
+         * Waits for the marker before clicking it, as Playwright's own click
+         * waits for its element. Markers are drawn by an effect that runs
+         * after the render whose status line a spec has just waited for, so
+         * "3 listings in view" is always on screen before its pins are.
+         */
+        __clickMarker: async (title: string) => {
+          const find = () => markers.find((m) => m.options.title === title)
+          const deadline = Date.now() + 5_000
+          while (!find() && Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, 10))
+          }
+          const marker = find()
           if (!marker) throw new Error(`no marker titled ${title}`)
           for (const handler of markerListeners.get(marker) ?? []) handler(undefined)
         },
