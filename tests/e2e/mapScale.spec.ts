@@ -71,6 +71,13 @@ async function openDenseMap(page: Page) {
 
 const evaluate = (page: Page, expression: string) => page.evaluate(expression)
 
+/**
+ * How many markers are on the map. Polled, never read once: markers are drawn
+ * by an effect that runs after the render the status line is in, so the text
+ * a spec waits for is always on screen before the markers it describes.
+ */
+const markerCount = (page: Page) => evaluate(page, 'window.google.maps.__markerCount()') as Promise<number>
+
 test('a dense viewport draws bubbles, not thousands of pins', async ({ page }) => {
   await openDenseMap(page)
   await expect(page.getByText(/zoom in to see places/)).toBeVisible()
@@ -78,9 +85,8 @@ test('a dense viewport draws bubbles, not thousands of pins', async ({ page }) =
   // The claim the whole feature rests on: the marker count is bounded by the
   // screen, not by the catalogue. 200 listings arrive (four pages of fifty)
   // at 200 distinct venues, and the map draws a grid's worth of bubbles.
-  const markers = await evaluate(page, 'window.google.maps.__markerCount()') as number
-  expect(markers).toBeGreaterThan(0)
-  expect(markers).toBeLessThanOrEqual(144)
+  await expect.poll(() => markerCount(page)).toBeGreaterThan(0)
+  expect(await markerCount(page)).toBeLessThanOrEqual(144)
 })
 
 test('the first pins are drawn before the last page has landed', async ({ page }) => {
@@ -110,7 +116,7 @@ test('the first pins are drawn before the last page has landed', async ({ page }
   // The status leads with the running count rather than a bare "loading",
   // because the map already works.
   await expect(page.getByText(/50 listings so far/)).toBeVisible()
-  expect(await evaluate(page, 'window.google.maps.__markerCount()')).toBeGreaterThan(0)
+  await expect.poll(() => markerCount(page)).toBeGreaterThan(0)
 
   released!()
   await expect(page.getByText(/zoom in to see places/)).toBeVisible()
@@ -135,14 +141,14 @@ test('a burst of gestures costs one request, not one per pause', async ({ page }
 test('panning away does not leave the markers behind', async ({ page }) => {
   await openDenseMap(page)
   await expect(page.getByText(/zoom in to see places/)).toBeVisible()
-  const dense = await evaluate(page, 'window.google.maps.__markerCount()') as number
+  await expect.poll(() => markerCount(page)).toBeGreaterThan(0)
+  const dense = await markerCount(page)
 
   // Somewhere with nothing in it. The pins stay *held* — that is what stops a
   // pan rebuilding the map — but they stop being drawn, which is the whole of
-  // virtualisation.
+  // virtualisation. Polled rather than read after a fixed wait: the redraw
+  // follows the gesture debounce and a render, which a loaded machine can
+  // stretch past any fixed number.
   await evaluate(page, 'window.google.maps.__panTo(28.9, 80.2)')
-  await page.waitForTimeout(700)
-
-  const away = await evaluate(page, 'window.google.maps.__markerCount()') as number
-  expect(away).toBeLessThan(dense)
+  await expect.poll(() => markerCount(page)).toBeLessThan(dense)
 })

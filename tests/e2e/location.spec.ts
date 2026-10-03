@@ -17,6 +17,19 @@ import {
 
 const POKHARA_HERE = { city: 'Pokhara', lat: POKHARA.lat, lng: POKHARA.lng, source: 'ip' as const }
 
+/**
+ * The latitude the map is centred on. Polled, never read once.
+ *
+ * The heading and the map are two views of one answer, but not one write. The
+ * heading changes in the render that resolves the location; the map is moved
+ * by an effect after that render — and on `/` the map is a deferred chunk, so
+ * when the IP answer wins the race there is no map yet at all, and it is built
+ * later on the resolved centre. So the heading is always first, by up to a
+ * couple of hundred milliseconds on a loaded machine, and a single read
+ * straight after asserting it catches the map before it has moved.
+ */
+const centreLat = (page: Page) => page.evaluate('window.google.maps.__centre().lat') as Promise<number>
+
 async function open(page: Page, options: {
   geolocation: 'granted' | 'denied' | 'timeout' | 'missing'
   here?: { city: string; city_ne?: string; lat: number; lng: number; source: 'ip' | 'default' } | null
@@ -37,8 +50,7 @@ test('the IP stage names the city and moves the map, with no location permission
   // Nothing was asked of the browser: the heading is the IP's answer.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Pokhara/)
 
-  const centre = await page.evaluate('window.google.maps.__centre()') as { lat: number }
-  expect(centre.lat).toBeCloseTo(POKHARA.lat, 1)
+  await expect.poll(() => centreLat(page)).toBeCloseTo(POKHARA.lat, 1)
 })
 
 test('granting permission recentres the map and offers distance filtering', async ({ page }) => {
@@ -55,8 +67,7 @@ test('granting permission recentres the map and offers distance filtering', asyn
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/around Kathmandu/)
   await expect(page.getByRole('group', { name: /distance/i })).toBeVisible()
 
-  const centre = await page.evaluate('window.google.maps.__centre()') as { lat: number }
-  expect(centre.lat).toBeCloseTo(THAMEL.lat, 1)
+  await expect.poll(() => centreLat(page)).toBeCloseTo(THAMEL.lat, 1)
 })
 
 test('denying permission says what changed, and leaves a working map', async ({ page }) => {
@@ -113,6 +124,15 @@ test('a failed IP lookup leaves the default city and never blocks the map', asyn
 })
 
 test('a distance chip filters the listings and says so', async ({ page }) => {
+  // Reduced motion, so a chip is never a moving target. The distances fly out
+  // of their button, so Playwright's first try at one can find it still in
+  // flight; it retries after a forced `scrollIntoView`, which the page's
+  // `scroll-behavior: smooth` turns into an animated scroll that Playwright
+  // does not wait out. The press lands on the chip, the page moves, the
+  // release lands on the map — and the click goes to the map, not the chip,
+  // so nothing is chosen. Reduced motion turns off both the fan-out and the
+  // smooth scroll.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await open(page, { geolocation: 'granted', at: THAMEL })
   await page.getByRole('button', { name: 'Near me' }).click()
 

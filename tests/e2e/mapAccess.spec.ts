@@ -56,6 +56,11 @@ test('the list shows the same listings the pins do', async ({ page }) => {
 })
 
 test('the list obeys the same distance filter as the map', async ({ page }) => {
+  // Reduced motion, so the 2 km chip is not still flying out of its button
+  // when it is clicked — Playwright's retry then scrolls the page smoothly out
+  // from under the pointer and the click is lost. The distance chip spec in
+  // location.spec.ts has the whole story.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await openMap(page)
   await page.getByRole('button', { name: 'Near me' }).click()
   await page.getByRole('button', { name: 'List', exact: true }).click()
