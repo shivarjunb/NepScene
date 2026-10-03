@@ -110,6 +110,27 @@ export function planMarkers(
 }
 
 /**
+ * Which marker in a plan draws a place, by its venue group's key: the place's
+ * own pin, the bubble it has been merged into, or nothing while it is off
+ * screen.
+ *
+ * Asked by the place rather than by the marker, because markers do not last:
+ * a venue whose count changes is redrawn under a new id, and one that leaves
+ * the padded viewport and comes back is a new marker altogether. The place is
+ * what the open card is about, and it is the one thing that stays put.
+ */
+export function markerFor(plan: MarkerPlan, place: string):
+  | { kind: 'group'; group: VenueGroup }
+  | { kind: 'cluster'; cluster: Cluster }
+  | null {
+  const group = plan.groups.find((candidate) => candidate.key === place)
+  if (group) return { kind: 'group', group }
+  const cluster = plan.clusters.find((candidate) =>
+    candidate.groups.some((member) => member.key === place))
+  return cluster ? { kind: 'cluster', cluster } : null
+}
+
+/**
  * Below the density threshold, merge only the pins that would be drawn on top
  * of each other.
  *

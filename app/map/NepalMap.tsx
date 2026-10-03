@@ -11,6 +11,7 @@ import { OVERLAP_PX, planMarkers, type Cluster } from './clustering'
 import type { MapPin } from './markers'
 import { groupByVenue, type VenueGroup } from './venueGrouping'
 import { VenueStack } from './VenueStack'
+import { clusterMarkerId, groupMarkerId, useSelectedMarker } from './useSelectedMarker'
 import { MapList } from './MapList'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { PAD_RATIO, padBounds, sameBounds, within, type Bounds } from './viewport'
@@ -147,6 +148,14 @@ export function NepalMap({ onOpen, location }: Props) {
   >(null)
   /** Where the open card came from, so the map can bring it into view. */
   const [focusAt, setFocusAt] = useState<{ lat: number; lng: number } | null>(null)
+  /**
+   * The place whose marker opened the card — a venue group's key — so that
+   * marker can be picked out while the card is open (`useSelectedMarker`).
+   * Not cleared on close: it means nothing without a card, and is read only
+   * alongside one. A listing chosen from a stack keeps the stack's place,
+   * because the stack's marker is still the one the card came from.
+   */
+  const [openedFrom, setOpenedFrom] = useState<string | null>(null)
 
   /**
    * What the query is scoped to.
@@ -471,8 +480,8 @@ export function NepalMap({ onOpen, location }: Props) {
     // number. Keying on the venue alone would leave a stale count on screen.
     // Clusters are keyed the same way, on cell and count.
     const wanted = new Map<string, Drawable>([
-      ...plan.groups.map((group) => [`g:${group.key}:${group.count}`, { kind: 'group', group }] as const),
-      ...plan.clusters.map((cluster) => [`c:${cluster.key}:${cluster.count}`, { kind: 'cluster', cluster }] as const),
+      ...plan.groups.map((group) => [groupMarkerId(group), { kind: 'group', group }] as const),
+      ...plan.clusters.map((cluster) => [clusterMarkerId(cluster), { kind: 'cluster', cluster }] as const),
     ])
 
     // Only what left the set is torn down. Rebuilding every marker on every
@@ -512,6 +521,8 @@ export function NepalMap({ onOpen, location }: Props) {
             const pins = cluster.groups.flatMap((group) => group.pins)
             setFanOpen(false)
             setFocusAt({ lat: cluster.lat, lng: cluster.lng })
+            // Any one of its places finds this bubble again after a redraw.
+            setOpenedFrom(cluster.groups[0]!.key)
             setSelected({
               kind: 'stack',
               group: { ...cluster.groups[0]!, key: cluster.key, pins, count: pins.length },
@@ -558,6 +569,7 @@ export function NepalMap({ onOpen, location }: Props) {
         // anything.
         setFanOpen(false)
         setFocusAt({ lat: group.lat, lng: group.lng })
+        setOpenedFrom(group.key)
         setSelected(group.count === 1
           ? { kind: 'listing', pin: group.primary }
           : { kind: 'stack', group, venueName: group.primary.popup.venue })
@@ -565,6 +577,10 @@ export function NepalMap({ onOpen, location }: Props) {
       live.set(id, marker)
     }
   }, [plan, ready])
+
+  // ── The marker whose card is open stands out ───────────────────────────────
+  // After the effect above, so it sees the markers this render drew.
+  useSelectedMarker(markersRef, plan, isOpen ? openedFrom : null)
 
   // ── "You are here", once there is a precise answer ─────────────────────────
   useEffect(() => {
