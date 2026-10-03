@@ -347,6 +347,32 @@ this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   disagreement across (#22, and the default #32 customises on top of)
 
 ### Fixed
+- **Listing cards show the whole poster.** On a phone, a card showed a band of
+  the violet placeholder with only a slice of the poster below it, because a
+  tall poster spilled out of the card's wide frame. The whole poster now fits
+  inside the frame, centred, and the space either side of it is filled with a
+  blurred, darkened copy of the same poster, which costs no extra download.
+  The date on a card's poster also no longer paints over the listing popup's
+  Back bar when related cards scroll under it (#127)
+- **The listing popup's Back bar stays flush with the top.** On a phone, once
+  you scrolled the popup, the bar holding Back stuck a little below the top
+  edge, and the event's text showed through the gap above it and behind the
+  button. The bar now sits at the very top of the sheet, with nothing above
+  it. Back is in the bar, top left, on every screen size; wider screens keep
+  "Open as a page" and ✕ on the right (#126)
+- **Event pages show imported posters, and are easier to read.** An event
+  brought in by the scrapers often has its poster only as a cover image, and
+  its page showed no poster at all; where a poster did show, the gallery could
+  repeat it. Now:
+  - **The poster leads the page**, shown whole and never taller than 70% of
+    the screen, so a tall poster no longer pushes the details out of sight.
+    The gallery shows every other image once, larger.
+  - **Tap the poster or a gallery image** to open it full size in a new tab.
+  - **"Source:" lines are hidden** from an imported event's description. The
+    source is still kept with the listing; readers just do not see it.
+  - **More room to read.** The description sits in its own panel, with more
+    space between sections, a title that scales with the screen, and long
+    words and links that wrap instead of running off the edge (#125)
 - Search results fill the page when no filter sidebar is needed. Card columns
   now fit the available results width, preventing clipped cards on desktop and
   overflow at 320px.
