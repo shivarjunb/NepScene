@@ -109,20 +109,90 @@ describe('google sign-in', () => {
 
   it('refuses a token issued for another application', async () => {
     stubTokenEndpoint({ sub: 'google-3', email: 'wrong@example.np', aud: 'someone-elses-client-id' })
-    const response = await callback(COOKIES)
-    expect(response.status).toBe(400)
-    expect(((await response.json()) as any).error.code).toBe('oauth_failed')
+    expect(await refusal(await callback(COOKIES))).toBe('oauth_failed')
   })
 
   it('refuses an expired token', async () => {
     stubTokenEndpoint({ sub: 'google-4', email: 'stale@example.np', exp: Math.floor(Date.now() / 1000) - 60 })
-    expect((await callback(COOKIES)).status).toBe(400)
+    expect(await refusal(await callback(COOKIES))).toBe('oauth_failed')
   })
 
   it('refuses a mismatched state — the CSRF guard on the callback', async () => {
     stubTokenEndpoint({ sub: 'google-5', email: 'csrf@example.np' })
     const response = await callback('ns_oauth_state=a-different-state; ns_oauth_verifier=v')
-    expect(response.status).toBe(400)
-    expect(((await response.json()) as any).error.code).toBe('oauth_state_mismatch')
+    expect(await refusal(response)).toBe('oauth_state_mismatch')
+  })
+
+  it('will not link an existing account on an unverified Google email', async () => {
+    await seedUser({ email: 'admin@example.np', role: 'admin' })
+    stubTokenEndpoint({ sub: 'attacker', email: 'admin@example.np', email_verified: false })
+
+    expect(await refusal(await callback(COOKIES))).toBe('google_email_unverified')
+    const user = await env.DB.prepare('SELECT google_sub FROM users WHERE email = ?1')
+      .bind('admin@example.np').first<any>()
+    expect(user.google_sub).toBeNull()
+  })
+
+  it('will not relink an account that another Google identity already holds', async () => {
+    await seedUser({ email: 'held@example.np', google_sub: 'google-original' })
+    stubTokenEndpoint({ sub: 'google-other', email: 'held@example.np', email_verified: true })
+
+    expect(await refusal(await callback(COOKIES))).toBe('google_account_mismatch')
+  })
+
+  it('opens no session for a deactivated account', async () => {
+    await seedUser({ email: 'gone@example.np', google_sub: 'google-6', is_active: 0 })
+    stubTokenEndpoint({ sub: 'google-6', email: 'gone@example.np', email_verified: true })
+
+    expect(await refusal(await callback(COOKIES))).toBe('account_disabled')
+  })
+
+  it('sends a cancelled consent screen back to /login, keeping where they were going', async () => {
+    const response = await SELF.fetch(
+      'https://nepscene.test/api/auth/google/callback?error=access_denied&state=the-state',
+      { headers: { cookie: 'ns_oauth_state=the-state; ns_oauth_return=%2Fsubmit' }, redirect: 'manual' })
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('/login?google_error=oauth_cancelled&next=%2Fsubmit')
+  })
+
+  it('returns to the path it was started from', async () => {
+    stubTokenEndpoint({ sub: 'google-7', email: 'back@example.np', email_verified: true })
+    const response = await callback('ns_oauth_state=the-state; ns_oauth_verifier=v; ns_oauth_return=%2Fsubmit')
+    expect(response.headers.get('location')).toBe('/submit')
+  })
+
+  it.each(['https://evil.example/', '//evil.example/', '/\\evil.example/'])(
+    'never returns off-site (%s)', async (returnTo) => {
+      const start = await SELF.fetch(
+        `https://nepscene.test/api/auth/google/start?return_to=${encodeURIComponent(returnTo)}`,
+        { redirect: 'manual' })
+      expect(start.headers.getAll('set-cookie').join(' ')).toContain('ns_oauth_return=%2F;')
+    })
+
+  it('says whether it is configured, so the page can hide the button', async () => {
+    const on = await SELF.fetch('https://nepscene.test/api/auth/google/status')
+    expect(await on.json()).toEqual({ enabled: true })
+
+    env.GOOGLE_CLIENT_SECRET = ''
+    const off = await SELF.fetch('https://nepscene.test/api/auth/google/status')
+    expect(await off.json()).toEqual({ enabled: false })
   })
 })
+
+/** Failures go back to /login with a code, not to a JSON body in the browser. */
+async function refusal(response: Response): Promise<string | null> {
+  expect(response.status).toBe(302)
+  expect(response.headers.getAll('set-cookie').join(' ')).not.toContain('ns_session=')
+  const location = new URL(response.headers.get('location')!, 'https://nepscene.test')
+  expect(location.pathname).toBe('/login')
+  return location.searchParams.get('google_error')
+}
+
+async function seedUser(fields: { email: string; role?: string; google_sub?: string; is_active?: number }) {
+  const now = new Date().toISOString()
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, email_verified, role, google_sub, is_active, created_at, updated_at)
+     VALUES (?1, ?2, 1, ?3, ?4, ?5, ?6, ?6)`,
+  ).bind(crypto.randomUUID(), fields.email, fields.role ?? 'visitor', fields.google_sub ?? null,
+         fields.is_active ?? 1, now).run()
+}

@@ -239,5 +239,5 @@ export function transform(raw,source,now=new Date().toISOString()) {
  // Shared listing-page URLs can contain several occurrences. A fragment keeps
  // the existing import planner's URL identity distinct without changing the host.
  const identityUrl=url+'#nepscene-'+hash(key)
- return {...e,id:'ve_'+hash(key),source_id:key,fingerprint:'venue:'+hash(e.fingerprint),url:identityUrl,status:'draft'}
+ return {...e,id:'ve_'+hash(key),source_id:key,fingerprint:'venue:'+hash(e.fingerprint),url:identityUrl,external_url:url,status:'draft'}
 }

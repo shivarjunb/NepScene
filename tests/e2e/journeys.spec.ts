@@ -70,7 +70,7 @@ async function signIn(page: Page, email: string) {
 test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await page.goto(at('/'))
 
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/What.s happening around/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Events around/)
   // Real rows from the real catalogue, not an empty shell.
   await expect(page.locator('.listing-card').first()).toBeVisible()
   await assertAccessible(page, 'homepage')
@@ -89,7 +89,7 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
   await expect(page).toHaveURL(/\/listings\//)
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { level: 2 }).first()).toHaveText(title.trim())
-  await expect(dialog.getByRole('heading', { name: 'When' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Add to calendar' })).toBeVisible()
   await assertAccessible(page, 'listing dialog')
 
   // Escape is Back: the dialog goes, the filtered row is still there, and
@@ -109,14 +109,16 @@ test('discovery: land, browse a category, open a listing', async ({ page }) => {
 
 // ── 2. Search ────────────────────────────────────────────────────────────────
 
-test('search: query with a typo, refine by facet, open a result', async ({ page }) => {
+test('search: query with a typo, refine by facet, open a result', async ({ page, isMobile }) => {
   await page.goto(at('/'))
+  // Below 62rem the header's box is hidden and the same box is in the menu.
+  if (isMobile) await page.locator('.site-header__menu-button').click()
 
   // Deliberately misspelled: search is supposed to be forgiving, and a journey
   // that types the exact title proves nothing about that.
   // `role="combobox"` — it owns a suggestion listbox (#42), so it is not a
   // plain textbox and `getByRole('searchbox')` does not find it.
-  const box = page.getByRole('combobox', { name: 'Search' }).first()
+  const box = page.getByRole('combobox', { name: 'Search' }).filter({ visible: true }).first()
   await box.fill('kathmadu rock')
   await box.press('Enter')
 
@@ -169,11 +171,13 @@ test('authoring: sign in, create, place, submit for review', async ({ page }) =>
 
 test('moderation: an editor reaches the queue and can work it', async ({ page }) => {
   await signIn(page, EDITOR())
-  await page.goto(at('/moderate'))
+  await page.goto(at('/admin'))
 
-  // An editor has `listing:publish`, so the queue is theirs to see — the
-  // permission check is the real one against the real session.
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  // An editor has `listing:moderate` and nothing else in the console, so
+  // /admin lands on the queue — the permission check is the real one against
+  // the real session.
+  await expect(page).toHaveURL(/\/admin\/moderation/)
+  await expect(page.getByRole('heading', { name: 'Moderation', level: 1 })).toBeVisible()
   await expect(page.getByText(/not allowed|sign in/i)).toHaveCount(0)
   await assertAccessible(page, 'moderation queue')
 })
@@ -199,6 +203,12 @@ test('the discovery journey works with touch at phone size', async ({ page, isMo
   // On a phone the dialog is the screen, and it must not scroll sideways either.
   const dialogOverflow = await dialog.evaluate((el) => el.scrollWidth - el.clientWidth)
   expect(dialogOverflow).toBeLessThanOrEqual(0)
+  // Scrolled, the bar with Back stays flush with the sheet's top edge, with no
+  // strip above it for the content to show through.
+  await dialog.evaluate((el) => el.scrollTo(0, 400))
+  const gap = await dialog.evaluate((el) =>
+    el.querySelector('.listing-dialog__bar')!.getBoundingClientRect().top - el.getBoundingClientRect().top)
+  expect(Math.abs(gap)).toBeLessThanOrEqual(1)
   // A phone gets a page's Back, not the sheet's "Open as a page" and ✕.
   await expect(dialog.getByRole('link', { name: 'Open as a page' })).toBeHidden()
   await expect(dialog.getByRole('button', { name: 'Close the listing' })).toBeHidden()

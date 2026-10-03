@@ -76,8 +76,7 @@ export function UsersPanel({ account }: { account: Account }) {
   const total = Object.values(list?.counts ?? {}).reduce((sum, n) => sum + n, 0)
 
   return (
-    <section className="admin__section" aria-labelledby="admin-users">
-      <h2 id="admin-users">Accounts</h2>
+    <section className="admin__section" aria-labelledby="admin-heading">
 
       {note && <Alert tone="success" title="Done">{note}</Alert>}
       {error && <Alert tone="danger" title="Something went wrong">{error}</Alert>}
@@ -143,11 +142,11 @@ function UserRow({ user, self, busy, onRole, onActive }: {
   return (
     <Card className={`admin__row${user.is_active ? '' : ' admin__row--off'}`}>
       <div className="admin__row-body">
-        <h3 className="admin__row-title">
+        <h2 className="admin__row-title">
           {user.email}
           {self && <Badge tone="accent">you</Badge>}
           {!user.is_active && <Badge tone="danger">deactivated</Badge>}
-        </h3>
+        </h2>
         <p className="board__meta">
           <RoleBadge role={user.role} />
           {user.name && <>{user.name} · </>}

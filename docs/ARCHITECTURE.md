@@ -675,6 +675,11 @@ Four rules follow:
    - **D1 with read replication (Sessions API)** as the source of truth — replicas
      serve reads from a nearby region instead of the distant primary, cutting the
      ~290ms single-query cost substantially for a Nepal-based audience.
+   - **R2** for media, including imported covers: an import's poster is served
+     from `/api/media/cover/<id>/<version>`, fetched from the source site once
+     (short timeout, size cap) and read from R2 after, so the source URL never
+     reaches a reader and the hop is paid once per cover rather than per view
+     (`api/media/imported.ts`).
 
 2. **A cache health check performs a live round trip.** "The env var is set" is not
    a health check. `/api/cache/status` must read and write a probe key and report

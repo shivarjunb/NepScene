@@ -193,6 +193,7 @@ export function robots(env: Env, origin: string): Response {
         'Disallow: /submit',
         'Disallow: /dashboard',
         'Disallow: /moderate',
+        'Disallow: /admin',
         '',
         `Sitemap: ${origin}/sitemap.xml`,
         '',

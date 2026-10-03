@@ -22,11 +22,30 @@ const query = (params: Record<string, string | number | undefined>) => {
 
 // ── Overview ────────────────────────────────────────────────────────────────
 
+/** A listing at the head of the queue, as the overview shows it. */
+export type WaitingListing = {
+  id: string
+  slug: string
+  title: string | null
+  source: string
+  starts_at: string | null
+  updated_at: string
+  venue_name: string | null
+  organization_name: string | null
+  has_duplicate: boolean
+}
+
 export type Overview = {
   users: Record<Role, { total: number; inactive: number }>
   listings: Record<string, number>
   organizations: { total: number; verified: number }
+  /** Venues, and how many have no pin — a listing there cannot be on the map. */
+  venues: { total: number; unmapped: number }
   recent: AuditEntry[]
+  /** The oldest few waiting for review, oldest first. */
+  waiting: WaitingListing[]
+  /** The newest scrape run, whatever its state; null before the first. */
+  last_scrape: ScrapeRun | null
 }
 
 export const fetchOverview = () => request<Overview>('/api/admin/overview')
@@ -154,6 +173,8 @@ export type ScrapeJob = {
   exit_code: number | null
   error: string | null
   import?: { new_drafts?: number; duplicates?: number; excluded?: number } | null
+  /** Venue sources that came back partial or failed; the rest of the job went ahead without them. */
+  failed_sources?: { id: string; name: string; status: string; error: string | null }[]
 }
 
 export type ScrapeRun = {
@@ -182,3 +203,108 @@ export const startScrapeRun = () =>
 
 export const scrapeOutputUrl = (id: string) =>
   `/api/admin/system/scrape-runs/${encodeURIComponent(id)}/output`
+
+// ── All listings ────────────────────────────────────────────────────────────
+
+export const LISTING_STATUSES = ['pending_review', 'published', 'draft', 'rejected', 'archived'] as const
+export type ListingStatus = (typeof LISTING_STATUSES)[number]
+
+export type AdminListing = {
+  id: string
+  slug: string
+  title: string | null
+  status: ListingStatus
+  source: string
+  listing_type: string
+  starts_at: string | null
+  updated_at: string
+  created_at: string
+  venue_name: string | null
+  venue_slug: string | null
+  organization_name: string | null
+  author_email: string | null
+}
+
+export type ListingList = { data: AdminListing[]; counts: Record<ListingStatus, number>; page: Page }
+
+export const fetchListings = (params: {
+  q?: string; status?: ListingStatus; source?: string; offset?: number; limit?: number
+}) => request<ListingList>(`/api/admin/listings${query(params)}`)
+
+// ── Venues ──────────────────────────────────────────────────────────────────
+
+export type AdminVenue = {
+  id: string
+  slug: string
+  name: string
+  address: string | null
+  area: string | null
+  city: string | null
+  latitude: number | null
+  longitude: number | null
+  website_url: string | null
+  phone: string | null
+  is_verified: boolean
+  created_at: string
+  updated_at: string
+  listing_count: number
+  published_count: number
+}
+
+export type VenueFilter = 'unmapped' | 'unverified'
+
+export type VenueList = {
+  data: AdminVenue[]
+  counts: { all: number; unmapped: number; unverified: number }
+  page: Page
+}
+
+export type VenueChange = Partial<Pick<AdminVenue,
+  'name' | 'address' | 'area' | 'city' | 'latitude' | 'longitude' | 'website_url' | 'phone' | 'is_verified'>>
+
+export const fetchVenues = (params: { q?: string; filter?: VenueFilter; offset?: number; limit?: number }) =>
+  request<VenueList>(`/api/admin/venues${query(params)}`)
+
+export const updateVenue = (id: string, change: VenueChange) =>
+  request<AdminVenue>(`/api/admin/venues/${encodeURIComponent(id)}`, {
+    method: 'PATCH', body: JSON.stringify(change),
+  })
+
+export const mergeVenue = (id: string, into: string) =>
+  request<{ merged: string; into: string; slug: string; moved: number }>(
+    `/api/admin/venues/${encodeURIComponent(id)}/merge`,
+    { method: 'POST', body: JSON.stringify({ into }) },
+  )
+
+export type ScrapeSource = { id: string; name: string; enabled: boolean }
+export const fetchScrapeSources = () => request<{ sources: ScrapeSource[] }>('/api/admin/system/scrape-sources')
+export const setScrapeSource = (id: string, enabled: boolean) =>
+  request<{ id: string; enabled: boolean }>(`/api/admin/system/scrape-sources/${encodeURIComponent(id)}`, {
+    method: 'PATCH', body: JSON.stringify({ enabled }),
+  })
+
+/** The staging console's "Deploy to production" (api/admin/deploys.ts). Every other environment answers 404. */
+export type DeployCommit = { sha: string; title: string; deployed_at: string; run_url: string }
+export type ProductionRun = { sha: string | null; title: string; status: string; conclusion: string | null; url: string; created_at: string; automatic: boolean }
+export type DeployState = {
+  production: { sha: string; deployed_at: string; url: string } | null
+  candidate: DeployCommit | null
+  ahead: DeployCommit[]
+  reason: string
+  active: ProductionRun | null
+  recent: ProductionRun[]
+  auto_promote: boolean
+}
+
+export const fetchDeployState = () => request<DeployState>('/api/admin/system/deploy')
+
+export const deployToProduction = (sha: string, reason: string) =>
+  request<{ sha: string; reason: string; actions_url: string }>('/api/admin/system/deploy', {
+    method: 'POST', body: JSON.stringify({ sha, reason }),
+  })
+
+/** "Promote to production automatically after a green staging deploy." */
+export const setAutoPromote = (enabled: boolean) =>
+  request<{ auto_promote: boolean }>('/api/admin/system/deploy/auto', {
+    method: 'PUT', body: JSON.stringify({ enabled }),
+  })

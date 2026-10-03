@@ -144,6 +144,143 @@
   white-space: nowrap;
 }
 
+/* Signed in, the row is one control: who you are, and a menu of where you
+   can go. The console used to be reachable only from buttons inside "Your
+   listings"; it is an item here now, for the accounts that can open it. */
+.site-account { position: relative; }
+
+.site-account__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4) 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: var(--weight-extrabold);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background-color var(--duration-fast) var(--ease-out);
+}
+
+.site-account__trigger:hover,
+.site-account__trigger[aria-expanded='true'] {
+  border-color: var(--accent-border);
+  background: var(--accent-wash);
+}
+
+.site-account__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-black);
+}
+
+.site-account__avatar { position: relative; }
+
+/* Something is waiting for review: a dot on the avatar, the number inside. */
+.site-account__dot {
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -2px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-full);
+  background: var(--warning);
+}
+
+.site-account__name {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-account__chevron { width: 0.875rem; height: 0.875rem; }
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + var(--space-3));
+  inset-inline-end: 0;
+  z-index: var(--z-dropdown);
+  width: 17rem;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-overlay);
+}
+
+.account-menu__who {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.account-menu__name { font-weight: var(--weight-extrabold); overflow-wrap: anywhere; }
+.account-menu__email { color: var(--text-secondary); font-size: var(--text-xs); overflow-wrap: anywhere; }
+
+.account-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-menu__rule {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.account-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+  padding-inline: var(--space-5);
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--weight-bold);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.account-menu__item:hover { background: var(--accent-wash); color: var(--accent); }
+.account-menu__item[aria-current='page'] { color: var(--accent); }
+.account-menu__item--quiet { color: var(--text-secondary); }
+
+.account-menu__label { flex-grow: 1; }
+
+.account-menu__count {
+  min-width: 1.5rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--warning-surface);
+  color: var(--warning);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-black);
+  text-align: center;
+}
+
 .mobile-menu {
   position: fixed;
   inset: var(--header-height) 0 0;

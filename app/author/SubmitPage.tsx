@@ -31,6 +31,7 @@ export function SubmitPage({ listingId }: { listingId: string | null }) {
       <SignInForm
         heading="Sign in to add a listing"
         intro="Anyone can add what is happening around them. You just need an account first."
+        returnTo="/submit"
         onSignedIn={refresh}
       />
     )

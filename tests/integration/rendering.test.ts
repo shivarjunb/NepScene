@@ -237,7 +237,7 @@ describe('structured data', () => {
 
 describe('what is not rendered, and why', () => {
   it('leaves the wizard and the dashboard to the SPA', async () => {
-    for (const path of ['/submit', '/dashboard', '/moderate']) {
+    for (const path of ['/submit', '/dashboard', '/moderate', '/admin', '/admin/moderation']) {
       const { body } = await html(path)
       expect(body, path).not.toContain('data-rendered="server"')
     }
@@ -298,7 +298,7 @@ describe('the pages a reader browses', () => {
 
   it('renders the homepage feed', async () => {
     const { body } = await html('/')
-    expect(body).toContain('What’s happening around Nepal')
+    expect(body).toContain('Events around Kathmandu')
     expect(body).toContain('Rock Night')
   })
 

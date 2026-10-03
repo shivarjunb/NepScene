@@ -1,40 +1,29 @@
+import { scrapeSources } from '../scrapes/sources'
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { ApiError, badRequest, notFound } from '../lib/http'
 import {
-  APPLY_ENVIRONMENTS, MAX_OUTPUT_BYTES, SELECT_RUN, notConfigured, outputKey, serialiseRun,
+  APPLY_ENVIRONMENTS, MAX_OUTPUT_BYTES, SELECT_RUN, outputKey, serialiseRun,
   type RunStatus, type ScrapeRunRow,
 } from '../scrapes/runs'
+import { runnerToken } from './token'
 
 /**
  * The runner's side of the scrape-run ledger (`/api/internal/scrape-runs`).
  *
  * Not a user: a GitHub Actions job on the self-hosted runner, authenticated
- * by one shared token (SCRAPE_REPORT_TOKEN) rather than a session. It may do
- * three things and nothing else — register a scheduled run, report a run's
- * status, and upload a run's output — none of which touches a listing. The
+ * by one shared token (SCRAPE_REPORT_TOKEN) rather than a session. It may read source settings,
+ * register a scheduled run, report a run's status, and upload a run's output — none of which touches a listing. The
  * importers write drafts through wrangler with Cloudflare's own credentials;
  * this token cannot.
  */
 export const internalScrapeRoutes = new Hono<{ Bindings: Env }>()
 
-/** Constant-time, so a wrong token learns nothing from how long the answer took. */
-function tokensMatch(given: string, expected: string): boolean {
-  const a = new TextEncoder().encode(given), b = new TextEncoder().encode(expected)
-  if (a.byteLength !== b.byteLength) return false
-  let diff = 0
-  for (let i = 0; i < a.byteLength; i++) diff |= a[i]! ^ b[i]!
-  return diff === 0
-}
+internalScrapeRoutes.use('*', runnerToken((env) => env.SCRAPE_REPORT_TOKEN, 'Reporting scrape runs'))
 
-internalScrapeRoutes.use('*', async (c, next) => {
-  if (!c.env.SCRAPE_REPORT_TOKEN) throw notConfigured('Reporting scrape runs')
-  const header = c.req.header('authorization') ?? ''
-  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
-  if (!token || !tokensMatch(token, c.env.SCRAPE_REPORT_TOKEN)) {
-    throw new ApiError(401, 'unauthenticated', 'That token does not open this')
-  }
-  await next()
+internalScrapeRoutes.get('/scrape-sources', async (c) => {
+  const sources = (await scrapeSources(c.env)).filter(source => source.enabled).map(source => source.id)
+  return c.json(sources)
 })
 
 const loadRun = async (env: Env, id: string) => {

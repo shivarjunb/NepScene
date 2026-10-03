@@ -158,6 +158,19 @@ describe('canonical URLs', () => {
     }
   })
 
+  it('makes an imported cover’s own-origin path absolute, in og:image and JSON-LD alike', () => {
+    const imported = listing({ cover_image_url: '/api/media/cover/lst_1/0a1b2c3d' })
+    expect(listingMetadata(imported, ORIGIN).image)
+      .toBe(`${ORIGIN}/api/media/cover/lst_1/0a1b2c3d`)
+    expect(eventOf(imported, ORIGIN).image).toBe(`${ORIGIN}/api/media/cover/lst_1/0a1b2c3d`)
+  })
+
+  it('leaves an authored absolute cover URL alone rather than prefixing the origin to it', () => {
+    const authored = listing({ cover_image_url: 'https://cdn.example/poster.jpg' })
+    expect(listingMetadata(authored, ORIGIN).image).toBe('https://cdn.example/poster.jpg')
+    expect(eventOf(authored, ORIGIN).image).toBe('https://cdn.example/poster.jpg')
+  })
+
   it('point a search page at the unfiltered one, and keep it out of the index', () => {
     const metadata = searchMetadata('rock', ORIGIN)
     expect(metadata.canonical).toBe(`${ORIGIN}/search`)

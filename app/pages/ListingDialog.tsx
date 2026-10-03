@@ -4,9 +4,9 @@ import { fetchListing } from '../lib/client'
 import { useResource } from '../lib/useResource'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useT } from '../i18n'
-import { Alert, Button } from '../components/primitives'
+import { Alert, Button, Skeleton } from '../components/primitives'
 import { Link, closeOverlay, overlayOpener } from '../router'
-import { ListingContent, ListingSkeleton } from './Listing'
+import { ListingGlance } from './Listing'
 
 /**
  * A listing opened over the page it was found on.
@@ -18,9 +18,10 @@ import { ListingContent, ListingSkeleton } from './Listing'
  * or Escape, or the scrim — returns them to the row. The router owns that
  * (`navigate(…, { overlay: true })`); this only draws what it says is open.
  *
- * The content is the page's own `ListingContent`, not a summary of it: a
- * dialog that showed less than the page would send people to the page to
- * find out what, and then the dialog is a step rather than a shortcut.
+ * What it shows is `ListingGlance`: the poster on the left, and on the right
+ * what, when, where and the price with every action one click away, so the
+ * whole listing reads without scrolling. The page keeps the rest, linked from
+ * the bar and from the details.
  */
 export function ListingDialog({ slug }: { slug: string }) {
   const t = useT()
@@ -53,6 +54,7 @@ export function ListingDialog({ slug }: { slug: string }) {
   useEffect(() => { dialogRef.current?.scrollTo(0, 0) }, [slug])
 
   const failed = missing || (error && !data)
+  const loaded = data && !loading
 
   return createPortal(
     <div
@@ -70,11 +72,11 @@ export function ListingDialog({ slug }: { slug: string }) {
         tabIndex={-1}
       >
         <div className="listing-dialog__bar">
-          {/* On a phone the dialog is the whole screen, so it reads as a page
-              and gets a page's way out: Back, where a thumb and an app expect
-              it. The link and the ✕ are for the sheet over a wider page; a
-              phone has no row behind to keep, and the address bar already
-              holds the page's link. CSS shows one set or the other. */}
+          {/* Back is part of the sheet, top left, on every screen: it is the
+              way out a thumb and an app expect. The link and the ✕ are for the
+              sheet over a wider page; a phone has no row behind to keep, and
+              the address bar already holds the page's link, so CSS hides them
+              there. */}
           <Button variant="ghost" size="sm" className="listing-dialog__back" onClick={closeOverlay}>
             <span aria-hidden="true">←</span> {t('listing.back')}
           </Button>
@@ -86,21 +88,30 @@ export function ListingDialog({ slug }: { slug: string }) {
           </span>
         </div>
 
-        {loading && <ListingSkeleton bare />}
+        {/* Loaded, the poster and the details are the sheet's own grid cells
+            (see `.listing-dialog` in public.css), beside and under the bar. */}
+        {loaded ? <ListingGlance listing={data} titleId={titleId} /> : (
+          <div className="glance__details">
+            {loading && (
+              <div className="stack">
+                <span className="visually-hidden" role="status">{t('common.loading')}</span>
+                <Skeleton width="25%" height="1rem" />
+                <Skeleton width="75%" height="2.25rem" />
+                <Skeleton width="60%" height="1rem" />
+                <Skeleton width="50%" height="1rem" />
+                <Skeleton height="6rem" />
+              </div>
+            )}
 
-        {failed && (
-          <div className="stack">
-            <h2>{missing ? t('listing.notFound') : t('common.error')}</h2>
-            <Alert tone={missing ? 'info' : 'danger'} title={missing ? t('listing.notFound') : t('common.error')}>
-              {missing ? t('listing.notFoundBody') : error?.message}
-            </Alert>
+            {failed && (
+              <div className="stack">
+                <h2>{missing ? t('listing.notFound') : t('common.error')}</h2>
+                <Alert tone={missing ? 'info' : 'danger'} title={missing ? t('listing.notFound') : t('common.error')}>
+                  {missing ? t('listing.notFoundBody') : error?.message}
+                </Alert>
+              </div>
+            )}
           </div>
-        )}
-
-        {data && !loading && (
-          <article className="listing-page">
-            <ListingContent listing={data} level={2} titleId={titleId} />
-          </article>
         )}
       </div>
     </div>,

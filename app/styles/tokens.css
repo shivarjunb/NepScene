@@ -60,7 +60,7 @@
      lifestyle" and reaches for pink there for edges and hovers. */
   --palette-pink-500: #e91e63;
 
-  /* The dark ground is not slate but the midnight blue of the hero map, so
+  /* The dark ground is not slate but the midnight blue of the homepage map, so
      the map and the page around it are the same night. */
   --palette-midnight-900: #141c38;
   --palette-midnight-800: #181f3c;
@@ -98,10 +98,10 @@
      the ground is the theme's own surface. */
   --overlay-veil: rgb(15 23 42 / 6%);
 
-  /* Ink for the surfaces that are dark in both themes: the hero and the poster
-     of a listing with no picture. --text-inverse cannot serve here — it means
+  /* Ink for the surfaces that are dark in both themes, such as the poster of
+     a listing with no picture. --text-inverse cannot serve here — it means
      "readable on the inverse of the current surface", so in dark theme it goes
-     dark, and the hero is not the inverse of anything. */
+     dark, and the poster is not the inverse of anything. */
   --on-dark-text: var(--palette-white);
   --on-dark-muted: rgb(255 255 255 / 82%);
   --on-dark-veil: rgb(255 255 255 / 10%);
@@ -150,8 +150,6 @@
      at all when the image does not paint, and "what colour is the page" stops
      being a question anything can answer — getComputedStyle included. */
   --page-glow: none;
-  --hero-ground: radial-gradient(circle at 18% 22%, rgb(168 85 247 / 55%), transparent 26%), radial-gradient(circle at 78% 24%, rgb(14 165 233 / 38%), transparent 22%), linear-gradient(135deg, #080a18 0%, #1e103f 48%, #111827 100%);
-  --hero-veil: linear-gradient(90deg, rgb(4 8 20 / 94%) 0%, rgb(12 8 35 / 74%) 48%, rgb(8 13 27 / 34%) 100%), linear-gradient(0deg, rgb(4 8 20 / 62%), rgb(4 8 20 / 8%));
   /* What fills a card that has no picture yet. WaahTickets calls it the safe
      image and it is the same violet night in both themes. */
   --poster-ground: radial-gradient(circle at 22% 18%, rgb(250 204 21 / 46%), transparent 18%), radial-gradient(circle at 78% 22%, rgb(236 72 153 / 40%), transparent 18%), linear-gradient(135deg, #2e1065 0%, #581c87 44%, #111827 100%);

@@ -36,8 +36,7 @@ export function AuditPanel() {
   const rows = list?.data ?? []
 
   return (
-    <section className="admin__section" aria-labelledby="admin-audit">
-      <h2 id="admin-audit">Audit trail</h2>
+    <section className="admin__section" aria-labelledby="admin-heading">
 
       {error && <Alert tone="danger" title="Something went wrong">{error}</Alert>}
 

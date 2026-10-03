@@ -38,6 +38,11 @@ export const STRINGS = {
   'nav.signOut': { en: 'Sign out', ne: 'साइन आउट' },
   'nav.myListings': { en: 'My listings', ne: 'मेरा सूचीहरू' },
   'nav.account': { en: 'Account', ne: 'खाता' },
+  'nav.addListing': { en: 'Add a listing', ne: 'सूची थप्नुहोस्' },
+  'nav.admin': { en: 'Admin console', ne: 'एडमिन कन्सोल' },
+  'nav.accountMenu': { en: 'Account menu', ne: 'खाता मेनु' },
+  'nav.waiting': { en: '{n} waiting for review', ne: '{n} समीक्षाको पर्खाइमा' },
+  'nav.waitingShort': { en: 'waiting', ne: 'पर्खाइमा' },
   'footer.tagline': { en: 'What’s happening around Nepal.', ne: 'नेपालभरि के-के भइरहेको छ।' },
   'footer.about': { en: 'About', ne: 'हाम्रो बारेमा' },
   'footer.submit': { en: 'Submit an event', ne: 'कार्यक्रम पठाउनुहोस्' },
@@ -140,19 +145,20 @@ export const STRINGS = {
   'language.nepali': { en: 'नेपाली', ne: 'नेपाली' },
 
   // ── Discovery ────────────────────────────────────────────────────────────
-  'discover.title': { en: 'What’s happening around Nepal', ne: 'नेपालभरि के-के भइरहेको छ' },
-  'discover.lead': {
-    en: 'Concerts, festivals, sport, comedy and community events — bounded and upcoming by default.',
-    ne: 'कन्सर्ट, चाडपर्व, खेलकुद, हास्य र सामुदायिक कार्यक्रम — आउँदै गरेका मात्र।',
-  },
+  /**
+   * The homepage's h1, which is visually hidden: the map is the page's cover
+   * and there is no headline above it. Short and plain, because it is read
+   * aloud rather than seen, and says what the page holds.
+   */
+  'discover.title': { en: 'Events around Nepal', ne: 'नेपालभरिका कार्यक्रमहरू' },
   'discover.everything': { en: 'Everything', ne: 'सबै' },
   /**
-   * The dynamic hero headline (#38). It names the detected city, so it is one
-   * string with a slot rather than a sentence assembled from fragments —
-   * Nepali puts the postposition on the place name (`काठमाडौं वरिपरि`), and a
-   * concatenation would put it in the wrong half.
+   * The same heading once the city is known (#38). It names the detected
+   * city, so it is one string with a slot rather than a sentence assembled
+   * from fragments — Nepali puts the postposition on the place name
+   * (`काठमाडौं वरिपरि`), and a concatenation would put it in the wrong half.
    */
-  'discover.titleIn': { en: 'What’s happening around {city}', ne: '{city} वरिपरि के-के भइरहेको छ' },
+  'discover.titleIn': { en: 'Events around {city}', ne: '{city} वरिपरिका कार्यक्रमहरू' },
   'map.nearMe': { en: 'Near me', ne: 'मेरो नजिक' },
   'map.locating': { en: 'Finding you…', ne: 'खोज्दै…' },
   'map.centred': { en: 'Centred on you', ne: 'तपाईंमा केन्द्रित' },
@@ -161,6 +167,8 @@ export const STRINGS = {
   'map.showMap': { en: 'Map', ne: 'नक्सा' },
   'map.distanceGroup': { en: 'Filter by distance', ne: 'दूरीअनुसार छान्नुहोस्' },
   'map.km': { en: '{km} km', ne: '{km} किमी' },
+  'map.distanceToggle': { en: 'Distance', ne: 'दूरी' },
+  'map.anyDistance': { en: 'Any', ne: 'जुनसुकै' },
   'map.zoomIn': { en: 'Zoom in to load listings.', ne: 'सूची लोड गर्न जुम इन गर्नुहोस्।' },
   'map.loading': { en: 'Loading listings…', ne: 'सूची लोड हुँदैछ…' },
   /**
@@ -253,6 +261,8 @@ export const STRINGS = {
   },
   'listing.priceChecked': { en: 'Price checked {when}', ne: 'मूल्य {when} जाँचिएको' },
   'listing.addToCalendar': { en: 'Add to calendar', ne: 'क्यालेन्डरमा राख्नुहोस्' },
+  'listing.addedToCalendar': { en: 'Added to calendar', ne: 'क्यालेन्डरमा राखियो' },
+  'listing.fullDetails': { en: 'Full details', ne: 'पूरा विवरण' },
   'listing.share': { en: 'Share', ne: 'सेयर गर्नुहोस्' },
   'listing.shareWhatsApp': { en: 'Share on WhatsApp', ne: 'ह्वाट्सएपमा सेयर गर्नुहोस्' },
   'listing.shareFacebook': { en: 'Share on Facebook', ne: 'फेसबुकमा सेयर गर्नुहोस्' },
@@ -325,6 +335,7 @@ export const STRINGS = {
   'common.retry': { en: 'Try again', ne: 'फेरि प्रयास गर्नुहोस्' },
   'common.backHome': { en: 'Back to the homepage', ne: 'गृहपृष्ठमा फर्कनुहोस्' },
   'common.showMore': { en: 'Show more', ne: 'थप देखाउनुहोस्' },
+  'common.showFewer': { en: 'Show fewer', ne: 'कम देखाउनुहोस्' },
 } as const
 
 export type StringKey = keyof typeof STRINGS

@@ -1,8 +1,9 @@
+import { SCRAPE_SOURCES, scrapeSources } from '../scrapes/sources'
 import { Hono } from 'hono'
 import type { Env } from '../env'
 import { readSession, rowsOf, withRoundTrips } from '../lib/d1'
 import { auditStatement } from '../lib/audit'
-import { ApiError, notFound } from '../lib/http'
+import { ApiError, badRequest, notFound } from '../lib/http'
 import { requirePermission, type AuthVariables } from '../identity/middleware'
 import {
   APPLY_ENVIRONMENTS, SELECT_RUN, expireStaleRuns, notConfigured, serialiseRun,
@@ -39,10 +40,10 @@ export function applyEnvironmentFor(environment: Env['ENVIRONMENT']): ApplyEnvir
     : 'preview'
 }
 
-/** GitHub's answer to a dispatch, reduced to what the row records. */
-export async function dispatchWorkflow(env: Env, inputs: Record<string, string>, fetcher = fetch): Promise<{ ok: true } | { ok: false; error: string }> {
+/** GitHub's answer to a dispatch, reduced to what the row records. The deploy button (./deploys.ts) shares it. */
+export async function dispatchWorkflow(env: Env, inputs: Record<string, string>, fetcher = fetch, workflow = WORKFLOW): Promise<{ ok: true } | { ok: false; error: string }> {
   const response = await fetcher(
-    `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW}/dispatches`,
+    `https://api.github.com/repos/${env.GITHUB_REPOSITORY}/actions/workflows/${workflow}/dispatches`,
     {
       method: 'POST',
       headers: {
@@ -59,6 +60,26 @@ export async function dispatchWorkflow(env: Env, inputs: Record<string, string>,
   const detail = (await response.text()).slice(0, 200)
   return { ok: false, error: `GitHub refused the dispatch: HTTP ${response.status} ${detail}`.trim() }
 }
+
+adminScrapeRoutes.get('/system/scrape-sources', requirePermission('user:manage'), async (c) => {
+  return c.json({ sources: await scrapeSources(c.env) })
+})
+
+adminScrapeRoutes.patch('/system/scrape-sources/:id', requirePermission('user:manage'), async (c) => {
+  const id = c.req.param('id')
+  if (!SCRAPE_SOURCES.some(source => source.id === id)) throw notFound('Unknown scraper source')
+  const body = await c.req.json<{ enabled?: unknown }>().catch(() => { throw badRequest('invalid_json', 'Send a JSON body') })
+  if (!body || typeof body.enabled !== 'boolean') throw badRequest('invalid_field', 'enabled must be true or false')
+  const actor = c.get('user')
+  await c.env.DB.batch([
+    c.env.DB.prepare(`INSERT INTO scrape_source_settings (source_id, enabled, updated_at) VALUES (?1, ?2, ?3)
+      ON CONFLICT(source_id) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`)
+      .bind(id, body.enabled ? 1 : 0, new Date().toISOString()),
+    auditStatement(c.env, { entityType: 'listing', entityId: 'import', action: 'scrape_source_updated',
+      actorId: actor.id, actorRole: actor.role, details: { source_id: id, enabled: body.enabled } }),
+  ])
+  return c.json({ id, enabled: body.enabled })
+})
 
 // ─── POST /api/admin/system/scrape ───────────────────────────────────────────
 /**
@@ -80,6 +101,8 @@ adminScrapeRoutes.post('/system/scrape', requirePermission('user:manage'), async
     throw new ApiError(409, 'already_running', `A run is already ${active.status}; wait for it to finish`)
   }
 
+  const sources = (await scrapeSources(c.env)).filter(source => source.enabled).map(source => source.id)
+  if (!sources.length) throw badRequest('no_sources', 'Turn on at least one source before starting a run')
   const id = crypto.randomUUID()
   const applyEnv = applyEnvironmentFor(c.env.ENVIRONMENT)
   await c.env.DB.prepare(
@@ -89,7 +112,7 @@ adminScrapeRoutes.post('/system/scrape', requirePermission('user:manage'), async
 
   // The runner reports to the API that owns the row — this one — so the
   // origin travels with the dispatch. A staging run reports to staging.
-  const dispatched = await dispatchWorkflow(c.env, { run_id: id, apply: applyEnv, api_url: new URL(c.req.url).origin })
+  const dispatched = await dispatchWorkflow(c.env, { run_id: id, apply: applyEnv, api_url: new URL(c.req.url).origin, sources: JSON.stringify(sources) })
   if (!dispatched.ok) {
     // The row stays, failed, so the attempt is visible in the history rather
     // than vanishing into a toast.

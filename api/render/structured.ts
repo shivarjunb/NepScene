@@ -20,7 +20,12 @@ import type {
  */
 type Json = Record<string, unknown>
 
-const absolute = (origin: string, path: string) => `${origin}${path}`
+/** As in metadata.ts: a path is made absolute, an absolute URL is left alone. */
+const absolute = (origin: string, path: string) =>
+  /^https?:\/\//i.test(path) ? path : `${origin}${path}`
+
+const absoluteOrNull = (origin: string, path: string | null | undefined) =>
+  path ? absolute(origin, path) : null
 
 /** Drops keys whose value is null or undefined, at any depth. */
 export function compact<T extends Json>(value: T): T {
@@ -150,7 +155,9 @@ export function eventOf(listing: ListingDetail, origin: string): Json {
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     description: listing.summary ?? listing.description ?? null,
-    image: image ? absolute(origin, image.url) : listing.cover_image_url ?? null,
+    // An imported cover is a path on our origin by now (api/catalog/serialize.ts),
+    // so it needs the origin as much as a pipeline image does.
+    image: absoluteOrNull(origin, image ? image.url : listing.cover_image_url),
     location: listing.venue
       ? placeOf({ ...listing.venue, slug: listing.venue.slug }, origin)
       : null,

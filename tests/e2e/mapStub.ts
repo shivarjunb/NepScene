@@ -166,6 +166,7 @@ export async function stubMapsSdk(page: Page) {
       }
       setZoom() {}
       panTo() {}
+      panBy() {}
       fitBounds(bounds: { __box: { south: number; north: number; west: number; east: number } }) {
         const box = bounds.__box
         centre = { lat: (box.south + box.north) / 2, lng: (box.west + box.east) / 2 }
@@ -342,7 +343,7 @@ export async function serveHere(
 
 /**
  * A minimal `/bootstrap`, so a spec whose subject is the map can open `/` —
- * where the hero lives — without also standing up a feed fixture. The rows
+ * where the map is the cover — without also standing up a feed fixture. The rows
  * the feed builds from it are somebody else's spec (`discover.spec.ts`).
  */
 export async function serveBootstrap(page: Page) {

@@ -29,4 +29,12 @@ export type Env = {
   GITHUB_REPOSITORY: string
   GITHUB_DISPATCH_TOKEN?: string
   SCRAPE_REPORT_TOKEN?: string
+  /**
+   * Staging only: what deploy-staging.yml's last step presents to
+   * /api/internal/staging-deploys, to have a green commit promoted when the
+   * console's "promote automatically" is on. Its own secret, not the scrape
+   * runner's, so neither job's token opens the other's routes. Missing → 503,
+   * and the staging deploy carries on without it.
+   */
+  DEPLOY_CALLBACK_TOKEN?: string
 }

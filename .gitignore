@@ -25,3 +25,6 @@ tsc.log
 --apply
 ticketsanjal-scraper/ticketsanjal-output
 scrape-output/
+
+# Database dumps hold production data. Never commit one.
+*-backup-*.sql

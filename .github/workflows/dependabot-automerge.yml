@@ -1,0 +1,49 @@
+name: Dependabot auto-merge
+
+# Patch and minor bumps merge themselves once the ruleset's required check
+# (`verify`) passes; nothing here skips it. Majors are left for a person, with
+# a comment saying so. See docs/DEVOPS.md > Dependabot.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Auto-merge
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: self-hosted
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v3
+
+      # AUTOMERGE_TOKEN (a Dependabot secret) makes the merge count as a push
+      # by a person, so deploy-staging.yml runs on it. Without it the merge is
+      # GITHUB_TOKEN's, which starts no workflows: the bump reaches staging
+      # with the next merge instead.
+      - name: Enable auto-merge
+        if: ${{ steps.meta.outputs.update-type != 'version-update:semver-major' }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.AUTOMERGE_TOKEN || github.token }}
+          script: |
+            await github.graphql(
+              `mutation($id: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $id, mergeMethod: SQUASH }) { clientMutationId }
+              }`,
+              { id: context.payload.pull_request.node_id },
+            )
+
+      - name: Flag a major bump
+        if: ${{ steps.meta.outputs.update-type == 'version-update:semver-major' && github.event.action == 'opened' }}
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: 'Major version bump, so this one waits for a review rather than merging itself.',
+            })
